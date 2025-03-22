@@ -191,7 +191,7 @@ def _get_quest_variations(quest_data):
         variants.append(result)
     return variants
 
-def build_quest_info(args, info_template, quest_map, quest_data):
+def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
     quest_id = quest_data['quest_id']
     
     area_rank = None
@@ -207,6 +207,7 @@ def build_quest_info(args, info_template, quest_map, quest_data):
         quest_title_subcategory =_get_quest_subcategory(quest_data['title_subcategory'], quest_data),
         quest_name=quest_data['name'],
         quest_id=quest_data['quest_id'],
+        quest_jp_name=titles_map[quest_id]['jp_name'],
         quest_type=quest_data['type'],
         quest_style=quest_data['type'].lower(),
         quest_starting_npc=_get_quest_starting_npc(quest_data),
@@ -360,7 +361,7 @@ def build_site(args):
 
     for quest_id in quest_map:
         quest_data = quest_map[quest_id]
-        build_quest_info(args, info_template, quest_map, quest_data)
+        build_quest_info(args, titles_map, info_template, quest_map, quest_data)
 
     build_index(args, index_template, titles_map, quest_map, quest_data)
 
