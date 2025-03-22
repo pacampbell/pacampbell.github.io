@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{ quest_name }}</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    {% include "header.html" %}
+
+    <h2>{{quest_title_category}} / {{quest_title_subcategory}} / {{quest_name}}</h2>
+
+    <table class="quest-info">
+      <tbody>
+        <tr>
+          <td colspan="2" class="{{quest_style}}-header">{{quest_name}}</td>
+        </tr>
+        <tr>
+          <td class="{{quest_style}}-key">Type</td>
+          <td class="{{quest_style}}-value">{{quest_type}}</td>
+        </tr>
+        <tr>
+          <td class="{{quest_style}}-key">Quest ID</td>
+          <td class="{{quest_style}}-value">{{quest_id}}</td>
+        </tr>
+        <tr>
+          <td class="{{quest_style}}-key">Starting NPC</td>
+          <td class="{{quest_style}}-value">{{quest_starting_npc}}</td>
+        </tr>
+        <tr>
+          <td class="{{quest_style}}-key">Guide Category</td>
+          <td class="{{quest_style}}-value">{{quest_category}}</td>
+        </tr>
+        <tr>
+          <td class="{{quest_style}}-key">Repeatable</td>
+          <td class="{{quest_style}}-value">{{quest_is_repeatable}}</td>
+        </tr>
+        {% if quest_minimum_area_rank is not none %}
+        <tr>
+          <td class="{{quest_style}}-key">AR Requirement</td>
+          <td class="{{quest_style}}-value">{{quest_minimum_area_rank}}</td>
+        </tr>
+        {% endif %}
+        <tr>
+          <td class="{{quest_style}}-key">Description</td>
+          <td class="{{quest_style}}-value">{{quest_description}}</td>
+        </tr>
+        {% if quest_references|length > 0 %}
+        <tr>
+          <td class="{{quest_style}}-key">References</td>
+          <td class="{{quest_style}}-value">
+          {% for reference in quest_references %}
+            {% if loop.index == 1 %}
+              <a href="{{reference[0]}}" target="_blank">{{reference[1]}}</a>
+            {% else %}
+              | <a href="{{reference[0]}}" target="_blank">{{reference[1]}}</a>
+            {% endif %}
+          {% endfor %}
+          </td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+    {% if quest_order_conditions|length > 0 %}
+    <table class="quest-info">
+      <tbody>
+        <tr>
+          <td class="{{quest_style}}-header">Order Conditions</td>
+        </tr>
+        {% for condition in quest_order_conditions %}
+          <tr>
+            <td class="{{quest_style}}-value" style="text-align: center;">{{condition}}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% if quest_tutorial_unlocks|length > 0 or quest_content_unlocks|length > 0%}
+    <table class="quest-info">
+      <tbody>
+        <tr>
+          <td class="{{quest_style}}-header" style="width:50%;">Tutorials</td>
+          <td class="{{quest_style}}-header" style="width:50%;">Content Unlocks</td>
+        </tr>
+        <tr>
+          <td class="{{quest_style}}-value">
+            <ul>
+              {% for tutorial in quest_tutorial_unlocks %}
+              <li>{{tutorial}}</li>
+              {% endfor %}
+            </ul>
+          </td>
+          <td class="{{quest_style}}-value">
+            <ul>
+              {% for content in quest_content_unlocks %}
+              <li>{{content}}</li>
+              {% endfor %}
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    {% endif %}
+    {% if next_quest is not none or prev_quest is not none %}
+    <table class="quest-info">
+      <tbody>
+        <tr>
+          <td class="{{quest_style}}-header" style="width:50%;">Previous Quest</td>
+          <td class="{{quest_style}}-header" style="width:50%;">Next Quest</td>
+        </tr>
+        <tr>
+          <td class="{{quest_style}}-value" style="width:50%; text-align: center;">
+          {% if prev_quest is none %}
+            None
+          {% else %}
+            <a href="{{prev_quest[0]}}.html">{{prev_quest[1]}}</a>
+          {% endif %}
+          </td>
+          <td class="{{quest_style}}-value" style="width:50%; text-align: center;">
+            {% if next_quest is none %}
+              None
+            {% else %}
+              <a href="{{next_quest[0]}}.html">{{next_quest[1]}}</a>
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    {% endif %}
+
+    <h2>Variations</h2>
+
+    <table class="quest-info rewards" style="width: 80%;">
+      <tbody>
+        <tr>
+          <td class="{{quest_style}}-header">Level</td>
+          <td class="{{quest_style}}-header">XP</td>
+          <td class="{{quest_style}}-header">Gold</td>
+          <td class="{{quest_style}}-header">Rift</td>
+          <td class="{{quest_style}}-header">AP</td>
+          <td class="{{quest_style}}-header">Rewards</td>
+        </tr>
+        {% for variant in quest_variations %}
+          <tr>
+          {% for col in variant %}
+            <td class="{{quest_style}}-value" style="{{col[1]}}">{{col[0]}}</td>
+          {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Steps</h2>
+    <ul>
+    {% for step in quest_steps %}
+      <li>{{step}}</li>
+    {% endfor %}
+    </ul>
+
+    {% if quest_walkthrough is not none %}
+    <h2>Walkthrough</h2>
+      <p>
+      {% for line in quest_walkthrough %}
+        {{line}}<br>
+      {% endfor %}
+      </p>
+
+    {% endif %}
+</body>
+</html>

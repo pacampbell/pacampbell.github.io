@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    {% include "header.html" %}
+    <h2>{{main_category}} / {{sub_category}}</h2>
+
+    {% with subcats=subcats %}
+    {% include "subcat_header.html" %}
+    {% endwith %}
+
+    <table class="overview">
+        <thead>
+            <th class="col-1">Quest ID</th>
+            <th class="col-2">Name</th>
+            <th class="col-3">Level</th>
+            <th class="col-4">XP</th>
+            <th class="col-5">Gold</th>
+            <th class="col-6">Rift</th>
+            <th class="col-7">AP</th>
+            <th class="col-8">Rewards</th>
+        </thead>
+        <tbody>
+            {% for quest in quests %}
+                {% for variant in quest['variants'] %}
+                    <tr>
+                    {% if loop.index == 1 %}
+                        <td class="col-1" rowspan="{{quest['variants']|length}}">{{quest['quest_res']}}</td>
+                        <td class="col-2" rowspan="{{quest['variants']|length}}">{{quest['quest_info']}}</td>
+                    {% endif %}
+                        <td class="col-3">{{variant[0]}}</td>
+                        <td class="col-4">{{variant[1]}}</td>
+                        <td class="col-5">{{variant[2]}}</td>
+                        <td class="col-6">{{variant[3]}}</td>
+                        <td class="col-7">{{variant[4]}}</td>
+                        <td class="col-8">{{variant[5]}}</td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

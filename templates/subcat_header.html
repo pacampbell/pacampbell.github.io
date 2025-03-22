@@ -1,0 +1,9 @@
+<div class="nav-container">
+    <nav>
+        <ul>
+            {% for subcat in subcats %}
+                <li><a href="{{subcat[0]}}.html">{{subcat[1]}}</a></li>
+            {% endfor %}
+        </ul>
+    </nav>
+</div>
