@@ -1,0 +1,207 @@
+body {
+    padding: 20px;
+    font-size: 12pt;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+h2 {
+    border-bottom: 2px solid #b0bec5;
+    padding-bottom: 5px;
+    width: fit-content;  /* Makes underline only as wide as the text */
+    /* OR */
+    display: inline-block;  /* Alternative to fit-content for older browsers */
+}
+
+table a, table a:visited {
+    color: blue !important;
+}
+
+/* Overview Pages */
+
+table.overview {
+    border-collapse: collapse; /* Removes spacing between cells */
+    width: 100%; /* Makes table full-width */
+    margin: 20px 0; /* Adds some spacing around the table */
+    table-layout: fixed;  /* Ensures fixed column widths */
+}
+
+table.overview table  th, table.overview td {
+    padding: 12px; /* Adds internal spacing */
+    /* text-align: center; */
+    border: 1px solid #bbbbbb;
+    box-sizing: border-box; /* Keeps padding within width */
+}
+
+table.overview th {
+    background-color: #D8E1E5; /* Slightly darker greyish-blue for header */
+    font-weight: bold;
+    text-align: center;
+    position: sticky;      /* Makes header stick */
+    top: 0;                /* Sticks to top of viewport or container */
+    z-index: 10;           /* Ensures it stays above table body */
+    cursor: pointer;          /* Indicates clickability */
+    border: 1px solid #bbbbbb;
+}
+
+.overview th:hover {
+    background-color: #C8D5DD;
+}
+
+.overview tr:nth-child(even) {
+    background-color: #E6ECEF; /* Light greyish-blue for even rows */
+}
+
+.overview tr:nth-child(odd) {
+    background-color: #F5F8FA; /* Very light greyish-blue for odd rows */
+}
+
+.overview tr:hover {
+    background-color: #DEE5E9; /* A bit darker greyish-blue for hover */
+}
+
+.col-1 { width: 5%; text-align: center;}
+.col-2 { width: 10%; text-align: center;}
+.col-3 { width: 4%; text-align: center;}
+.col-4 { width: 4%; text-align: center;}
+.col-5 { width: 4%; text-align: center;}
+.col-6 { width: 4%; text-align: center;}
+.col-7 { width: 4%; text-align: center;}
+.col-8 { width: 20%; text-align: left;}
+.col-9 { width: 10%; text-align: center;}
+
+/* INFO Pages */
+
+table.quest-info {
+    border: 0px;
+    width: 600px;
+}
+
+table.rewards {
+    width: 60%;
+}
+
+table.quest-info td {
+    padding: 3px;
+}
+
+.world-header {
+    text-align: center; 
+    font-weight: bold; 
+    background: #3a8abf; 
+    color: white;
+}
+
+.world-key {
+    font-weight: bold;
+    text-align: center;
+    color: black;
+    background-color: #cbeaff;
+    width: 20%;
+}
+
+.world-value {
+    color: black;
+    text-align: left;
+    background-color: #def2ff;
+}
+
+.main-header {
+    text-align: center; 
+    font-weight: bold; 
+    background-color: #77212d;
+    color: white;
+}
+
+.main-key {
+    font-weight: bold;
+    text-align: center;
+    color: black;
+    background-color: #f9e8e8;
+    width: 20%;
+}
+
+.main-value {
+    color: black;
+    text-align: left;
+    background-color: #f9eeee;
+}
+
+.personal-header
+{
+    text-align: center; 
+    font-weight: bold; 
+    background-color: #3e7645;
+    color: white;
+}
+
+.personal-key
+{
+    font-weight: bold;
+    text-align: center;
+    color: black;
+    background-color: #D1E3D4;
+    width: 20%;
+}
+
+.personal-value
+{
+    color: black;
+    text-align: left;
+    background-color: #E6F0E8;
+}
+
+.reward-unlock
+{
+    color: #006666;
+    font-weight: bold;
+}
+
+.reward-bloodorb
+{
+    color: #8f68c0;
+    font-weight: bold;
+}
+
+/* Navigation styling */
+.nav-container {
+    width: 100%;
+    background-color: #CCD6DD; /* Background */
+    padding: 10px;
+    margin-bottom: 20px;
+    border-radius: 8px;        /* Adds rounded edges */
+}
+
+nav {
+    max-width: 90%;
+    margin: 0 auto;
+    flex-wrap: wrap;          /* Allows items to wrap to new rows */
+    gap: 10px;               /* Adds consistent spacing between all items */
+}
+
+nav ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;          /* Ensures list items can wrap */
+    justify-content: center;  /* Centers the items horizontally */
+    flex-grow: 1;             /* Allows ul to take remaining space */
+    gap: 10px;               /* Replaces margin on li for spacing */
+}
+
+nav ul li {
+    margin: 0 10px;
+}
+
+nav ul li a {
+    text-decoration: none;
+    color: #2F3A44; /* text */
+    padding: 8px 16px;
+    display: block;
+    transition: background-color 0.3s;
+}
+
+nav ul li a:hover {
+    background-color: #DCE3E8;  /* Hover */
+    border-radius: 4px;
+}
