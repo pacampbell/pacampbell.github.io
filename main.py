@@ -48,26 +48,31 @@ def _get_quest_unlocks(unlocks):
 
     return results
 
-def _get_quest_from_condition(quest_map, condition):
+def _get_quest_name_from_condition(quest_map, condition):
     param01 = condition['param01']
     if param01 in quest_map:
         param01 = quest_map[param01]['name']
     return param01
 
-def _get_condition(quest_map, quest, condition):
+def _get_quest_link_from_condition(args, quest_map, condition):
+    quest_id = condition['param01']
+    quest_name = _get_quest_name_from_condition(quest_map, condition)
+    return f'<a href="q{quest_id:08d}.html">{quest_name}</a>'
+
+def _get_condition(args, quest_map, quest, condition):
     condition_type = condition['type']
     if condition_type == 'MinimumLevel':
         param01 = condition['param01']
         return f"Minimum level of <tt><b>{param01}</b></tt> or higher in any vocation"
     elif condition_type == 'ClearPersonalQuest':
-        param01 = _get_quest_from_condition(quest_map, condition)
-        return f'Clear the personal quest <b>"{param01}"</b>'
+        param01 = _get_quest_link_from_condition(args, quest_map, condition)
+        return f'Clear the personal quest <b>{param01}</b>'
     elif condition_type == 'MainQuestCompleted':
-        param01 = _get_quest_from_condition(quest_map, condition)
-        return f'Clear the main story quest <b>"{param01}"</b>'
+        param01 = _get_quest_link_from_condition(args, quest_map, condition)
+        return f'Clear the main story quest <b>{param01}</b>'
     elif condition_type == 'ClearExtremeMission':
-        param01 = _get_quest_from_condition(quest_map, condition)
-        return f'Clear the extreme mission <b>"{param01}"</b>'
+        param01 = _get_quest_link_from_condition(args, quest_map, condition)
+        return f'Clear the extreme mission <b>{param01}</b>'
     elif condition_type == 'ArisenTactics':
         return 'Complete the Arisen\'s Tactics Trial for Shield Sage, Hunter, Priest or Fighter'
     elif condition_type == 'AreaRank':
@@ -86,10 +91,10 @@ def _get_condition(quest_map, quest, condition):
 
     return _breakup_camelcase_string(condition_type) 
 
-def _get_quest_order_conditions(quest_map, quest_data):
+def _get_quest_order_conditions(args, quest_map, quest_data):
     conditions = []
     for condition in quest_data['order_conditions']:
-        conditions.append(_get_condition(quest_map, quest_data, condition))
+        conditions.append(_get_condition(args, quest_map, quest_data, condition))
     return conditions
 
 def _get_quest_starting_npc(quest_data):
@@ -220,7 +225,7 @@ def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
         quest_minimum_area_rank = area_rank,
         quest_description=quest_data['description'],
         quest_references=_generate_quest_references(quest_data),
-        quest_order_conditions=_get_quest_order_conditions(quest_map, quest_data),
+        quest_order_conditions=_get_quest_order_conditions(args, quest_map, quest_data),
         quest_tutorial_unlocks = _get_quest_unlocks(quest_data['unlocks']['tutorials']),
         quest_content_unlocks = _get_quest_unlocks(quest_data['unlocks']['contents']),
         next_quest = _get_quest_chain(quest_map, quest_data, 'next_quest_id'),
