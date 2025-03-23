@@ -73,12 +73,16 @@ def _get_condition(quest_map, quest, condition):
     elif condition_type == 'AreaRank':
         param01 = _breakup_camelcase_string(condition['param01'])
         param02 = condition['param02']
-        return f'Area rank of <tt><b>{param02}</b></tt>  in {param01}'
+        return f'Area rank of <tt><b>{param02}</b></tt> or higher in <tt><b>{param01}</b></tt>'
     elif condition_type == 'ItemRank':
         param01 = condition['param01']
         return f'Minimum item level of <tt><b>{param01}</b></tt> is required'
     elif condition_type == 'Message':
         return condition['param01']
+    elif condition_type == 'MinimumVocationLevel':
+        jobId = _breakup_camelcase_string(condition['param01'])
+        level = condition['param02']
+        return f'Vocation restriction: <tt><b>{jobId}</b></tt>, at least level <tt><b>{level}</b></tt>'
 
     return _breakup_camelcase_string(condition_type) 
 
