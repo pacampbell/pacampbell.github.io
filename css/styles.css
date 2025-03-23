@@ -105,6 +105,12 @@ table.quest-info td {
     background-color: #def2ff;
 }
 
+.world-link {
+    font-weight: bold;
+    font-size: 14pt;
+    border-bottom: 1px solid #3a8abf;
+}
+
 .main-header {
     text-align: center; 
     font-weight: bold; 
@@ -124,6 +130,12 @@ table.quest-info td {
     color: black;
     text-align: left;
     background-color: #f9eeee;
+}
+
+.main-link {
+    font-weight: bold;
+    font-size: 14pt;
+    border-bottom: 1px solid #77212d;
 }
 
 .personal-header
@@ -148,6 +160,12 @@ table.quest-info td {
     color: black;
     text-align: left;
     background-color: #E6F0E8;
+}
+
+.personal-link {
+    font-weight: bold;
+    font-size: 14pt;
+    border-bottom: 1px solid #3e7645;
 }
 
 .reward-unlock
