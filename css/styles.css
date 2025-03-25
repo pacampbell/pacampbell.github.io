@@ -180,6 +180,12 @@ table.quest-info td {
     font-weight: bold;
 }
 
+.translated-text
+{
+    color: #333333;
+    font-weight: bold;
+}
+
 /* Navigation styling */
 .nav-container {
     width: 100%;

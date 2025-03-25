@@ -21,11 +21,11 @@ category_map = {
 # <STG 201>
 # <SPOT xxx>
 
-def _genric_replace(match, type_map, not_found_name):
+def _genric_replace(match, type_map, tag_name):
     type_id = int(match.group(1))
     if type_id in type_map:
-        return f"{type_map[type_id]}"
-    return f"&lt;{not_found_name} {type_id}&gt;"
+        return f'<span class="translated-text" title="{tag_name}={type_id}">{type_map[type_id]}</span>'
+    return f"&lt;{tag_name} {type_id}&gt;"
 
 def _replace_npc_id(match):
     return _genric_replace(match, npc_ids, 'NPC')
@@ -441,8 +441,6 @@ def parse_spot_names(args):
             continue
 
         spot, jp_name, en_name = line.split(',', 2)
-
-        print(spot.rsplit('_', 1))
         spot_id = int(spot.rsplit('_', 1)[1])
         spot_ids[spot_id] = en_name
 
