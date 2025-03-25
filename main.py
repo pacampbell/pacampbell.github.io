@@ -7,12 +7,35 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from urllib.parse import urlparse
 
+npc_ids = {}
+stage_nos = {}
+spot_ids = {}
+
 category_map = {
     'main_quest': 'Main Quests',
     # 'pawn_quest': 'Pawn Quests',
     'personal_quest': 'Personal Quests',
     'world_quest': 'World Quests'
 }
+
+# <STG 201>
+# <SPOT xxx>
+
+def _genric_replace(match, type_map, not_found_name):
+    type_id = int(match.group(1))
+    if type_id in type_map:
+        return f"{type_map[type_id]}"
+    return f"&lt;{not_found_name} {type_id}&gt;"
+
+def _replace_npc_id(match):
+    return _genric_replace(match, npc_ids, 'NPC')
+
+def _replace_stage_id(match):
+    return _genric_replace(match, stage_nos, 'STG')
+
+def _replace_spot_id(match):
+    return _genric_replace(match, spot_ids, 'SPOT')
+
 def _breakup_camelcase_string(string):
     if ' ' in string:
         return string
@@ -200,6 +223,18 @@ def _get_quest_variations(quest_data):
         variants.append(result)
     return variants
 
+def _translate_string(string):
+    if '<NPC' in string:
+        string = re.sub(r'<NPC (\d+)>', _replace_npc_id, string)
+
+    if '<STG' in string:
+        string = re.sub(r'<STG (\d+)>', _replace_stage_id, string)
+
+    if '<SPOT' in string:
+        string = re.sub(r'<SPOT (\d+)>', _replace_spot_id, string)
+
+    return ' '.join(string.split())
+
 def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
     quest_id = quest_data['quest_id']
     
@@ -210,6 +245,12 @@ def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
     quest_walkthrough = None
     if 'walkthrough' in quest_data:
         quest_walkthrough = quest_data['walkthrough']
+
+    translated_description = _translate_string(quest_data['description'])
+    
+    translated_steps = []
+    for step in quest_data['steps']:
+        translated_steps.append(_translate_string(step))
 
     content = info_template.render(
         quest_title_category=quest_data['title_category'],
@@ -223,7 +264,7 @@ def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
         quest_category=_breakup_camelcase_string(quest_data['guide_type']),
         quest_is_repeatable="Yes" if quest_data['repeatable'] else "No",
         quest_minimum_area_rank = area_rank,
-        quest_description=quest_data['description'],
+        quest_description=translated_description,
         quest_references=_generate_quest_references(quest_data),
         quest_order_conditions=_get_quest_order_conditions(args, quest_map, quest_data),
         quest_tutorial_unlocks = _get_quest_unlocks(quest_data['unlocks']['tutorials']),
@@ -231,7 +272,7 @@ def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
         next_quest = _get_quest_chain(quest_map, quest_data, 'next_quest_id'),
         prev_quest = _get_quest_chain(quest_map, quest_data, 'previous_quest_id'),
         quest_variations = _get_quest_variations(quest_data),
-        quest_steps = quest_data['steps'],
+        quest_steps = translated_steps,
         quest_walkthrough = quest_walkthrough
     )
 
@@ -333,6 +374,11 @@ def build_index(args, index_template, titles_map, quest_map, quest_data):
 
 
 def build_site(args):
+    # Assign to global fot lambda replacement
+    parse_npc_ids(args)
+    parse_stage_list(args)
+    parse_spot_names(args)
+
     titles_map = parse_titles(args)
 
     environment = Environment(loader=FileSystemLoader("templates/"))
@@ -373,6 +419,40 @@ def build_site(args):
         build_quest_info(args, titles_map, info_template, quest_map, quest_data)
 
     build_index(args, index_template, titles_map, quest_map, quest_data)
+
+def parse_npc_ids(args):
+    with open(args.npcs, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    for name in data:
+        npc_id = data[name]
+        name = _breakup_camelcase_string(name)
+        npc_ids[npc_id] = ''.join([char for char in name if not char.isnumeric()])
+
+def parse_spot_names(args):
+    with open(args.spots, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+
+    # SPOT_NAME_450,白竜神殿レーゼ,The White Dragon Temple
+    i = 0
+    for line in lines:
+        if i == 0:
+            i += 1
+            continue
+
+        spot, jp_name, en_name = line.split(',', 2)
+
+        print(spot.rsplit('_', 1))
+        spot_id = int(spot.rsplit('_', 1)[1])
+        spot_ids[spot_id] = en_name
+
+def parse_stage_list(args):
+    with open(args.stages, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+
+    for stage_info in data['StageListInfoList']:
+        stage_no = stage_info['StageNo']
+        stage_nos[stage_no] = stage_info['StageName']['En']
 
 def parse_titles(args):
     with open(args.titles, 'r', encoding='utf-8') as f:
@@ -461,7 +541,10 @@ def parse_titles(args):
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-o', '--output_dir', default='build', help='Controls the output directory')
-    parser.add_argument('-t', '--titles', default='@titles.txt', help='Path to titles.txt')
+    parser.add_argument('-t', '--titles', default='resources/titles.txt', help='Path to the file containing quest titles')
+    parser.add_argument('-n', '--npcs', default='resources/npc_id.json', help='Path to npc_id.json')
+    parser.add_argument('-p', '--spots', default='resources/spot_name.csv', help='Path to spot_name.csv')
+    parser.add_argument('-s', '--stages', default='resources/stage_list.slt.json', help='Path to stage_list.slt.json')
     parser.add_argument('data_root', help='Path to quest data')
 
     args = parser.parse_args()
@@ -476,9 +559,11 @@ def parse_args():
             print(f'The path "{path}" is not a directory. Exiting.')
             return None
 
-    if not Path(args.titles).exists():
-        print('The path "{args.titles}" to @title.txt is invalid. Exiting.')
-        return None
+    paths = [args.titles, args.npcs, args.stages, args.spots]
+    for p in paths:
+        if not Path(p).exists():
+            print('The path "{p}" is invalid. Exiting.')
+            return None
 
     # create the output dir
     Path(args.output_dir).mkdir(parents=True, exist_ok=True)
