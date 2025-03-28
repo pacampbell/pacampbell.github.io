@@ -573,7 +573,6 @@ def copy_deps(args):
     shutil.copy2("css/styles.css", f'{args.output_dir}/css/styles.css')
     shutil.copytree("images", f'{args.output_dir}/images', dirs_exist_ok=True)
 
-
 def main():
     args = parse_args()
     if args is None:
