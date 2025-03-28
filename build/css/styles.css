@@ -186,6 +186,42 @@ table.quest-info td {
     font-weight: bold;
 }
 
+.item-header
+{
+    text-align: center; 
+    font-weight: bold; 
+    background-color: #212021;
+    color: white;
+}
+
+.item-key
+{
+    font-weight: bold;
+    text-align: center;
+    color: black;
+    background-color: #D5D6D9;
+    width: 20%;
+}
+
+.item-value
+{
+    color: black;
+    text-align: left;
+    background-color: #ECEDEE;
+}
+
+.item-icon
+{
+    text-align: center;
+    background-color: #ECEDEE;
+}
+
+.items-link {
+    font-weight: bold;
+    font-size: 14pt;
+    border-bottom: 1px solid #212021;
+}
+
 /* Navigation styling */
 .nav-container {
     width: 100%;

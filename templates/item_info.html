@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{ item_name }}</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body style="text-align: center;">
+    {% include "header.html" %}
+
+    <h2>Items / {{subcat_name}} / {{item_name}}</h2>
+
+    <table class="quest-info" style="margin-left: auto; margin-right: auto;">
+        <tbody>
+            <tr>
+                <td colspan="2" class="item-header">{{item_name}}<br>{{item_id}}</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="item-icon"><img src="images/icons/{{icon_id}}.png"></td>
+            </tr>
+
+            {% if item_quality|length > 0 %}
+            <tr>
+                <td colspan="2" class="item-header" style="color: #ffeb63; font-size: 16pt;">{{item_quality}}</td>
+            </tr>
+            {% endif %}
+
+            {% if item_level > 0 or item_rank > 0 %}
+            <tr>
+                {% if item_level > 0 %}
+                <td class="item-value" style="text-align: center; font-weight: bold; width: 50%;">IR.{{item_rank}}</td>
+                <td class="item-value" style="text-align: center; font-weight: bold; width: 50%;">LV.{{item_level}}</td>
+                {% elif item_rank > 0 %}
+                <td colspan="2" class="item-value" style="text-align: center; font-weight: bold; width: 100%;">IR.{{item_rank}}</td>
+                {% endif %}
+            </tr>
+            {% endif %}
+            
+            {% if job_icons|length > 0 %}
+            <tr>
+                <td colspan="2" class="item-header" sty;e="text-align: center;">Jobs</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="item-icon">
+                {% for icon in job_icons %}
+                    {{icon}}&nbsp; 
+                {% endfor %}
+                </td>
+            </tr>
+            {% endif %}
+
+            {% if item_stats|length > 0 %}
+            <tr>
+                <td colspan="2" class="item-header" sty;e="text-align: center;">Stats</td>
+            </tr>
+            {% for key, value in item_stats.items() %}
+            <tr>
+                <td class="item-key" style="width: 25%;">{{key.replace('_', ' ').title()}}</td>
+                <td class="item-value" style="width: 75%; text-align: center;">{{value}}</td>
+            </tr>
+            {% endfor %}
+            {% endif %}
+            
+            {% if item_params|length > 0 %}
+            <tr>
+                <td colspan="2" class="item-header" style="text-align: center;">Params</td>
+            </tr>
+            <tr>
+                {% for param in item_params %}
+                <tr>
+                    <td class="item-key" style="width: 25%;">{{param['name'].replace('_', ' ').title()}}</td>
+                    <td class="item-value" style="width: 75%; text-align: center;">{{param['value']}}</td>
+                </tr>
+                {% endfor %}
+            </tr>
+            {% endif %}
+
+            {% if item_info|length > 0 %}
+            <tr>
+                <td colspan="2" class="item-header" style="text-align: center;">Info</td>
+            </tr>
+            <tr>
+                <td colspan="2" class="item-value" style="text-align: center;">{{item_info}}</td>
+            </tr>
+            {% endif %}
+
+            <tr>
+                <td class="item-header" style="text-align: center;">Bazaar</td>
+                <td class="item-header" style="text-align: center;">G</td>
+            </tr>
+            <tr>
+                <td class="item-value" style="text-align: center; color: green; font-weight: bold;">{{item_can_baz}}</td>
+                <td class="item-value" style="text-align: center;">{{item_sell_price}}</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>

@@ -15,7 +15,7 @@ category_map = {
     'main_quest': 'Main Quests',
     # 'pawn_quest': 'Pawn Quests',
     'personal_quest': 'Personal Quests',
-    'world_quest': 'World Quests'
+    'world_quest': 'World Quests',
 }
 
 # <STG 201>
@@ -165,6 +165,10 @@ def _generate_reward_entries(unlocks, rewards):
             item_list = ''
             for item in pools[i]:
                 result = f'{item["name"]} x{item["amount"]}'
+
+                if 'item_id' in item:
+                    item_id = item['item_id']
+                    result = f'<a href="i{item_id:08d}.html">{result}</a>'
 
                 if 'Bloodorb' in result:
                     result = f'<span class="reward-bloodorb">{result}</span>'
@@ -356,12 +360,65 @@ def build_category_list(args, titles_map, category_template, quest_map, category
             subcats = subcat_names.values()
         )
 
-
         subcat_fname = subcat.replace(' ', '_').replace('.', '_')
         output_file = Path(f'{args.output_dir}/{subcat_fname}.html')
         with open(output_file, mode='w', encoding='utf-8') as f:
             f.write(content)
             print(f"... wrote {output_file}")
+
+def build_item_category_list(args, template, category, items):
+    pass
+
+def build_item_info(args, template, item):
+    item_id = item['item_id']
+    subcat_name = item['title_subcategory'].title()
+
+    quality = ''
+    if item['quality'] > 0:
+     quality = item['quality'] * '★'
+
+    # filter stats
+    stats = {}
+    if 'stats' in item:
+        for stat_name in item['stats']:
+            stat = item['stats'][stat_name]
+            if stat == 0 or stat_name == 'ele_slot':
+                continue
+            stats[stat_name] = stat
+
+    job_icons = []
+    if 'jobs' in item:
+        for job in item['jobs']:
+            name = job.lower().replace(' ', '')
+            title = _breakup_camelcase_string(job)
+            job_icons.append(f'<img src="images/icon-job_{name}.png" title="{title}" width="48" height="54">')
+
+    content = template.render(
+        title = f'Items / {subcat_name}',
+        subcat_name = subcat_name.replace('_', ' ').title(),
+        record_type = item['type'],
+        item_name = item['name'],
+        item_type = item['type'].title(),
+        item_id = item_id,
+        item_level = item['level'] if 'level' in item else 0,
+        item_rank = item['item_level'] if 'item_level' in item else 0,
+        icon_id = f"ii{item['icon']['icon_id']:06d}",
+        item_stats = stats,
+        item_params = item['params'] if 'params' in item else [],
+        item_info = item["info"].replace("\n", " "),
+        item_can_baz = 'Yes' if item['can_bazaar'] else 'No',
+        item_sell_price = item['sell_price'],
+        item_quality = quality,
+        job_icons=job_icons
+    )
+
+    output_file = Path(f'{args.output_dir}/i{item_id:08d}.html')
+    with open(output_file, mode='w', encoding='utf-8') as f:
+        f.write(content)
+        print(f"... wrote {output_file}")
+
+def build_items_index(args, template, items):
+    pass
 
 def build_index(args, index_template, titles_map, quest_map, quest_data):
 
@@ -386,6 +443,28 @@ def build_site(args):
     info_template = environment.get_template("info.html")
     category_template = environment.get_template("category.html")
     index_template = environment.get_template("index.html")
+    
+    items_template = environment.get_template("items.html")
+    item_info_template = environment.get_template("item_info.html")
+    item_category_template = environment.get_template("item_category.html")
+
+    item_map = {}
+    items_by_category = {}
+    for subcategory in Path(f'{args.data_root}/items').iterdir():
+        if not subcategory.is_dir():
+                continue
+        print(subcategory.name)
+        for item in subcategory.iterdir():
+            with open(item, 'r', encoding='utf-8') as f:
+                item_data = json.load(f)
+                item_data['title_category'] = 'Items'
+                item_data['title_subcategory'] = subcategory.name
+
+                item_map[item_data['item_id']] = item_data
+
+                if subcategory.name not in items_by_category:
+                    items_by_category[subcategory.name] = []
+                items_by_category[subcategory.name].append(item_data)
 
     quest_map = {}
     quests_by_category = {}
@@ -410,6 +489,15 @@ def build_site(args):
                     if quest_category not in quests_by_category:
                         quests_by_category[quest_category] = []
                     quests_by_category[quest_category].append(quest_data)
+
+    for category in items_by_category:
+        build_item_category_list(args, item_category_template, category, items_by_category[category])
+
+    for item_id in item_map:
+        item_data = item_map[item_id]
+        build_item_info(args, item_info_template, item_data)
+
+    build_items_index(args, items_template, items_by_category)
     
     for category in quests_by_category:
         build_category_list(args, titles_map, category_template, quest_map, category, quests_by_category[category])
