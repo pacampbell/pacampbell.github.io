@@ -239,6 +239,10 @@ def _translate_string(string):
 
     return ' '.join(string.split())
 
+_tags_regx = re.compile('<.*?>')
+def _strip_tags(string):
+    return re.sub(_tags_regx, '', string)
+
 def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
     quest_id = quest_data['quest_id']
     
@@ -396,6 +400,7 @@ def build_item_category_list(args, template, category, categories):
                 stats[stat_name.replace('_', ' ').title()] = stat
         item['filtered_stats'] = stats
         item['icon_path'] = f"images/icons/ii{item['icon']['icon_id']:06d}.png"
+        item['info'] = _strip_tags(item['info'])
         
         item_order_map[first_letter][item_name].append(item)
         item_order_map[first_letter][item_name] = sorted(item_order_map[first_letter][item_name], key=lambda x: x['quality'])
@@ -407,7 +412,8 @@ def build_item_category_list(args, template, category, categories):
     content = template.render(
         title = f'Items / {category_name}',
         subcats=subcats.values(),
-        items_map = item_order_map
+        items_map = item_order_map,
+        category=category
     )
 
     output_file = Path(f'{args.output_dir}/items_{category}.html')
