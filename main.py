@@ -431,7 +431,7 @@ def build_item_category_list(args, template, category, categories):
         stats['Weight'] = item['weight']
 
         item['filtered_stats'] = stats
-        item['icon_path'] = f"images/icons/ii{item['icon']['icon_id']:06d}.png"
+        item['icon_path'] = f"images/icons/large/ii{item['icon']['icon_id']:06d}.png"
         item['info'] = _strip_tags(item['info'])
         
         item_order_map[first_letter][item_name].append(item)
@@ -548,7 +548,7 @@ def build_item_info(args, template, item, item_map):
         'content_id': f'i{item_id:08d}', 
         'url': f'i{item_id:08d}.html',
         'type': item['type'].title(),
-        'icon': f"images/icons/ii{item['icon']['icon_id']:06d}.png"
+        'icon': f"images/icons/small/ii{item['icon']['icon_id']:06d}.png"
     })
 
     output_file = Path(f'{args.output_dir}/i{item_id:08d}.html')
