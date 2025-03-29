@@ -21,6 +21,25 @@ category_map = {
 # {"title": "Season 1.0", "content": "Season 1", "url": "season_1_0.html"},
 search_index = []
 
+# Global used to track references of item
+item_reference_map = {}
+
+def add_item_reference(item_id, reftype, title, link):
+    if item_id not in item_reference_map:
+        item_reference_map[item_id] = {}
+
+    if reftype.lower() == 'quest':
+        if reftype not in item_reference_map[item_id]:
+            item_reference_map[item_id][reftype] = {}
+
+        if title in item_reference_map[item_id][reftype]:
+            return
+        item_reference_map[item_id][reftype][title] = {
+            "type": reftype,
+            "title": title,
+            "link": link,
+        }
+
 def _genric_replace(match, type_map, tag_name):
     type_id = int(match.group(1))
     if type_id in type_map:
@@ -142,7 +161,7 @@ def _get_quest_chain(quest_map, quest_data, key):
         quest = _get_quest_link(quest_map, quest_data["quest_chain"][key])
     return quest
 
-def _generate_reward_entries(unlocks, rewards):
+def _generate_reward_entries(quest_data, unlocks, rewards):
     content = ''
 
     for slot in rewards:
@@ -169,6 +188,9 @@ def _generate_reward_entries(unlocks, rewards):
                 if 'item_id' in item:
                     item_id = item['item_id']
                     result = f'<a href="i{item_id:08d}.html">{result}</a>'
+                    
+                    quest_link = f'q{quest_data['quest_id']:08d}.html'
+                    add_item_reference(item_id, 'Quest', quest_data['name'], quest_link)
 
                 if 'Bloodorb' in result:
                     result = f'<span class="reward-bloodorb">{result}</span>'
@@ -216,7 +238,7 @@ def _get_quest_variations(quest_data):
             if key == 'rewards':
                 width = 75
                 alignment = 'left'
-                value = _generate_reward_entries([], value)
+                value = _generate_reward_entries(quest_data, [], value)
                 if len(value) == 0:
                     value = 'None'
             elif key == 'level' and variant['is_bounty']:
@@ -351,7 +373,7 @@ def build_category_list(args, titles_map, category_template, quest_map, category
                     value = variant[key]
                     if key == 'rewards':
                         unlocks = quest['unlocks']['contents']
-                        value = _generate_reward_entries(unlocks, value)
+                        value = _generate_reward_entries(quest, unlocks, value)
                     elif key == 'level' and variant['is_bounty']:
                         value = f'{value}<br>(bounty)'
                     values.append(value)
@@ -470,7 +492,8 @@ def build_item_info(args, template, item):
         item_can_baz = 'Yes' if item['can_bazaar'] else 'No',
         item_sell_price = item['sell_price'],
         item_quality = quality,
-        job_icons=job_icons
+        job_icons=job_icons,
+        reference_map=item_reference_map[item_id] if item_id in item_reference_map else {}
     )
 
     search_index.append({
@@ -509,11 +532,11 @@ def build_site(args):
     
     info_template = environment.get_template("info.html")
     category_template = environment.get_template("category.html")
-    index_template = environment.get_template("index.html")
     
-    items_template = environment.get_template("items.html")
     item_info_template = environment.get_template("item_info.html")
     item_category_template = environment.get_template("item_category.html")
+
+    index_template = environment.get_template("index.html")
 
     item_map = {}
     items_by_category = {}
@@ -556,13 +579,6 @@ def build_site(args):
                     if quest_category not in quests_by_category:
                         quests_by_category[quest_category] = []
                     quests_by_category[quest_category].append(quest_data)
-
-    for category in items_by_category:
-        build_item_category_list(args, item_category_template, category, items_by_category)
-
-    for item_id in item_map:
-        item_data = item_map[item_id]
-        build_item_info(args, item_info_template, item_data)
     
     for category in quests_by_category:
         build_category_list(args, titles_map, category_template, quest_map, category, quests_by_category[category])
@@ -570,6 +586,15 @@ def build_site(args):
     for quest_id in quest_map:
         quest_data = quest_map[quest_id]
         build_quest_info(args, titles_map, info_template, quest_map, quest_data)
+
+    # If we build these after quests and eney data parsing
+    # we can grab back reference information about being mentioned
+    for category in items_by_category:
+        build_item_category_list(args, item_category_template, category, items_by_category)
+
+    for item_id in item_map:
+        item_data = item_map[item_id]
+        build_item_info(args, item_info_template, item_data)
 
     build_index(args, index_template, titles_map, quest_map, quest_data)
 

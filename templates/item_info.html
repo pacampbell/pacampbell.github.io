@@ -101,5 +101,26 @@
             </tr>
         </tbody>
     </table>
+
+    {% if reference_map|length > 0 %}
+    <br>
+    <h2>Referenced in ...</h2>
+    <table class="quest-info" style="margin-left: auto; margin-right: auto;">
+        <tbody>
+            {% for type,list in reference_map.items() %}
+                {% if type == "Quest" %}
+                    <tr>
+                        <td class="item-header" style="text-align: center;">Quest Rewards</td>
+                    </tr>
+                    {% for key,value in list.items() %}
+                    <tr>
+                        <td class="item-value"><a href="{{value['link']}}">{{value['title']}}</a></td>
+                    </tr>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
 </body>
 </html>
