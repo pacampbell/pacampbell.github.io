@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    {% include "header.html" %}
+    <h2>{{ title }}</h2>
+
+    {% with subcats=subcats %}
+    {% include "subcat_header.html" %}
+    {% endwith %}
+
+    
+    <table class="overview">
+        <thead>
+            <tr>
+                <th style="font-weight: bold; text-align: center;">Name</th>
+                <th style="font-weight: bold; text-align: center;">Variant</th>
+                <th style="font-weight: bold; text-align: center;">Level</th>
+                <th style="font-weight: bold; text-align: center;">Item Level</th>
+                <th style="font-weight: bold; text-align: center;">Stats</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for letter in items_map %}
+                {% for name in items_map[letter] %}
+                    {% for item in items_map[letter][name] %}
+                        <tr>
+                        {% if loop.index == 1 %}
+                            <td style="text-align: center;" rowspan="{{items_map[letter][name]|length}}">
+                                {{item['name']}}
+                                <br>
+                                <img src="{{item['icon_path']}}">
+                            </td>
+                        {% endif %}
+                            <td style="text-align: center;"><a style="text-decoration: none;" href="{{item['link']}}">{{item['quality_name']}}</a></td>
+                        {% if loop.index == 1 %}
+                            <td style="text-align: center;" rowspan="{{items_map[letter][name]|length}}">{{item['level']}}</td>
+                        {% endif %}
+                            <td style="text-align: center;">{{item['item_level']}}</td>
+                            <td style="text-align: center;">
+                                <table style="font-size: 10pt; margin-left: auto; margin-right: auto;">
+                                    {% for key,value in item['filtered_stats'].items() %}
+                                    <tr>
+                                        <td style="text-align: center;">{{key}}</td>
+                                        <td style="text-align: center;">{{value}}</td>
+                                    </tr>
+                                    {% endfor %}
+
+                                    {% if item['params']|length > 0 %}
+                                    {% for param in item['params'] %}
+                                    <tr>
+                                        <td style="text-align: center;">{{param['name'].replace('_', ' ').title()}}</td>
+                                        <td style="text-align: center;">{{param['value']}}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% endif %}
+                                </table>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
+    </ul>
+</body>
+</html>

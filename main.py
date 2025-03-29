@@ -366,8 +366,54 @@ def build_category_list(args, titles_map, category_template, quest_map, category
             f.write(content)
             print(f"... wrote {output_file}")
 
-def build_item_category_list(args, template, category, items):
-    pass
+def build_item_category_list(args, template, category, categories):
+    subcats = {}
+    for c in categories.keys():
+        subcat_name = c.replace('_', ' ').title()
+        subcats[c] = (f'items_{c}', subcat_name)
+    
+    item_order_map = {}
+    for item in categories[category]:
+        item_name = item['name']
+
+        first_letter = item_name[0]
+        if first_letter not in item_order_map:
+            item_order_map[first_letter] = {}
+
+        if item_name not in item_order_map[first_letter]:
+            item_order_map[first_letter][item_name] = []
+        
+        item['link'] = f'i{item["item_id"]:08d}.html'
+        item['quality_name'] = '{}<br><span style="color: #8d7934;">{}</span>'.format(item_name, '★' * item['quality'] if item['quality'] > 0 else '')
+        
+        # filter stats
+        stats = {}
+        if 'stats' in item:
+            for stat_name in item['stats']:
+                stat = item['stats'][stat_name]
+                if stat == 0 or stat_name == 'ele_slot':
+                    continue
+                stats[stat_name.replace('_', ' ').title()] = stat
+        item['filtered_stats'] = stats
+        item['icon_path'] = f"images/icons/ii{item['icon']['icon_id']:06d}.png"
+        
+        item_order_map[first_letter][item_name].append(item)
+        item_order_map[first_letter][item_name] = sorted(item_order_map[first_letter][item_name], key=lambda x: x['quality'])
+
+    # Put them in ABC order
+    item_order_map = dict(sorted(item_order_map.items()))
+
+    category_name = category.replace('_', ' ').title()
+    content = template.render(
+        title = f'Items / {category_name}',
+        subcats=subcats.values(),
+        items_map = item_order_map
+    )
+
+    output_file = Path(f'{args.output_dir}/items_{category}.html')
+    with open(output_file, mode='w', encoding='utf-8') as f:
+        f.write(content)
+        print(f"... wrote {output_file}")
 
 def build_item_info(args, template, item):
     item_id = item['item_id']
@@ -416,9 +462,6 @@ def build_item_info(args, template, item):
     with open(output_file, mode='w', encoding='utf-8') as f:
         f.write(content)
         print(f"... wrote {output_file}")
-
-def build_items_index(args, template, items):
-    pass
 
 def build_index(args, index_template, titles_map, quest_map, quest_data):
 
@@ -491,13 +534,11 @@ def build_site(args):
                     quests_by_category[quest_category].append(quest_data)
 
     for category in items_by_category:
-        build_item_category_list(args, item_category_template, category, items_by_category[category])
+        build_item_category_list(args, item_category_template, category, items_by_category)
 
     for item_id in item_map:
         item_data = item_map[item_id]
         build_item_info(args, item_info_template, item_data)
-
-    build_items_index(args, items_template, items_by_category)
     
     for category in quests_by_category:
         build_category_list(args, titles_map, category_template, quest_map, category, quests_by_category[category])
