@@ -99,25 +99,78 @@
                 <td class="item-value" style="text-align: center; color: green; font-weight: bold;">{{item_can_baz}}</td>
                 <td class="item-value" style="text-align: center; color: #8d7934; font-weight: bold;">{{item_sell_price}}</td>
             </tr>
+
+            {% if prev_item or next_item %}
+            <tr>
+                <td class="item-header" style="text-align: center; width:50%;">Previous</td>
+                <td class="item-header" style="text-align: center; width:50%;">Next</td>
+            </tr>
+            <tr>
+                <td class="item-value" style="text-align: center; width:50%;">{{prev_item}}</td>
+                <td class="item-value" style="text-align: center; width:50%;">{{next_item}}</td>
+            </tr>
+            {% endif %}
         </tbody>
     </table>
+
+    {% if item_craft_recipe|length > 0 %}
+        <br>
+        <h2>Recipe</h2>
+        <table class="quest-info" style="margin-left: auto; margin-right: auto;">
+            <tr>
+                <td class="item-header" style="text-align: center; width:50%;">Item Name</td>
+                <td class="item-header" style="text-align: center; width:50%;">Amount</td>
+            </tr>
+            {% for material in item_craft_recipe %}    
+            <tr>
+                <td class="item-value" style="text-align: center; width:50%;">{{material['link']}}</td>
+                <td class="item-value" style="text-align: center; width:50%;">{{material['amount']}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+
+    {% if item_grade_up_recipe|length > 0 %}
+        <br>
+        <h2>Gradeup Recipe</h2>
+        <table class="quest-info" style="margin-left: auto; margin-right: auto;">
+            <tr>
+                <td class="item-header" style="text-align: center; width:50%;">Item Name</td>
+                <td class="item-header" style="text-align: center; width:50%;">Amount</td>
+            </tr>
+            {% for material in item_grade_up_recipe %}    
+            <tr>
+                <td class="item-value" style="text-align: center; width:50%;">{{material['link']}}</td>
+                <td class="item-value" style="text-align: center; width:50%;">{{material['amount']}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
 
     {% if reference_map|length > 0 %}
     <br>
     <h2>Referenced in ...</h2>
     <table class="quest-info" style="margin-left: auto; margin-right: auto;">
         <tbody>
-            {% for type,list in reference_map.items() %}
+            {% for type, list in reference_map.items() %}
                 {% if type == "Quest" %}
                     <tr>
                         <td class="item-header" style="text-align: center;">Quest Rewards</td>
                     </tr>
-                    {% for key,value in list.items() %}
+                {% elif type == "Craft" %}
+                    <tr>
+                        <td class="item-header" style="text-align: center;">Craft Recipes</td>
+                    </tr>
+                {% elif type == "Gradeup" %}
+                    <tr>
+                        <td class="item-header" style="text-align: center;">Gradeup Recipes</td>
+                    </tr>
+                {% endif %}
+                {% for key,value in list.items() %}
                     <tr>
                         <td class="item-value"><a href="{{value['link']}}">{{value['title']}}</a></td>
                     </tr>
-                    {% endfor %}
-                {% endif %}
+                {% endfor %}
             {% endfor %}
         </tbody>
     </table>

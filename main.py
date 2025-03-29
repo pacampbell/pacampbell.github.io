@@ -28,17 +28,16 @@ def add_item_reference(item_id, reftype, title, link):
     if item_id not in item_reference_map:
         item_reference_map[item_id] = {}
 
-    if reftype.lower() == 'quest':
-        if reftype not in item_reference_map[item_id]:
-            item_reference_map[item_id][reftype] = {}
+    if reftype not in item_reference_map[item_id]:
+        item_reference_map[item_id][reftype] = {}
 
-        if title in item_reference_map[item_id][reftype]:
-            return
-        item_reference_map[item_id][reftype][title] = {
-            "type": reftype,
-            "title": title,
-            "link": link,
-        }
+    if title in item_reference_map[item_id][reftype]:
+        return
+    item_reference_map[item_id][reftype][title] = {
+        "type": reftype,
+        "title": title,
+        "link": link,
+    }
 
 def _genric_replace(match, type_map, tag_name):
     type_id = int(match.group(1))
@@ -452,7 +451,26 @@ def build_item_category_list(args, template, category, categories):
         f.write(content)
         print(f"... wrote {output_file}")
 
-def build_item_info(args, template, item):
+def _create_name_with_quality(item):
+    quality = ''
+    if item['quality'] > 0:
+        quality = item['quality'] * '★'
+    
+    item_name = item['name']
+    if len(quality):
+        item_name = f'{item_name} {quality}'
+    return item_name
+
+def _create_item_link(key, item, item_map):
+    link = None
+    if item[key] in item_map:
+        data = item_map[item[key]]
+        item_id = data['item_id']
+        link_name = _create_name_with_quality(data)
+        link = f'<a href="i{item_id:08d}.html">{link_name}</a>'
+    return link
+
+def build_item_info(args, template, item, item_map):
     item_id = item['item_id']
     subcat_name = item['title_subcategory'].title()
 
@@ -476,6 +494,27 @@ def build_item_info(args, template, item):
             title = _breakup_camelcase_string(job)
             job_icons.append(f'<img src="images/icon-job_{name}.png" title="{title}" width="48" height="54">')
 
+    previous_item_link = _create_item_link('previous_item_id', item, item_map)
+    next_item_link = _create_item_link('next_item_id', item, item_map)
+
+    craft_recipe = []
+    for material in item['craft_recipe']:
+        add_item_reference(material['item_id'], 'Craft', _create_name_with_quality(item), f'i{item_id:08d}.html')
+
+        craft_recipe.append({
+            "link": _create_item_link('item_id', material, item_map),
+            "amount": material['amount']
+        })
+
+    gradeup_recipe = []
+    for material in item['gradeup_recipe']:
+        add_item_reference(material['item_id'], 'Gradeup', _create_name_with_quality(item), f'i{item_id:08d}.html')
+
+        gradeup_recipe.append({
+            "link": _create_item_link('item_id', material, item_map),
+            "amount": material['amount']
+        })
+
     content = template.render(
         title = f'Items / {subcat_name}',
         subcat_name = subcat_name.replace('_', ' ').title(),
@@ -493,7 +532,11 @@ def build_item_info(args, template, item):
         item_sell_price = item['sell_price'],
         item_quality = quality,
         job_icons=job_icons,
-        reference_map=item_reference_map[item_id] if item_id in item_reference_map else {}
+        reference_map=item_reference_map[item_id] if item_id in item_reference_map else {},
+        item_craft_recipe=craft_recipe,
+        item_grade_up_recipe=gradeup_recipe,
+        prev_item=previous_item_link,
+        next_item=next_item_link
     )
 
     search_index.append({
@@ -594,7 +637,7 @@ def build_site(args):
 
     for item_id in item_map:
         item_data = item_map[item_id]
-        build_item_info(args, item_info_template, item_data)
+        build_item_info(args, item_info_template, item_data, item_map)
 
     build_index(args, index_template, titles_map, quest_map, quest_data)
 
