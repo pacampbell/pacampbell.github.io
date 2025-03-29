@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <title>ddon-reference</title>
     <link rel="stylesheet" href="css/styles.css">
+    <script src="scripts/fuse.min.js"></script>
 </head>
 <body>
     <div style="text-align: center;">
@@ -15,7 +16,13 @@
         </p>
         <h2>Categories</h2>
         {% include 'header.html' %}
+        <br>
+        <h2>Search</h2>
+        <br>
+        <input type="text" id="search-input" placeholder="Search...">
+        <br><br>
+        <div id="search-results" style="text-align: left;"></div>
     </div>
-
+    <script src="scripts/search.js"></script>
 </body>
 </html>

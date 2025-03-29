@@ -265,3 +265,60 @@ nav ul li a:hover {
     background-color: #DCE3E8;  /* Hover */
     border-radius: 4px;
 }
+
+/* Search results */
+
+#search-input {
+    width: 100%;
+    padding: 12px;
+    font-size: 16px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    box-sizing: border-box;
+    margin-bottom: 20px;
+}
+
+#search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.result-card {
+    background: #fff;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.result-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.result-card a {
+    text-decoration: none;
+    color: #1a73e8;
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.result-card a:hover {
+    text-decoration: underline;
+}
+
+.result-card p {
+    margin: 8px 0 0;
+    color: #555;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.no-results {
+    color: #777;
+    font-style: italic;
+    text-align: center;
+    padding: 20px;
+}

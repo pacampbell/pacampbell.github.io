@@ -18,8 +18,8 @@ category_map = {
     'world_quest': 'World Quests',
 }
 
-# <STG 201>
-# <SPOT xxx>
+# {"title": "Season 1.0", "content": "Season 1", "url": "season_1_0.html"},
+search_index = []
 
 def _genric_replace(match, type_map, tag_name):
     type_id = int(match.group(1))
@@ -245,7 +245,7 @@ def _strip_tags(string):
 
 def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
     quest_id = quest_data['quest_id']
-    
+
     area_rank = None
     if quest_data['minimum_area_rank'] > 0:
         area_rank = f"{_breakup_camelcase_string(quest_data['area_id'])} {quest_data['minimum_area_rank']}"
@@ -283,6 +283,14 @@ def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
         quest_steps = translated_steps,
         quest_walkthrough = quest_walkthrough
     )
+
+    search_index.append({
+        'title': quest_data['name'], 
+        'content': quest_data['description'],
+        'content_id': f'q{quest_id:08d}',
+        'url': f'q{quest_id:08d}.html',
+        'type': quest_data['type'],
+    })
 
     output_file = Path(f'{args.output_dir}/q{quest_id:08d}.html')
     with open(output_file, mode='w', encoding='utf-8') as f:
@@ -464,6 +472,14 @@ def build_item_info(args, template, item):
         job_icons=job_icons
     )
 
+    search_index.append({
+        'title': '{} {}'.format(item['name'], quality),
+        'content': item['info'], 
+        'content_id': f'i{item_id:08d}', 
+        'url': f'i{item_id:08d}.html',
+        'type': item['type'].title()
+    })
+
     output_file = Path(f'{args.output_dir}/i{item_id:08d}.html')
     with open(output_file, mode='w', encoding='utf-8') as f:
         f.write(content)
@@ -554,6 +570,9 @@ def build_site(args):
         build_quest_info(args, titles_map, info_template, quest_map, quest_data)
 
     build_index(args, index_template, titles_map, quest_map, quest_data)
+
+    with open(f'{args.output_dir}/search_data.json', 'w', encoding='utf-8') as f:
+        f.write(json.dumps(search_index, indent=4))
 
 def parse_npc_ids(args):
     with open(args.npcs, 'r', encoding='utf-8') as f:
