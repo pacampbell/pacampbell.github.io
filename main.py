@@ -428,6 +428,8 @@ def build_item_category_list(args, template, category, categories):
                 if stat == 0 or stat_name == 'ele_slot':
                     continue
                 stats[stat_name.replace('_', ' ').title()] = stat
+        stats['Weight'] = item['weight']
+
         item['filtered_stats'] = stats
         item['icon_path'] = f"images/icons/ii{item['icon']['icon_id']:06d}.png"
         item['info'] = _strip_tags(item['info'])
@@ -486,6 +488,7 @@ def build_item_info(args, template, item, item_map):
             if stat == 0 or stat_name == 'ele_slot':
                 continue
             stats[stat_name] = stat
+    stats['Weight'] = item['weight']
 
     job_icons = []
     if 'jobs' in item:
