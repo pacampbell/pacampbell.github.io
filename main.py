@@ -290,6 +290,7 @@ def build_quest_info(args, titles_map, info_template, quest_map, quest_data):
         'content_id': f'q{quest_id:08d}',
         'url': f'q{quest_id:08d}.html',
         'type': quest_data['type'],
+        'icon': None
     })
 
     output_file = Path(f'{args.output_dir}/q{quest_id:08d}.html')
@@ -477,7 +478,8 @@ def build_item_info(args, template, item):
         'content': item['info'], 
         'content_id': f'i{item_id:08d}', 
         'url': f'i{item_id:08d}.html',
-        'type': item['type'].title()
+        'type': item['type'].title(),
+        'icon': f"images/icons/ii{item['icon']['icon_id']:06d}.png"
     })
 
     output_file = Path(f'{args.output_dir}/i{item_id:08d}.html')

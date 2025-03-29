@@ -29,9 +29,14 @@ fetch('search_data.json')
         results.map(result => {
             const content = result.item.content || '';
             const preview = content.length > 100 ? content.substring(0, 100) + '...' : content;
+            const icon = result.item.icon ?
+                `<img src="${result.item.icon}" align="center"> ` :
+                '';
             return `
                 <div class="result-card">
-                    <a href="${result.item.url}">[${result.item.type}] ${result.item.title}</a>
+                    <div>
+                        <a href="${result.item.url}">${icon}[${result.item.type}] ${result.item.title}</a>
+                    </div>
                     <p>${preview}</p>
                 </div>
                 `;
