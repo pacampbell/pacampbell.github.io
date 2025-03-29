@@ -4,10 +4,15 @@
     <meta charset="utf-8">
     <title>{{ quest_name }}</title>
     <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="css/all.min.css">
     <script src="scripts/fuse.min.js"></script>
 </head>
 
 <body>
+    <a href="/index.html" class="search-button">
+      <i class="fas fa-search"></i> Return to Search
+    </a>
+
     {% include "header.html" %}
 
     <h2>{{quest_title_category}} / {{quest_title_subcategory}} / {{quest_name}}</h2>

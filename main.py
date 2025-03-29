@@ -724,7 +724,8 @@ def parse_args():
 
 def copy_deps(args):
     Path(f'{args.output_dir}/css').mkdir(parents=True, exist_ok=True)
-    shutil.copy2("css/styles.css", f'{args.output_dir}/css/styles.css')
+    shutil.copytree("css", f'{args.output_dir}/css', dirs_exist_ok=True)
+    shutil.copytree("webfonts", f'{args.output_dir}/webfonts', dirs_exist_ok=True)
     shutil.copytree("images", f'{args.output_dir}/images', dirs_exist_ok=True)
     shutil.copytree("scripts", f'{args.output_dir}/scripts', dirs_exist_ok=True)
 

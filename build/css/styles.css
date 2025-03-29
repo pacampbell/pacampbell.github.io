@@ -322,3 +322,18 @@ nav ul li a:hover {
     text-align: center;
     padding: 20px;
 }
+
+.search-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background-color: #475569; /* Slate blue-grey */
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+  }
+
+  .search-button:hover {
+    background-color: #5b6b83; /* Slightly lighter for hover effect */
+  }
