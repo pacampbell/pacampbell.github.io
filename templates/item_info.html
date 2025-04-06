@@ -147,6 +147,41 @@
         </table>
     {% endif %}
 
+    {% if item_hunt|length > 0 or item_gather|length > 0 %}
+    <br>
+    <h2>Found by ...</h2>
+    {% endif %}
+
+    {% if item_hunt|length > 0 %}
+    <table class="quest-info" style="margin-left: auto; margin-right: auto;">
+        <tbody>
+            <tr>
+                <td class="item-header" style="text-align: center;">Hunting</td>
+            </tr>
+            {% for entry in item_hunt %}
+            <tr>
+                <td class="item-value" style="text-align: center;">{{entry}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if item_gather|length >0 %}
+    <table class="quest-info" style="margin-left: auto; margin-right: auto;">
+        <tbody>
+            <tr>
+                <td class="item-header" style="text-align: center;">Gathering</td>
+            </tr>
+            {% for entry in item_gather %}
+            <tr>
+                <td class="item-value" style="text-align: center;">{{entry}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+    
     {% if reference_map|length > 0 %}
     <br>
     <h2>Referenced in ...</h2>

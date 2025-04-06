@@ -538,6 +538,9 @@ def build_item_info(args, template, item, item_map):
         reference_map=item_reference_map[item_id] if item_id in item_reference_map else {},
         item_craft_recipe=craft_recipe,
         item_grade_up_recipe=gradeup_recipe,
+        item_gather = item['gather'] if 'gather' in item else [],
+        item_hunt = item['hunt'] if 'hunt' in item else [],
+        item_shop = item['shop'] if 'shop' in item else [],
         prev_item=previous_item_link,
         next_item=next_item_link
     )
