@@ -66024,7 +66024,7 @@
         "icon": "images/icons/small/ii001978.png"
     },
     {
-        "title": "High Orb ",
+        "title": "High Orb \u2605",
         "content": "A crystal imbued with even greater Dragon Force\nthan the conventional Blood Orb.",
         "content_id": "i00018742",
         "url": "i00018742.html",
@@ -66040,7 +66040,7 @@
         "icon": "images/icons/small/ii001979.png"
     },
     {
-        "title": "High Orb ",
+        "title": "High Orb \u2605",
         "content": "A crystal imbued with even greater Dragon Force\nthan the conventional Blood Orb.",
         "content_id": "i00018744",
         "url": "i00018744.html",
@@ -72600,7 +72600,7 @@
         "icon": "images/icons/small/ii000587.png"
     },
     {
-        "title": "Depth Opal Ring ",
+        "title": "Depth Opal Ring \u2605",
         "content": "",
         "content_id": "i00018736",
         "url": "i00018736.html",
@@ -72656,7 +72656,7 @@
         "icon": "images/icons/small/ii000750.png"
     },
     {
-        "title": "Ring of Evil Eye ",
+        "title": "Ring of Evil Eye \u2605",
         "content": "",
         "content_id": "i00021210",
         "url": "i00021210.html",
@@ -72992,7 +72992,7 @@
         "icon": "images/icons/small/ii000580.png"
     },
     {
-        "title": "Ring of the Flame Demon ",
+        "title": "Ring of the Flame Demon \u2605",
         "content": "",
         "content_id": "i00021394",
         "url": "i00021394.html",
@@ -73000,7 +73000,7 @@
         "icon": "images/icons/small/ii000757.png"
     },
     {
-        "title": "Ring of the Wise Dragon ",
+        "title": "Ring of the Wise Dragon \u2605",
         "content": "",
         "content_id": "i00021395",
         "url": "i00021395.html",
@@ -78160,7 +78160,7 @@
         "icon": "images/icons/small/ii000517.png"
     },
     {
-        "title": "Ice Cube Fragment ",
+        "title": "Ice Cube Fragment \u2605",
         "content": "Ore Crafting Material:\nFragments of jagged and brittle mineral infused\nwith cold energy.",
         "content_id": "i00011504",
         "url": "i00011504.html",
@@ -78168,7 +78168,7 @@
         "icon": "images/icons/small/ii000488.png"
     },
     {
-        "title": "Ice Cube ",
+        "title": "Ice Cube \u2605",
         "content": "Ore Crafting Material:\nA jagged and brittle mineral infused with cold\nenergy.",
         "content_id": "i00011505",
         "url": "i00011505.html",
@@ -78176,7 +78176,7 @@
         "icon": "images/icons/small/ii000488.png"
     },
     {
-        "title": "Rock Finger ",
+        "title": "Rock Finger \u2605",
         "content": "Ore Crafting Material: A tiny stone that looks\nlike a finger.",
         "content_id": "i00011506",
         "url": "i00011506.html",
@@ -78184,7 +78184,7 @@
         "icon": "images/icons/small/ii000486.png"
     },
     {
-        "title": "Stone Arm ",
+        "title": "Stone Arm \u2605",
         "content": "Ore Crafting Material: Strange stone with a\npeculiar shape resembling an arm.",
         "content_id": "i00011507",
         "url": "i00011507.html",
@@ -78192,7 +78192,7 @@
         "icon": "images/icons/small/ii000487.png"
     },
     {
-        "title": "Saltpetre Chunk ",
+        "title": "Saltpetre Chunk \u2605",
         "content": "Ore Crafting Material: Materials used for\ncrafting made from ores that are often found in\nunsanitary environments.",
         "content_id": "i00011508",
         "url": "i00011508.html",
@@ -78200,7 +78200,7 @@
         "icon": "images/icons/small/ii000493.png"
     },
     {
-        "title": "Black Gunpowder ",
+        "title": "Black Gunpowder \u2605",
         "content": "Miscellaneous Crafting Material:\nTraditionally used gunpowder widely used for\ncrafting.",
         "content_id": "i00011509",
         "url": "i00011509.html",
@@ -78448,7 +78448,7 @@
         "icon": "images/icons/small/ii001048.png"
     },
     {
-        "title": "Unappraised Moon Trinket (Soldier) ",
+        "title": "Unappraised Moon Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00011759",
         "url": "i00011759.html",
@@ -78456,7 +78456,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Grimoire Scrap ",
+        "title": "Grimoire Scrap \u2605",
         "content": "Miscellaneous crafting material.\nScrap written with some kind of spell.",
         "content_id": "i00011764",
         "url": "i00011764.html",
@@ -78464,7 +78464,7 @@
         "icon": "images/icons/small/ii000514.png"
     },
     {
-        "title": "Foreign Scroll ",
+        "title": "Foreign Scroll \u2605",
         "content": "Grimoire crafting material.\nScroll with an unfamiliar seal.",
         "content_id": "i00011765",
         "url": "i00011765.html",
@@ -78472,7 +78472,7 @@
         "icon": "images/icons/small/ii000515.png"
     },
     {
-        "title": "Silver Moss ",
+        "title": "Silver Moss \u2605",
         "content": "Mushroom-based crafting materials.\nGrows in dark and moist places.\nMoss with a faintly silver shine.",
         "content_id": "i00011766",
         "url": "i00011766.html",
@@ -78480,7 +78480,7 @@
         "icon": "images/icons/small/ii000511.png"
     },
     {
-        "title": "Luminescent Silver Moss ",
+        "title": "Luminescent Silver Moss \u2605",
         "content": "Mushroom Crafting Material.\nMoss that absorbs magic and glows silver in dark\nplaces.",
         "content_id": "i00011767",
         "url": "i00011767.html",
@@ -78488,7 +78488,7 @@
         "icon": "images/icons/small/ii000511.png"
     },
     {
-        "title": "Ash Quartz ",
+        "title": "Ash Quartz \u2605",
         "content": "Gem Crafting Material: A gem with a deep,\nash-like color.",
         "content_id": "i00011768",
         "url": "i00011768.html",
@@ -78496,7 +78496,7 @@
         "icon": "images/icons/small/ii000495.png"
     },
     {
-        "title": "Vision Quartz ",
+        "title": "Vision Quartz \u2605",
         "content": "Gem Crafting Material: A gem said to seal the\nmemories of a bygone era.",
         "content_id": "i00011769",
         "url": "i00011769.html",
@@ -78504,7 +78504,7 @@
         "icon": "images/icons/small/ii000495.png"
     },
     {
-        "title": "Volden Quality Coal ",
+        "title": "Volden Quality Coal \u2605",
         "content": "Ore Crafting Material:\nAn extremely high-quality coal produced in the\nVolden Mines.",
         "content_id": "i00011770",
         "url": "i00011770.html",
@@ -78512,7 +78512,7 @@
         "icon": "images/icons/small/ii000487.png"
     },
     {
-        "title": "Voldic Diamond ",
+        "title": "Voldic Diamond \u2605",
         "content": "Gem Crafting Material: High-quality diamonds that\ncan be found rarely in the Volden Mines.",
         "content_id": "i00011771",
         "url": "i00011771.html",
@@ -78520,7 +78520,7 @@
         "icon": "images/icons/small/ii000495.png"
     },
     {
-        "title": "Tomb Gravel ",
+        "title": "Tomb Gravel \u2605",
         "content": "Miscellaneous Crafting Material: Gravel scattered\nin the graveyard, filled with lamentation.",
         "content_id": "i00011772",
         "url": "i00011772.html",
@@ -78528,7 +78528,7 @@
         "icon": "images/icons/small/ii000487.png"
     },
     {
-        "title": "Broken Stone Manacles ",
+        "title": "Broken Stone Manacles \u2605",
         "content": "Miscellaneous Crafting Material:\nHeavy iron shackles that were used by criminals.",
         "content_id": "i00011773",
         "url": "i00011773.html",
@@ -78544,7 +78544,7 @@
         "icon": "images/icons/small/ii001419.png"
     },
     {
-        "title": "Stalactite Tip ",
+        "title": "Stalactite Tip \u2605",
         "content": "Ore Crafting Material: Stalactite Tip",
         "content_id": "i00011775",
         "url": "i00011775.html",
@@ -78552,7 +78552,7 @@
         "icon": "images/icons/small/ii000489.png"
     },
     {
-        "title": "Luminescent Stalactite ",
+        "title": "Luminescent Stalactite \u2605",
         "content": "Ore Crafting Material: Stalactite containing\nluminescent microorganisms that emit a gentle blue\nlight.",
         "content_id": "i00011776",
         "url": "i00011776.html",
@@ -78624,7 +78624,7 @@
         "icon": "images/icons/small/ii001431.png"
     },
     {
-        "title": "Pebble Bud ",
+        "title": "Pebble Bud \u2605",
         "content": "Ore Crafting Material: Small stones that resemble\nbuds, discovered in specific caves.",
         "content_id": "i00011789",
         "url": "i00011789.html",
@@ -78632,7 +78632,7 @@
         "icon": "images/icons/small/ii000489.png"
     },
     {
-        "title": "Stone Bouquet ",
+        "title": "Stone Bouquet \u2605",
         "content": "Ore Crafting Material:\nBouquet made by collecting stone-like flowers.",
         "content_id": "i00011790",
         "url": "i00011790.html",
@@ -78640,7 +78640,7 @@
         "icon": "images/icons/small/ii000489.png"
     },
     {
-        "title": "Cave Silkworm ",
+        "title": "Cave Silkworm \u2605",
         "content": "Miscellaneous Crafting Material:\nA caterpillar that prefers dark places and spits\nout string.",
         "content_id": "i00011791",
         "url": "i00011791.html",
@@ -78648,7 +78648,7 @@
         "icon": "images/icons/small/ii000518.png"
     },
     {
-        "title": "Strong Silk Thread ",
+        "title": "Strong Silk Thread \u2605",
         "content": "Miscellaneous Crafting Material:\nStrong thread made from the cocoon of the Cave\nSilkworm.",
         "content_id": "i00011792",
         "url": "i00011792.html",
@@ -78656,7 +78656,7 @@
         "icon": "images/icons/small/ii000504.png"
     },
     {
-        "title": "Ancient Beast Pelt ",
+        "title": "Ancient Beast Pelt \u2605",
         "content": "Pelt Crafting Material: The skin of a large beast\nthat has been lurking for many years, undergoing\ntremendous growth.",
         "content_id": "i00011793",
         "url": "i00011793.html",
@@ -78664,7 +78664,7 @@
         "icon": "images/icons/small/ii000497.png"
     },
     {
-        "title": "Bristly Felt ",
+        "title": "Bristly Felt \u2605",
         "content": "Cloth Crafting Material: Thick cloth created by\nthe tangled fur of various enemies.",
         "content_id": "i00011794",
         "url": "i00011794.html",
@@ -78672,7 +78672,7 @@
         "icon": "images/icons/small/ii000501.png"
     },
     {
-        "title": "Phyton Liquid ",
+        "title": "Phyton Liquid \u2605",
         "content": "Liquid Crafting Material: Intensely rich liquid\nimbued with the strong vitality of trees.",
         "content_id": "i00011795",
         "url": "i00011795.html",
@@ -78680,7 +78680,7 @@
         "icon": "images/icons/small/ii000482.png"
     },
     {
-        "title": "Phindymian Resin ",
+        "title": "Phindymian Resin \u2605",
         "content": "Miscellaneous Crafting Material:\nA resin that shines as if it has been enriched\nwith vitality.",
         "content_id": "i00011796",
         "url": "i00011796.html",
@@ -78688,7 +78688,7 @@
         "icon": "images/icons/small/ii000519.png"
     },
     {
-        "title": "Ball Moss ",
+        "title": "Ball Moss \u2605",
         "content": "Mushroom Crafting Material.\nDense moss that grows in a spherical shape.",
         "content_id": "i00011797",
         "url": "i00011797.html",
@@ -78696,7 +78696,7 @@
         "icon": "images/icons/small/ii000508.png"
     },
     {
-        "title": "Light Green Moss Paper ",
+        "title": "Light Green Moss Paper \u2605",
         "content": "Miscellaneous Crafting Material:\nFine paper made from moss.",
         "content_id": "i00011798",
         "url": "i00011798.html",
@@ -78704,7 +78704,7 @@
         "icon": "images/icons/small/ii000515.png"
     },
     {
-        "title": "Soft Tectrix ",
+        "title": "Soft Tectrix \u2605",
         "content": "Feather Crafting Material: Soft feathers with a\nrounded shape up to the quill.",
         "content_id": "i00011799",
         "url": "i00011799.html",
@@ -78712,7 +78712,7 @@
         "icon": "images/icons/small/ii000475.png"
     },
     {
-        "title": "Feather Chiffon ",
+        "title": "Feather Chiffon \u2605",
         "content": "Cloth Crafting Material: Lightweight and airy\ncloth that you can't feel the weight of.",
         "content_id": "i00011800",
         "url": "i00011800.html",
@@ -78720,7 +78720,7 @@
         "icon": "images/icons/small/ii000500.png"
     },
     {
-        "title": "Viscous Meat ",
+        "title": "Viscous Meat \u2605",
         "content": "Meat Crafting Material: Meat that develops a\nstrong stickiness as it rots.",
         "content_id": "i00011801",
         "url": "i00011801.html",
@@ -78728,7 +78728,7 @@
         "icon": "images/icons/small/ii000463.png"
     },
     {
-        "title": "Strong Adhesive Paste ",
+        "title": "Strong Adhesive Paste \u2605",
         "content": "Liquid Crafting Material: Strong adhesive\nextracted from organic materials.",
         "content_id": "i00011802",
         "url": "i00011802.html",
@@ -78736,7 +78736,7 @@
         "icon": "images/icons/small/ii000481.png"
     },
     {
-        "title": "Gold-Stained Animal Fur ",
+        "title": "Gold-Stained Animal Fur \u2605",
         "content": "Fur Crafting Material: Strange fur with tiny\nspecks of gold mixed in each strand.",
         "content_id": "i00011803",
         "url": "i00011803.html",
@@ -78744,7 +78744,7 @@
         "icon": "images/icons/small/ii000476.png"
     },
     {
-        "title": "Glitter Mohair ",
+        "title": "Glitter Mohair \u2605",
         "content": "Cloth Crafting Material: Luxurious fabric that\nshimmers with light depending on the angle.",
         "content_id": "i00011804",
         "url": "i00011804.html",
@@ -78760,7 +78760,7 @@
         "icon": "images/icons/small/ii000465.png"
     },
     {
-        "title": "Slimy Hide ",
+        "title": "Slimy Hide \u2605",
         "content": "Pelt Crafting Material: The skin of a beast that\nhas been placed in a special environment,\nresulting in a slimy texture.",
         "content_id": "i00011806",
         "url": "i00011806.html",
@@ -78768,7 +78768,7 @@
         "icon": "images/icons/small/ii000496.png"
     },
     {
-        "title": "High Quality Slimy Leather ",
+        "title": "High Quality Slimy Leather \u2605",
         "content": "Pelt Crafting Material: The skin of a beast that\nhas been placed in a special environment,\nresulting in an extremely smooth texture.",
         "content_id": "i00011807",
         "url": "i00011807.html",
@@ -79696,7 +79696,7 @@
         "icon": "images/icons/small/ii001048.png"
     },
     {
-        "title": "Unappraised Moon Trinket (General) ",
+        "title": "Unappraised Moon Trinket (General) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00013476",
         "url": "i00013476.html",
@@ -79720,7 +79720,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Star Trinket (Soldier) ",
+        "title": "Unappraised Star Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00013479",
         "url": "i00013479.html",
@@ -79728,7 +79728,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Star Trinket (General) ",
+        "title": "Unappraised Star Trinket (General) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00013480",
         "url": "i00013480.html",
@@ -79752,7 +79752,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Flower Trinket (Soldier) ",
+        "title": "Unappraised Flower Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00013483",
         "url": "i00013483.html",
@@ -79760,7 +79760,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Flower Trinket (General) ",
+        "title": "Unappraised Flower Trinket (General) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00013484",
         "url": "i00013484.html",
@@ -79784,7 +79784,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Wind Trinket (Soldier) ",
+        "title": "Unappraised Wind Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00013487",
         "url": "i00013487.html",
@@ -79792,7 +79792,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Wind Trinket (General) ",
+        "title": "Unappraised Wind Trinket (General) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00013488",
         "url": "i00013488.html",
@@ -80496,7 +80496,7 @@
         "icon": "images/icons/small/ii001048.png"
     },
     {
-        "title": "Carved Potsherd ",
+        "title": "Carved Potsherd \u2605",
         "content": "Miscellaneous Crafting Material: A fragment of\nold pottery with some kind of inscription engraved\non it.",
         "content_id": "i00015913",
         "url": "i00015913.html",
@@ -80504,7 +80504,7 @@
         "icon": "images/icons/small/ii000517.png"
     },
     {
-        "title": "Pottery Charm ",
+        "title": "Pottery Charm \u2605",
         "content": "Miscellaneous Crafting Material:\nAn old charm made of pottery.",
         "content_id": "i00015914",
         "url": "i00015914.html",
@@ -80528,7 +80528,7 @@
         "icon": "images/icons/small/ii000510.png"
     },
     {
-        "title": "Ancient Iron Ore ",
+        "title": "Ancient Iron Ore \u2605",
         "content": "Ore Crafting Material: A rare mineral that is\nrarely found in modern times and serves as the\nbase for a metal similar to iron.",
         "content_id": "i00015917",
         "url": "i00015917.html",
@@ -80536,7 +80536,7 @@
         "icon": "images/icons/small/ii000487.png"
     },
     {
-        "title": "Ancient Iron Ingot ",
+        "title": "Ancient Iron Ingot \u2605",
         "content": "Metal Crafting Material: A lump of metal that\nclosely resembles iron, but is not easily found in\nthe modern era.",
         "content_id": "i00015918",
         "url": "i00015918.html",
@@ -80544,7 +80544,7 @@
         "icon": "images/icons/small/ii000487.png"
     },
     {
-        "title": "Twisted Iron Scrap ",
+        "title": "Twisted Iron Scrap \u2605",
         "content": "Miscellaneous Crafting Material: Small pieces of\niron molded for various purposes.",
         "content_id": "i00015919",
         "url": "i00015919.html",
@@ -80552,7 +80552,7 @@
         "icon": "images/icons/small/ii000486.png"
     },
     {
-        "title": "Ancient General's Chainmail ",
+        "title": "Ancient General's Chainmail \u2605",
         "content": "Miscellaneous Crafting Material: Chain Hauberk\nburied together in the tomb of a renowned ancient\ngeneral.",
         "content_id": "i00015920",
         "url": "i00015920.html",
@@ -80560,7 +80560,7 @@
         "icon": "images/icons/small/ii000519.png"
     },
     {
-        "title": "Shrieking Mushroom ",
+        "title": "Shrieking Mushroom \u2605",
         "content": "Mushroom Crafting Material.\nA mushroom that, when subjected to pressure,\nemits a sound resembling a human voice.",
         "content_id": "i00015921",
         "url": "i00015921.html",
@@ -80568,7 +80568,7 @@
         "icon": "images/icons/small/ii000511.png"
     },
     {
-        "title": "Cursed Shrieking Mushroom ",
+        "title": "Cursed Shrieking Mushroom \u2605",
         "content": "Mushroom Crafting Material.\nA mushroom that, when subjected to pressure,\nemits a loud sound resembling a scream.",
         "content_id": "i00015922",
         "url": "i00015922.html",
@@ -80576,7 +80576,7 @@
         "icon": "images/icons/small/ii000511.png"
     },
     {
-        "title": "Icon Fragment ",
+        "title": "Icon Fragment \u2605",
         "content": "Miscellaneous Crafting Material: Fragments of\nsome kind of statue scattered throughout the\nruins.",
         "content_id": "i00015923",
         "url": "i00015923.html",
@@ -80584,7 +80584,7 @@
         "icon": "images/icons/small/ii000517.png"
     },
     {
-        "title": "Foreign Goddess Idol ",
+        "title": "Foreign Goddess Idol \u2605",
         "content": "Miscellaneous Crafting Material: Holy Statue of\nthe Sacred Goddess, which was enshrined within the\nruins.",
         "content_id": "i00015924",
         "url": "i00015924.html",
@@ -80592,7 +80592,7 @@
         "icon": "images/icons/small/ii000518.png"
     },
     {
-        "title": "Scarlet Plume ",
+        "title": "Scarlet Plume \u2605",
         "content": "Feather Crafting Material: Poisonously vibrant\nred feathers.",
         "content_id": "i00015925",
         "url": "i00015925.html",
@@ -80600,7 +80600,7 @@
         "icon": "images/icons/small/ii000476.png"
     },
     {
-        "title": "Demon Scraps ",
+        "title": "Demon Scraps \u2605",
         "content": "Miscellaneous Crafting Material: The carcass of a\nbeast that fell victim to the Corruption's\ninfection.",
         "content_id": "i00015926",
         "url": "i00015926.html",
@@ -80624,7 +80624,7 @@
         "icon": "images/icons/small/ii000469.png"
     },
     {
-        "title": "Mysterious Shell Fragment ",
+        "title": "Mysterious Shell Fragment \u2605",
         "content": "Miscellaneous Crafting Material: Some part of a\nshell that seems to have fallen off from some kind\nof creature.",
         "content_id": "i00015929",
         "url": "i00015929.html",
@@ -80632,7 +80632,7 @@
         "icon": "images/icons/small/ii001427.png"
     },
     {
-        "title": "Giant Carapace ",
+        "title": "Giant Carapace \u2605",
         "content": "Miscellaneous Crafting Material:\nA part of a giant shell that appears to have been\nleft behind by some ancient creature.",
         "content_id": "i00015930",
         "url": "i00015930.html",
@@ -80640,7 +80640,7 @@
         "icon": "images/icons/small/ii001427.png"
     },
     {
-        "title": "Ancient Manuscript Scrap ",
+        "title": "Ancient Manuscript Scrap \u2605",
         "content": "Miscellaneous Crafting Material:\nA fragment of an old book with the words of\nPhindym inscribed on it.",
         "content_id": "i00015931",
         "url": "i00015931.html",
@@ -80648,7 +80648,7 @@
         "icon": "images/icons/small/ii000514.png"
     },
     {
-        "title": "Phindym Manuscript ",
+        "title": "Phindym Manuscript \u2605",
         "content": "Miscellaneous Crafting Material:\nAn extremely old book that has received the\nblessings of some kind of divine protection.",
         "content_id": "i00015932",
         "url": "i00015932.html",
@@ -80656,7 +80656,7 @@
         "icon": "images/icons/small/ii000515.png"
     },
     {
-        "title": "Giant Scale ",
+        "title": "Giant Scale \u2605",
         "content": "Pelt Crafting Material:\nCrafting material for leather-related items.\nGigantic scales of unknown origin, which appear\nto have been dropped by some kind of monster.",
         "content_id": "i00015933",
         "url": "i00015933.html",
@@ -80952,7 +80952,7 @@
         "icon": "images/icons/small/ii000463.png"
     },
     {
-        "title": "Thick Shell ",
+        "title": "Thick Shell \u2605",
         "content": "Miscellaneous Crafting Material: Very thick\npieces of shell.",
         "content_id": "i00015975",
         "url": "i00015975.html",
@@ -80960,7 +80960,7 @@
         "icon": "images/icons/small/ii000518.png"
     },
     {
-        "title": "Giant Fossil Shell ",
+        "title": "Giant Fossil Shell \u2605",
         "content": "Miscellaneous Crafting Material:\nGiant Fossilized Shell",
         "content_id": "i00015976",
         "url": "i00015976.html",
@@ -80968,7 +80968,7 @@
         "icon": "images/icons/small/ii000520.png"
     },
     {
-        "title": "Gnarled Branch ",
+        "title": "Gnarled Branch \u2605",
         "content": "Wood Crafting Material: A small branch that has\ndeveloped a knot due to the effects of corruption.",
         "content_id": "i00015977",
         "url": "i00015977.html",
@@ -80976,7 +80976,7 @@
         "icon": "images/icons/small/ii000505.png"
     },
     {
-        "title": "Diseased Wreath ",
+        "title": "Diseased Wreath \u2605",
         "content": "Wood Crafting Material: A wreath woven from\nbranches of wood that have been deformed by the\neffects of corruption.",
         "content_id": "i00015978",
         "url": "i00015978.html",
@@ -80984,7 +80984,7 @@
         "icon": "images/icons/small/ii000506.png"
     },
     {
-        "title": "Illustrated Old Cloth ",
+        "title": "Illustrated Old Cloth \u2605",
         "content": "Cloth Crafting Material: A weathered cloth with\nsome kind of design painted in blue dye.",
         "content_id": "i00015979",
         "url": "i00015979.html",
@@ -80992,7 +80992,7 @@
         "icon": "images/icons/small/ii000501.png"
     },
     {
-        "title": "Spirit's Tapestry ",
+        "title": "Spirit's Tapestry \u2605",
         "content": "Cloth Crafting Material: Tapestry adorned with\ndragon-infused sap.",
         "content_id": "i00015980",
         "url": "i00015980.html",
@@ -81000,7 +81000,7 @@
         "icon": "images/icons/small/ii000499.png"
     },
     {
-        "title": "Ancient Sago Palm ",
+        "title": "Ancient Sago Palm \u2605",
         "content": "Floral Crafting Material: A species of fern that\nhas survived since ancient times in a special\nenvironment within the ruins.",
         "content_id": "i00015981",
         "url": "i00015981.html",
@@ -81008,7 +81008,7 @@
         "icon": "images/icons/small/ii000508.png"
     },
     {
-        "title": "Aged Green Leaves ",
+        "title": "Aged Green Leaves \u2605",
         "content": "Floral Crafting Material: Especially the old and\nlarge leaves of the ancient Sago Palm.",
         "content_id": "i00015982",
         "url": "i00015982.html",
@@ -81016,7 +81016,7 @@
         "icon": "images/icons/small/ii000508.png"
     },
     {
-        "title": "Transparent Coarse Sand ",
+        "title": "Transparent Coarse Sand \u2605",
         "content": "Sand Crafting Material: Sand made from crushed\ncolorless transparent crystals.",
         "content_id": "i00015983",
         "url": "i00015983.html",
@@ -81024,7 +81024,7 @@
         "icon": "images/icons/small/ii000486.png"
     },
     {
-        "title": "Clear Fine Sand ",
+        "title": "Clear Fine Sand \u2605",
         "content": "Sand Crafting Material: Sand made from crushed\ncolorless highly transparent crystals.",
         "content_id": "i00015984",
         "url": "i00015984.html",
@@ -81032,7 +81032,7 @@
         "icon": "images/icons/small/ii000484.png"
     },
     {
-        "title": "Malformed Nut ",
+        "title": "Malformed Nut \u2605",
         "content": "Miscellaneous Crafting Material:\nWooden seeds deformed by the influence of\ncorruption.",
         "content_id": "i00015985",
         "url": "i00015985.html",
@@ -81040,7 +81040,7 @@
         "icon": "images/icons/small/ii000518.png"
     },
     {
-        "title": "Strange Sprout ",
+        "title": "Strange Sprout \u2605",
         "content": "Miscellaneous Crafting Material:\nA pair of misshapen leaves with distorted colors\nthat sprouted from a corrupted seed.",
         "content_id": "i00015986",
         "url": "i00015986.html",
@@ -81048,7 +81048,7 @@
         "icon": "images/icons/small/ii000509.png"
     },
     {
-        "title": "Jet Black Fur ",
+        "title": "Jet Black Fur \u2605",
         "content": "Fur Crafting Material: Deep black animal fur,\nlike the darkness of the night.",
         "content_id": "i00015987",
         "url": "i00015987.html",
@@ -81056,7 +81056,7 @@
         "icon": "images/icons/small/ii000477.png"
     },
     {
-        "title": "Infected Demon Bone Fragment ",
+        "title": "Infected Demon Bone Fragment \u2605",
         "content": "Bone Crafting Material: Fragments of an infected\ndemon bone, seemingly crushed by someone or\nsomething.",
         "content_id": "i00015988",
         "url": "i00015988.html",
@@ -81080,7 +81080,7 @@
         "icon": "images/icons/small/ii000482.png"
     },
     {
-        "title": "Dubious Animal Pelt ",
+        "title": "Dubious Animal Pelt \u2605",
         "content": "Pelt Crafting Material: Animal skins that are\nsuspiciously free of scratches. They give off an\nunusual aura.",
         "content_id": "i00015991",
         "url": "i00015991.html",
@@ -81088,7 +81088,7 @@
         "icon": "images/icons/small/ii000497.png"
     },
     {
-        "title": "Fleshed Animal Pelt ",
+        "title": "Fleshed Animal Pelt \u2605",
         "content": "Pelt Crafting Material:\nA strange animal pelt that has become a single\npiece of leather without any blemishes.",
         "content_id": "i00015992",
         "url": "i00015992.html",
@@ -81096,7 +81096,7 @@
         "icon": "images/icons/small/ii000498.png"
     },
     {
-        "title": "Crystallized Sap ",
+        "title": "Crystallized Sap \u2605",
         "content": "Miscellaneous Crafting Material:\nSmall crystallized grains of Fionn's unique pale\nblue sap, used for crafting.",
         "content_id": "i00015993",
         "url": "i00015993.html",
@@ -81104,7 +81104,7 @@
         "icon": "images/icons/small/ii000483.png"
     },
     {
-        "title": "Corrupted Small Feathers ",
+        "title": "Corrupted Small Feathers \u2605",
         "content": "Feather Crafting Material: Small feathers dropped\nby birds affected by corruption.",
         "content_id": "i00015994",
         "url": "i00015994.html",
@@ -81840,7 +81840,7 @@
         "icon": "images/icons/small/ii001048.png"
     },
     {
-        "title": "Rainbow Feather ",
+        "title": "Rainbow Feather \u2605",
         "content": "Feather Crafting Material: Colorful feathers in\nvibrant rainbow hues.",
         "content_id": "i00016115",
         "url": "i00016115.html",
@@ -81848,7 +81848,7 @@
         "icon": "images/icons/small/ii000479.png"
     },
     {
-        "title": "Discolored Organs ",
+        "title": "Discolored Organs \u2605",
         "content": "Meat Crafting Material: Animal organs that have\nbeen discolored due to the corruption's influence.",
         "content_id": "i00016116",
         "url": "i00016116.html",
@@ -81856,7 +81856,7 @@
         "icon": "images/icons/small/ii000465.png"
     },
     {
-        "title": "Armored Scale ",
+        "title": "Armored Scale \u2605",
         "content": "Pelt Crafting Material: Mysterious scales that\nhave hardened like stone.",
         "content_id": "i00016117",
         "url": "i00016117.html",
@@ -81864,7 +81864,7 @@
         "icon": "images/icons/small/ii001426.png"
     },
     {
-        "title": "Jet Black Pelt ",
+        "title": "Jet Black Pelt \u2605",
         "content": "Pelt Crafting Material: Cursed fur that is\nincredibly dark and black.",
         "content_id": "i00016118",
         "url": "i00016118.html",
@@ -81872,7 +81872,7 @@
         "icon": "images/icons/small/ii000496.png"
     },
     {
-        "title": "Corroded Spine ",
+        "title": "Corroded Spine \u2605",
         "content": "Bone Crafting Material: A spine that has been\ndistorted in shape due to the effects of\ncorruption.",
         "content_id": "i00016119",
         "url": "i00016119.html",
@@ -81880,7 +81880,7 @@
         "icon": "images/icons/small/ii000472.png"
     },
     {
-        "title": "Crystal-Encrusted Twig ",
+        "title": "Crystal-Encrusted Twig \u2605",
         "content": "Wood Crafting Material: A small branch embedded\nwith blue shining ore.",
         "content_id": "i00016120",
         "url": "i00016120.html",
@@ -81888,7 +81888,7 @@
         "icon": "images/icons/small/ii000505.png"
     },
     {
-        "title": "Corrupted Griffin Blood ",
+        "title": "Corrupted Griffin Blood \u2605",
         "content": "Liquid Crafting Material:\nThe blood that circulates within the body of the\nInfected Griffin.\nA fine fungal spore floats in it.",
         "content_id": "i00016121",
         "url": "i00016121.html",
@@ -83808,7 +83808,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Battle Armor Fragment ",
+        "title": "Battle Armor Fragment \u2605",
         "content": "Miscellaneous Crafting Material: Fragments of\nbattle armor shattered in fierce battles.",
         "content_id": "i00017876",
         "url": "i00017876.html",
@@ -83864,7 +83864,7 @@
         "icon": "images/icons/small/ii000488.png"
     },
     {
-        "title": "Pyroclastic Rock ",
+        "title": "Pyroclastic Rock \u2605",
         "content": "Ore Crafting Material:\nRock formed by magma from a volcano that has\ncooled and solidified.",
         "content_id": "i00017883",
         "url": "i00017883.html",
@@ -83944,7 +83944,7 @@
         "icon": "images/icons/small/ii000491.png"
     },
     {
-        "title": "Gusty Winds Stone ",
+        "title": "Gusty Winds Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds blow power to weapons..",
         "content_id": "i00017897",
         "url": "i00017897.html",
@@ -83952,7 +83952,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Victorious Chance Stone ",
+        "title": "Victorious Chance Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds Chance Attack to weapons.",
         "content_id": "i00017898",
         "url": "i00017898.html",
@@ -83960,7 +83960,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Fallen Soldier Stone ",
+        "title": "Fallen Soldier Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons:\nA refined stone made from a special material.\nAdds Stun Power to weapons.",
         "content_id": "i00017899",
         "url": "i00017899.html",
@@ -83968,7 +83968,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Animal Hunter Stone ",
+        "title": "Animal Hunter Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Beast Slayer\" to weapons.",
         "content_id": "i00017900",
         "url": "i00017900.html",
@@ -83976,7 +83976,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Demihuman Cutter Stone ",
+        "title": "Demihuman Cutter Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Demonkin Slayer\" to weapons.",
         "content_id": "i00017901",
         "url": "i00017901.html",
@@ -83984,7 +83984,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Demonic Slasher Stone ",
+        "title": "Demonic Slasher Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Demon Slayer\" to weapons.",
         "content_id": "i00017902",
         "url": "i00017902.html",
@@ -83992,7 +83992,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Skeleton Smasher Stone ",
+        "title": "Skeleton Smasher Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Skeleton Slayer\" to weapons.",
         "content_id": "i00017903",
         "url": "i00017903.html",
@@ -84000,7 +84000,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Undead Destroyer Stone ",
+        "title": "Undead Destroyer Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Undead Slayer\" to weapons.",
         "content_id": "i00017904",
         "url": "i00017904.html",
@@ -84008,7 +84008,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Giant Killer Stone ",
+        "title": "Giant Killer Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Giants Slayer\" to weapons.",
         "content_id": "i00017905",
         "url": "i00017905.html",
@@ -84016,7 +84016,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Dried Test Sample ",
+        "title": "Dried Test Sample \u2605",
         "content": "Miscellaneous Crafting Material:\nSolidified objects that have dried up.\nShowing traces of being used in some kind of\nexperiment.",
         "content_id": "i00017907",
         "url": "i00017907.html",
@@ -84024,7 +84024,7 @@
         "icon": "images/icons/small/ii000488.png"
     },
     {
-        "title": "Monster Tissue Sample ",
+        "title": "Monster Tissue Sample \u2605",
         "content": "Miscellaneous Crafting Material: Pieces of\nmonster meat that have been processed for some\nkind of experimentation.",
         "content_id": "i00017908",
         "url": "i00017908.html",
@@ -84040,7 +84040,7 @@
         "icon": "images/icons/small/ii000520.png"
     },
     {
-        "title": "Blood-Colored Spiral Shell ",
+        "title": "Blood-Colored Spiral Shell \u2605",
         "content": "Miscellaneous Crafting Material: A seashell that\ngrows within the flesh, its shell dyed the color\nof blood.",
         "content_id": "i00017910",
         "url": "i00017910.html",
@@ -84048,7 +84048,7 @@
         "icon": "images/icons/small/ii000520.png"
     },
     {
-        "title": "Delicate Intaglio ",
+        "title": "Delicate Intaglio \u2605",
         "content": "Miscellaneous Crafting Material: Artwork with\ndelicate carvings.",
         "content_id": "i00017911",
         "url": "i00017911.html",
@@ -84056,7 +84056,7 @@
         "icon": "images/icons/small/ii000517.png"
     },
     {
-        "title": "Acre Royal Family Intaglio ",
+        "title": "Acre Royal Family Intaglio \u2605",
         "content": "Miscellaneous Crafting Material:\nAn exquisite artwork where the crest of the Acre\nroyal family and the figure of a Fire Dragon are\nintricately engraved in sunk relief.",
         "content_id": "i00017912",
         "url": "i00017912.html",
@@ -84152,7 +84152,7 @@
         "icon": "images/icons/small/ii000506.png"
     },
     {
-        "title": "Natural Charcoal ",
+        "title": "Natural Charcoal \u2605",
         "content": "Wood Crafting Material: Charcoal, made by slowly\nburning wood with geothermal heat.",
         "content_id": "i00018508",
         "url": "i00018508.html",
@@ -84296,7 +84296,7 @@
         "icon": "images/icons/small/ii000464.png"
     },
     {
-        "title": "Guardsman's Spirit ",
+        "title": "Guardsman's Spirit \u2605",
         "content": "The power to venture into the depths of the\nHeroic Spirit Sleeping Path: Rathnite Foothills\nthat rests on The Epitaph Road.",
         "content_id": "i00018656",
         "url": "i00018656.html",
@@ -84304,7 +84304,7 @@
         "icon": "images/icons/small/ii001989.png"
     },
     {
-        "title": "Courtier's Spirit ",
+        "title": "Courtier's Spirit \u2605",
         "content": "The power to venture into the depths of Heroic\nSpirit Sleeping Path: Feryana Wilderness that\nrests on The Epitaph Road.",
         "content_id": "i00018658",
         "url": "i00018658.html",
@@ -84312,7 +84312,7 @@
         "icon": "images/icons/small/ii001990.png"
     },
     {
-        "title": "Executor's Spirit ",
+        "title": "Executor's Spirit \u2605",
         "content": "The power to venture into the depths of the\nMemory of Megadosys that rests on The Epitaph\nRoad.",
         "content_id": "i00018659",
         "url": "i00018659.html",
@@ -84320,7 +84320,7 @@
         "icon": "images/icons/small/ii001991.png"
     },
     {
-        "title": "Retainer's Spirit ",
+        "title": "Retainer's Spirit \u2605",
         "content": "The power to venture into the depths of the\nMemory of Urteca that rests on The Epitaph Road.",
         "content_id": "i00018660",
         "url": "i00018660.html",
@@ -84336,7 +84336,7 @@
         "icon": "images/icons/small/ii000463.png"
     },
     {
-        "title": "Cursed Withered Grass ",
+        "title": "Cursed Withered Grass \u2605",
         "content": "Floral Crafting Material: Grass that retains its\nform while being withered by the power of curses.",
         "content_id": "i00018662",
         "url": "i00018662.html",
@@ -84376,7 +84376,7 @@
         "icon": "images/icons/small/ii000497.png"
     },
     {
-        "title": "Campaign Battle Armor ",
+        "title": "Campaign Battle Armor \u2605",
         "content": "Miscellaneous Crafting Material:\nSpecial armor worn by the monsters commanded by\nthe Demon Army.",
         "content_id": "i00018729",
         "url": "i00018729.html",
@@ -84384,7 +84384,7 @@
         "icon": "images/icons/small/ii001985.png"
     },
     {
-        "title": "Unappraised Snow Trinket (Soldier) ",
+        "title": "Unappraised Snow Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00018730",
         "url": "i00018730.html",
@@ -84392,7 +84392,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Snow Trinket (General) ",
+        "title": "Unappraised Snow Trinket (General) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00018731",
         "url": "i00018731.html",
@@ -84456,7 +84456,7 @@
         "icon": "images/icons/small/ii001995.png"
     },
     {
-        "title": "Unappraised Flight Trinket (Soldier) ",
+        "title": "Unappraised Flight Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00018821",
         "url": "i00018821.html",
@@ -84464,7 +84464,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Flight Trinket (General) ",
+        "title": "Unappraised Flight Trinket (General) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00018822",
         "url": "i00018822.html",
@@ -84504,7 +84504,7 @@
         "icon": "images/icons/small/ii002060.png"
     },
     {
-        "title": "Gusty Winds Stone Shard ",
+        "title": "Gusty Winds Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018876",
         "url": "i00018876.html",
@@ -84512,7 +84512,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Victorious Chance Stone Shard ",
+        "title": "Victorious Chance Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018877",
         "url": "i00018877.html",
@@ -84520,7 +84520,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Fallen Soldier Stone Shard ",
+        "title": "Fallen Soldier Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018878",
         "url": "i00018878.html",
@@ -84528,7 +84528,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Animal Hunter Stone Shard ",
+        "title": "Animal Hunter Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018879",
         "url": "i00018879.html",
@@ -84536,7 +84536,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Demihuman Cutter Stone Shard ",
+        "title": "Demihuman Cutter Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018880",
         "url": "i00018880.html",
@@ -84544,7 +84544,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Demonic Slasher Stone Shard ",
+        "title": "Demonic Slasher Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018881",
         "url": "i00018881.html",
@@ -84552,7 +84552,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Skeleton Smasher Stone Shard ",
+        "title": "Skeleton Smasher Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018882",
         "url": "i00018882.html",
@@ -84560,7 +84560,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Undead Destroyer Stone Shard ",
+        "title": "Undead Destroyer Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018883",
         "url": "i00018883.html",
@@ -84568,7 +84568,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Giant Killer Stone Shard ",
+        "title": "Giant Killer Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00018884",
         "url": "i00018884.html",
@@ -85280,7 +85280,7 @@
         "icon": "images/icons/small/ii000517.png"
     },
     {
-        "title": "Demon Expeller Stone Shard ",
+        "title": "Demon Expeller Stone Shard \u2605",
         "content": "Fragments of a forged stone made from a special\nmaterial.\nWhen combined in item crafting, it becomes a\ncrafting material that adds additional stats.",
         "content_id": "i00019644",
         "url": "i00019644.html",
@@ -85288,7 +85288,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Demon Expeller Stone ",
+        "title": "Demon Expeller Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Fiend Slayer\" to weapons.",
         "content_id": "i00019645",
         "url": "i00019645.html",
@@ -85304,7 +85304,7 @@
         "icon": "images/icons/small/ii000517.png"
     },
     {
-        "title": "Scorpion Tail's Husk ",
+        "title": "Scorpion Tail's Husk \u2605",
         "content": "Miscellaneous Crafting Material: Shed exoskeleton\nin the shape of a giant scorpion tail.",
         "content_id": "i00019647",
         "url": "i00019647.html",
@@ -85320,7 +85320,7 @@
         "icon": "images/icons/small/ii000484.png"
     },
     {
-        "title": "Red Hot Smelted Ore ",
+        "title": "Red Hot Smelted Ore \u2605",
         "content": "Ore Crafting Material:\nAn ore with intense heat, its interior is often\nmolten.\nOccasionally cracked, it shines with a red glow.",
         "content_id": "i00019649",
         "url": "i00019649.html",
@@ -85336,7 +85336,7 @@
         "icon": "images/icons/small/ii000472.png"
     },
     {
-        "title": "Cursed Spine ",
+        "title": "Cursed Spine \u2605",
         "content": "Bone Crafting Material: A large spine with cursed\nmarkings engraved on it.\nJudging from its size, it does not belong to a\nhuman.",
         "content_id": "i00019651",
         "url": "i00019651.html",
@@ -85368,7 +85368,7 @@
         "icon": "images/icons/small/ii000492.png"
     },
     {
-        "title": "Reinforced Battle Armor ",
+        "title": "Reinforced Battle Armor \u2605",
         "content": "Miscellaneous Crafting Material:\nUsed against strong-willed enemies.\nWar Ready armor strengthened with enhanced\ndominance.",
         "content_id": "i00019655",
         "url": "i00019655.html",
@@ -85496,7 +85496,7 @@
         "icon": "images/icons/small/ii000496.png"
     },
     {
-        "title": "Low-Grade Reinforced Armor ",
+        "title": "Low-Grade Reinforced Armor \u2605",
         "content": "Miscellaneous Crafting Material:\nA new and improved version of war-ready armor.",
         "content_id": "i00021227",
         "url": "i00021227.html",
@@ -85544,7 +85544,7 @@
         "icon": "images/icons/small/ii000518.png"
     },
     {
-        "title": "Cave Shrimp Eggs ",
+        "title": "Cave Shrimp Eggs \u2605",
         "content": "Miscellaneous Crafting Material:\nOccasionally, Cave Shrimp eggs are found in the\nrare state of being incubated.",
         "content_id": "i00021234",
         "url": "i00021234.html",
@@ -85560,7 +85560,7 @@
         "icon": "images/icons/small/ii000484.png"
     },
     {
-        "title": "Simple Purification Crystal ",
+        "title": "Simple Purification Crystal \u2605",
         "content": "Miscellaneous Crafting Material:\nA crystal with the ability to remove toxins and\npurify.",
         "content_id": "i00021236",
         "url": "i00021236.html",
@@ -85568,7 +85568,7 @@
         "icon": "images/icons/small/ii000494.png"
     },
     {
-        "title": "Scroll of Tribute ",
+        "title": "Scroll of Tribute \u2605",
         "content": "Grimoire Crafting Material:\nScroll with words praising the royal family.",
         "content_id": "i00021237",
         "url": "i00021237.html",
@@ -85592,7 +85592,7 @@
         "icon": "images/icons/small/ii002498.png"
     },
     {
-        "title": "Unappraised Water Trinket (Soldier) ",
+        "title": "Unappraised Water Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00021240",
         "url": "i00021240.html",
@@ -85600,7 +85600,7 @@
         "icon": "images/icons/small/ii001495.png"
     },
     {
-        "title": "Unappraised Water Trinket (General) ",
+        "title": "Unappraised Water Trinket (General) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00021241",
         "url": "i00021241.html",
@@ -85656,7 +85656,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Spirit Purifier Stone ",
+        "title": "Spirit Purifier Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Spectral Slayer\" to weapons.",
         "content_id": "i00021248",
         "url": "i00021248.html",
@@ -85664,7 +85664,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Cursed Exorciser Stone ",
+        "title": "Cursed Exorciser Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Cursed Slayer\" to weapons.",
         "content_id": "i00021249",
         "url": "i00021249.html",
@@ -85672,7 +85672,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Alchemy Sealer Stone ",
+        "title": "Alchemy Sealer Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Alchemy Slayer\" to weapons.",
         "content_id": "i00021250",
         "url": "i00021250.html",
@@ -85680,7 +85680,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Corrupted Sealer Stone ",
+        "title": "Corrupted Sealer Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Corrupted Slayer\" to weapons.",
         "content_id": "i00021251",
         "url": "i00021251.html",
@@ -85704,7 +85704,7 @@
         "icon": "images/icons/small/ii001984.png"
     },
     {
-        "title": "Urteca Hot Spring Water ",
+        "title": "Urteca Hot Spring Water \u2605",
         "content": "Liquid Crafting Material: Obtained from various\nlocations in the Urteca Mountains, where hot\nsprings water flows.",
         "content_id": "i00021255",
         "url": "i00021255.html",
@@ -85712,7 +85712,7 @@
         "icon": "images/icons/small/ii000481.png"
     },
     {
-        "title": "Belladonna ",
+        "title": "Belladonna \u2605",
         "content": "Floral Crafting Material:\nGrass and flowers that contain poison from leaves\nto roots.\nCaution is necessary when touching.",
         "content_id": "i00021256",
         "url": "i00021256.html",
@@ -85720,7 +85720,7 @@
         "icon": "images/icons/small/ii000509.png"
     },
     {
-        "title": "Petrified Wood ",
+        "title": "Petrified Wood \u2605",
         "content": "Wood Crafting Material: A part of petrified wood.",
         "content_id": "i00021257",
         "url": "i00021257.html",
@@ -85728,7 +85728,7 @@
         "icon": "images/icons/small/ii000505.png"
     },
     {
-        "title": "Volcanic Tuff ",
+        "title": "Volcanic Tuff \u2605",
         "content": "Ore Crafting Material:\nA stone formed from solidified volcanic ash that\nhas accumulated.",
         "content_id": "i00021258",
         "url": "i00021258.html",
@@ -85736,7 +85736,7 @@
         "icon": "images/icons/small/ii000488.png"
     },
     {
-        "title": "Volcanic Mountain Ash ",
+        "title": "Volcanic Mountain Ash \u2605",
         "content": "Sand Crafting Material: Volcanic ash imbued with\na faint Dragon Force, spewing from Firefall\nMountain.",
         "content_id": "i00021259",
         "url": "i00021259.html",
@@ -85744,7 +85744,7 @@
         "icon": "images/icons/small/ii000486.png"
     },
     {
-        "title": "Scorched Mushroom ",
+        "title": "Scorched Mushroom \u2605",
         "content": "Mushroom Crafting Material.\nA mushroom with a charred-like color and shape.",
         "content_id": "i00021260",
         "url": "i00021260.html",
@@ -85808,7 +85808,7 @@
         "icon": "images/icons/small/ii000465.png"
     },
     {
-        "title": "Howling Blaze Lump ",
+        "title": "Howling Blaze Lump \u2605",
         "content": "Miscellaneous Crafting Material:\nFlames that continue to burn with a roaring sound.",
         "content_id": "i00021268",
         "url": "i00021268.html",
@@ -85856,7 +85856,7 @@
         "icon": "images/icons/small/ii002595.png"
     },
     {
-        "title": "Ancient Wheat Ear ",
+        "title": "Ancient Wheat Ear \u2605",
         "content": "Floral Crafting Material: An ear of ancient\nwheat, believed to have been brought in the past\nand established deep in the cave.",
         "content_id": "i00021274",
         "url": "i00021274.html",
@@ -85872,7 +85872,7 @@
         "icon": "images/icons/small/ii000517.png"
     },
     {
-        "title": "Dragon Temple's Blessed Cloth ",
+        "title": "Dragon Temple's Blessed Cloth \u2605",
         "content": "Cloth Crafting Material:\nSpecial cloth blessed at the temple of Acre\nSelund.",
         "content_id": "i00021276",
         "url": "i00021276.html",
@@ -85880,7 +85880,7 @@
         "icon": "images/icons/small/ii000518.png"
     },
     {
-        "title": "Royal Blazing Rock ",
+        "title": "Royal Blazing Rock \u2605",
         "content": "Ore Crafting Material:\nA rock imbued with the power of intense fire,\npreviously only held by members of the royal\nfamily.",
         "content_id": "i00021277",
         "url": "i00021277.html",
@@ -85904,7 +85904,7 @@
         "icon": "images/icons/small/ii002598.png"
     },
     {
-        "title": "Unappraised Cloud Trinket (Soldier) ",
+        "title": "Unappraised Cloud Trinket (Soldier) \u2605",
         "content": "Jewelry available in the \"Appraisal Exchange\".\nIts effect is unknown.",
         "content_id": "i00021280",
         "url": "i00021280.html",
@@ -85968,7 +85968,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "War-Ready Break Stone ",
+        "title": "War-Ready Break Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"War Ready Slayer\" to weapons.",
         "content_id": "i00021288",
         "url": "i00021288.html",
@@ -85976,7 +85976,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Soft Tissue Erasure Gemstone ",
+        "title": "Soft Tissue Erasure Gemstone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Formless Slayer\" to weapons.",
         "content_id": "i00021289",
         "url": "i00021289.html",
@@ -85984,7 +85984,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Winged Slayer's Stone ",
+        "title": "Winged Slayer's Stone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Winged Beasts Slayer\" to weapons.",
         "content_id": "i00021290",
         "url": "i00021290.html",
@@ -85992,7 +85992,7 @@
         "icon": "images/icons/small/ii001997.png"
     },
     {
-        "title": "Magickal Constructs Destruction Gemstone ",
+        "title": "Magickal Constructs Destruction Gemstone \u2605",
         "content": "Crafting Material for adding additional stats to\nweapons.\nA refined stone made from a special material.\nAdds \"Magickal Constructs Slayer\" to weapons.",
         "content_id": "i00021291",
         "url": "i00021291.html",
@@ -86144,7 +86144,7 @@
         "icon": "images/icons/small/ii001823.png"
     },
     {
-        "title": "Relic Steel (Megadosys District) ",
+        "title": "Relic Steel (Megadosys District) \u2605",
         "content": "Steel created by lost techniques.\nIt is said that its properties vary depending on\nthe region.",
         "content_id": "i00021390",
         "url": "i00021390.html",
@@ -86152,7 +86152,7 @@
         "icon": "images/icons/small/ii002550.png"
     },
     {
-        "title": "Memento Fiber (Megadosys District) ",
+        "title": "Memento Fiber (Megadosys District) \u2605",
         "content": "Metal fibers created by lost technology.\nIt is said that their properties vary depending\non the region.",
         "content_id": "i00021391",
         "url": "i00021391.html",
@@ -86160,7 +86160,7 @@
         "icon": "images/icons/small/ii002439.png"
     },
     {
-        "title": "Relic Steel (Urteca District) ",
+        "title": "Relic Steel (Urteca District) \u2605",
         "content": "Steel created by lost techniques.\nIt is said that its properties vary depending on\nthe region.",
         "content_id": "i00021392",
         "url": "i00021392.html",
@@ -86168,7 +86168,7 @@
         "icon": "images/icons/small/ii002551.png"
     },
     {
-        "title": "Memento Fiber (Urteca District) ",
+        "title": "Memento Fiber (Urteca District) \u2605",
         "content": "Metal fibers created by lost technology.\nIt is said that their properties vary depending\non the region.",
         "content_id": "i00021393",
         "url": "i00021393.html",
