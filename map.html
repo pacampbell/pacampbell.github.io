@@ -274,6 +274,20 @@
         }
         .pd-label-btn:hover { color: #ffe88a; }
 
+        /* ── Stage / area name labels ── */
+        .stage-label {
+            color: rgba(255, 220, 80, 0.80);
+            font-size: 20px;
+            font-family: system-ui, sans-serif;
+            font-weight: 800;
+            text-align: center;
+            pointer-events: none;
+            white-space: nowrap;
+            text-shadow: 0 0 8px rgba(0,0,0,1), 0 0 4px rgba(0,0,0,1), 1px 1px 2px rgba(0,0,0,1);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
         /* ── Grid labels ── */
         .grid-label {
             color: rgba(255, 255, 255, 0.55);
@@ -373,6 +387,10 @@
             <label class="layer-toggle">
                 <input type="checkbox" id="layer-connections" checked>
                 Connections
+            </label>
+            <label class="layer-toggle">
+                <input type="checkbox" id="layer-stage-labels" checked>
+                Area Names
             </label>
             <label class="layer-toggle">
                 <input type="checkbox" id="layer-territory">

@@ -80,8 +80,9 @@ let imageOverlay    = null;
 let enemyLayer      = L.layerGroup().addTo(leafletMap);  // group chip labels
 let landmarkLayer   = L.layerGroup().addTo(leafletMap);
 let connectionLayer = L.layerGroup().addTo(leafletMap);
-let gridLayer       = L.layerGroup();   // off by default
-let territoryLayer  = L.layerGroup();   // off by default; territory rects when groups expand
+let gridLayer        = L.layerGroup();   // off by default
+let territoryLayer   = L.layerGroup();   // off by default; territory rects when groups expand
+let stageLabelsLayer = L.layerGroup().addTo(leafletMap);  // area name text labels
 let pdBoundaryLayer = L.layerGroup().addTo(leafletMap);
 let spawnRadiiLayer   = L.layerGroup().addTo(leafletMap);  // aggro/link radius circles
 let _spreadOverlay    = L.layerGroup().addTo(leafletMap);  // cross-group spoke lines + anchor dots
@@ -124,11 +125,12 @@ const LAYER_PREFS_KEY = 'ddon-maps-layers';
 // Format: !elcgt;0,3,80
 function getLayersHash() {
     let s = '';
-    if (document.getElementById('layer-enemies').checked)     s += 'e';
-    if (document.getElementById('layer-landmarks').checked)   s += 'l';
-    if (document.getElementById('layer-connections').checked) s += 'c';
-    if (document.getElementById('layer-grid').checked)        s += 'g';
-    if (document.getElementById('layer-territory').checked)   s += 't';
+    if (document.getElementById('layer-enemies').checked)       s += 'e';
+    if (document.getElementById('layer-landmarks').checked)     s += 'l';
+    if (document.getElementById('layer-connections').checked)   s += 'c';
+    if (document.getElementById('layer-grid').checked)          s += 'g';
+    if (document.getElementById('layer-territory').checked)     s += 't';
+    if (document.getElementById('layer-stage-labels').checked)  s += 'a';
     const openIds = [..._groupStore.values()]
         .filter(g => g.isExpanded)
         .map(g => g.groupId)
@@ -152,11 +154,12 @@ function updateLayersInHash() {
 
 function saveLayerPrefs() {
     const prefs = {
-        enemies:     document.getElementById('layer-enemies').checked,
-        landmarks:   document.getElementById('layer-landmarks').checked,
-        connections: document.getElementById('layer-connections').checked,
-        grid:        document.getElementById('layer-grid').checked,
-        territory:   document.getElementById('layer-territory').checked,
+        enemies:      document.getElementById('layer-enemies').checked,
+        landmarks:    document.getElementById('layer-landmarks').checked,
+        connections:  document.getElementById('layer-connections').checked,
+        grid:         document.getElementById('layer-grid').checked,
+        territory:    document.getElementById('layer-territory').checked,
+        stageLabels:  document.getElementById('layer-stage-labels').checked,
     };
     try { localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
     updateLayersInHash();
@@ -178,11 +181,12 @@ function loadLayerPrefs() {
     const prefs = urlLayers ?? stored ?? {};
     const isOn = (key, defaultOn) => key in prefs ? prefs[key] : defaultOn;
 
-    document.getElementById('layer-enemies').checked     = isOn('enemies',     true);
-    document.getElementById('layer-landmarks').checked   = isOn('landmarks',   true);
-    document.getElementById('layer-connections').checked = isOn('connections', true);
-    document.getElementById('layer-grid').checked        = isOn('grid',        false);
-    document.getElementById('layer-territory').checked   = isOn('territory',   false);
+    document.getElementById('layer-enemies').checked       = isOn('enemies',      true);
+    document.getElementById('layer-landmarks').checked     = isOn('landmarks',    true);
+    document.getElementById('layer-connections').checked   = isOn('connections',  true);
+    document.getElementById('layer-grid').checked          = isOn('grid',         false);
+    document.getElementById('layer-territory').checked     = isOn('territory',    false);
+    document.getElementById('layer-stage-labels').checked  = isOn('stageLabels',  true);
 
     if (!document.getElementById('layer-landmarks').checked)
         leafletMap.removeLayer(landmarkLayer);
@@ -192,6 +196,8 @@ function loadLayerPrefs() {
         leafletMap.addLayer(gridLayer);
     if (document.getElementById('layer-territory').checked)
         leafletMap.addLayer(territoryLayer);
+    if (!document.getElementById('layer-stage-labels').checked)
+        leafletMap.removeLayer(stageLabelsLayer);
     if (!document.getElementById('layer-enemies').checked)
         updateEnemyVisibility();
 })();
@@ -210,6 +216,10 @@ document.getElementById('layer-connections').addEventListener('change', e => {
 });
 document.getElementById('layer-grid').addEventListener('change', e => {
     e.target.checked ? leafletMap.addLayer(gridLayer) : leafletMap.removeLayer(gridLayer);
+    saveLayerPrefs();
+});
+document.getElementById('layer-stage-labels').addEventListener('change', e => {
+    e.target.checked ? leafletMap.addLayer(stageLabelsLayer) : leafletMap.removeLayer(stageLabelsLayer);
     saveLayerPrefs();
 });
 document.getElementById('layer-territory').addEventListener('change', e => {
@@ -1124,6 +1134,27 @@ const LANDMARK_COLORS = {
 // Types that clutter the map without being useful landmarks
 const HIDDEN_LANDMARK_TYPES = new Set(['TYPE_TEXT', 'TYPE_WATER_LINE', 'TYPE_NONE']);
 
+function loadStageLabels(info) {
+    stageLabelsLayer.clearLayers();
+    const labels = info.stage_labels;
+    if (!labels?.length) return;
+    for (const lbl of labels) {
+        const latlng = worldToPixel(lbl.x, lbl.z, info);
+        const r = lbl.radius ?? 0;
+        const fs = r >= 50000 ? 18 : r >= 20000 ? 13 : 10;
+        const opacity = r >= 50000 ? 0.85 : r >= 20000 ? 0.70 : 0.55;
+        L.marker(latlng, {
+            icon: L.divIcon({
+                className: '',
+                html: `<div class="stage-label" style="font-size:${fs}px;opacity:${opacity}">${lbl.name}</div>`,
+                iconAnchor: [0, 0],
+            }),
+            interactive: false,
+            zIndexOffset: -1000,
+        }).addTo(stageLabelsLayer);
+    }
+}
+
 function loadLandmarks(mapName, info) {
     landmarkLayer.clearLayers();
     const entries = landmarkData[mapName];
@@ -1560,6 +1591,7 @@ function loadMap(mapName) {
     // Reload layers
     loadGrid(info);
     loadPdBoundaries(info);
+    loadStageLabels(info);
     loadLandmarks(mapName, info);
     loadConnections(mapName, info);
     // Read openGroups BEFORE loadEnemySpawns — that function calls _updateExpandCollapseBtn
@@ -1612,6 +1644,37 @@ function loadMap(mapName) {
     });
 
     leafletMap.on('mouseout', () => { el.textContent = ''; });
+
+    // Alt+click → log coordinates to console and copy to clipboard.
+    // Use this for calibration: Alt+click on a known map feature (bridge, door, etc.)
+    // then compare the logged world coords with lot.json / connections.json values.
+    leafletMap.on('click', (e) => {
+        if (!e.originalEvent.altKey) return;
+        if (!currentInfo) return;
+        const px   = e.latlng.lng;
+        const py   = e.latlng.lat;
+        const png_y = currentInfo.img_height - py;
+        const wx   = (px - currentInfo.center_x) / currentInfo.scale;
+        let wz;
+        if (currentInfo.pd_pieces?.length) {
+            const pieces = currentInfo.pd_pieces;
+            let piece = pieces[0];
+            for (const p of pieces) {
+                if (png_y >= p.pixel_y_start && png_y <= p.pixel_y_entrance) { piece = p; break; }
+            }
+            wz = piece.connect_z + (png_y - piece.pixel_y_entrance_v) / currentInfo.scale;
+        } else {
+            const scaleZ = currentInfo.scale_z ?? currentInfo.scale;
+            wz = ((currentInfo.img_height - currentInfo.center_y) - py) / scaleZ;
+        }
+        const mapKey = location.hash.split(':')[0].replace('#', '');
+        const msg = `CALIB [${currentInfo.name_en ?? mapKey}]  pixel=(${px.toFixed(1)}, ${png_y.toFixed(1)})  world X=${wx.toFixed(1)} Z=${wz.toFixed(1)}`;
+        console.log(msg);
+        navigator.clipboard?.writeText(msg).catch(() => {});
+        // Flash the coord display to confirm
+        el.style.color = '#ffd700';
+        setTimeout(() => { el.style.color = ''; }, 600);
+    });
 })();
 
 // Patch loadMap to keep currentInfo updated
