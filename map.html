@@ -300,6 +300,10 @@
         .enemy-marker {
             filter: drop-shadow(0 0 2px #000) drop-shadow(0 0 1px #000);
         }
+        /* Key-bearer spawns get an extra glow to stand out */
+        .key-bearer-spawn {
+            filter: drop-shadow(0 0 3px #c8a000) drop-shadow(0 0 2px #000);
+        }
 
         /* ── Group chip labels ── */
         .group-chip {
@@ -378,6 +382,10 @@
                 <input type="checkbox" id="layer-grid">
                 Grid
             </label>
+            <div id="exits-panel" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #0f3460;">
+                <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:4px;">Exits</div>
+                <div id="exits-list"></div>
+            </div>
             <button id="btn-expand-collapse" style="
                 margin-top:8px;width:100%;padding:4px 0;
                 background:#0f3460;color:#e0e0e0;border:1px solid #1a4a7a;
@@ -386,9 +394,11 @@
             <div style="margin-top:6px;padding-top:6px;border-top:1px solid #0f3460;font-size:0.75rem;color:#888;line-height:1.7">
                 Click chip to expand group<br>
                 Middle-click hull to collapse<br>
+                🗝 chip = key bearer group<br>
                 Click spawn to show:<br>
                 <span style="color:#ffd700">&#9679;</span> Aggro radius<br>
-                <span style="color:#ff7700">&#9675;</span> Link radius
+                <span style="color:#ff7700">&#9675;</span> Link radius<br>
+                <span style="color:#c8a000">&#9679;</span> Gold ring = key bearer
             </div>
         </div>
     </div>

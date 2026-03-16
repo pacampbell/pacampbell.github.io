@@ -1,14 +1,20 @@
 {
   "field000_m00": [
     {
+      "x": -152462.55,
+      "z": -113014.76,
+      "to_stage": 200,
+      "to_map": "lb000_m00",
+      "name_en": "The White Dragon Temple",
+      "name_jp": "白竜神殿レーゼ"
+    },
+    {
       "x": -209090.44,
       "z": -79174.04,
       "to_stage": 300,
       "to_map": "rm000_m02",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 300,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -112111.54,
@@ -16,9 +22,7 @@
       "to_stage": 301,
       "to_map": "rm000_m02",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 301,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -108955.445,
@@ -26,9 +30,7 @@
       "to_stage": 302,
       "to_map": "rm000_m02",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 302,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -109353.61,
@@ -36,9 +38,7 @@
       "to_stage": 303,
       "to_map": "rm000_m02",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 303,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -109456.38,
@@ -46,9 +46,7 @@
       "to_stage": 304,
       "to_map": "rm000_m02",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 304,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -110708.96,
@@ -56,9 +54,7 @@
       "to_stage": 305,
       "to_map": "rm000_m02",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 305,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": 31147.682,
@@ -66,9 +62,7 @@
       "to_stage": 306,
       "to_map": "rm000_m02",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 306,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": 34004.426,
@@ -76,9 +70,7 @@
       "to_stage": 307,
       "to_map": "rm000_m02",
       "name_en": "Flavell's Shop",
-      "name_jp": "フラベルの店",
-      "next_stage": 307,
-      "next_name_en": "Flavell's Shop"
+      "name_jp": "フラベルの店"
     },
     {
       "x": -99031.86,
@@ -86,9 +78,7 @@
       "to_stage": 308,
       "to_map": "rm000_m02",
       "name_en": "Lone House in the Forest",
-      "name_jp": "森の一軒家",
-      "next_stage": 308,
-      "next_name_en": "Lone House in the Forest"
+      "name_jp": "森の一軒家"
     },
     {
       "x": -207548.0,
@@ -96,9 +86,7 @@
       "to_stage": 310,
       "to_map": "rm000_m03",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 310,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -210064.34,
@@ -106,9 +94,7 @@
       "to_stage": 311,
       "to_map": "rm000_m03",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 311,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -113464.414,
@@ -116,9 +102,7 @@
       "to_stage": 312,
       "to_map": "rm000_m03",
       "name_en": "Pedro's General Store",
-      "name_jp": "ペドロ雑貨店",
-      "next_stage": 312,
-      "next_name_en": "Pedro's General Store"
+      "name_jp": "ペドロ雑貨店"
     },
     {
       "x": -112245.18,
@@ -126,9 +110,7 @@
       "to_stage": 313,
       "to_map": "rm000_m03",
       "name_en": "Yanks' Weapon Shop",
-      "name_jp": "ヤンクスの武器屋",
-      "next_stage": 313,
-      "next_name_en": "Yanks' Weapon Shop"
+      "name_jp": "ヤンクスの武器屋"
     },
     {
       "x": 35458.504,
@@ -136,9 +118,7 @@
       "to_stage": 314,
       "to_map": "rm000_m03",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 314,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -76951.125,
@@ -146,9 +126,7 @@
       "to_stage": 315,
       "to_map": "rm000_m03",
       "name_en": "Ivan's Lodge",
-      "name_jp": "イヴァンの山小屋",
-      "next_stage": 315,
-      "next_name_en": "Ivan's Lodge"
+      "name_jp": "イヴァンの山小屋"
     },
     {
       "x": -116257.445,
@@ -156,9 +134,7 @@
       "to_stage": 321,
       "to_map": "rm000_m00",
       "name_en": "Eterna's Outfitter",
-      "name_jp": "エテルナ装具屋",
-      "next_stage": 321,
-      "next_name_en": "Eterna's Outfitter"
+      "name_jp": "エテルナ装具屋"
     },
     {
       "x": -113119.32,
@@ -166,9 +142,7 @@
       "to_stage": 322,
       "to_map": "rm000_m00",
       "name_en": "White Deer Inn",
-      "name_jp": "リンウッド組合宿　白鹿亭",
-      "next_stage": 322,
-      "next_name_en": "White Deer Inn"
+      "name_jp": "リンウッド組合宿　白鹿亭"
     },
     {
       "x": -114434.03,
@@ -176,9 +150,7 @@
       "to_stage": 330,
       "to_map": "rm000_m01",
       "name_en": "Black Grape Inn",
-      "name_jp": "テル組合宿　黒ブドウ亭",
-      "next_stage": 330,
-      "next_name_en": "Black Grape Inn"
+      "name_jp": "テル組合宿　黒ブドウ亭"
     },
     {
       "x": -205493.12,
@@ -186,29 +158,23 @@
       "to_stage": 331,
       "to_map": "rm000_m01",
       "name_en": "Sea Dragon Inn",
-      "name_jp": "ローテス組合宿　海竜亭",
-      "next_stage": 331,
-      "next_name_en": "Sea Dragon Inn"
+      "name_jp": "ローテス組合宿　海竜亭"
     },
     {
       "x": 16089.594,
       "z": -21636.197,
-      "to_stage": 340,
-      "to_map": "rm004_m00",
-      "name_en": "Supply Store",
-      "name_jp": "食糧庫",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城"
     },
     {
       "x": 3461.9958,
       "z": -34718.906,
-      "to_stage": 340,
-      "to_map": "rm004_m00",
-      "name_en": "Supply Store",
-      "name_jp": "食糧庫",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城"
     },
     {
       "x": -72548.375,
@@ -216,9 +182,7 @@
       "to_stage": 341,
       "to_map": "rm004_m00",
       "name_en": "Forest Ruins Cellar",
-      "name_jp": "森の廃墟地下",
-      "next_stage": 341,
-      "next_name_en": "Forest Ruins Cellar"
+      "name_jp": "森の廃墟地下"
     },
     {
       "x": -123459.75,
@@ -226,9 +190,7 @@
       "to_stage": 342,
       "to_map": "rm004_m00",
       "name_en": "Abandoned House Cellar",
-      "name_jp": "廃屋の地下室",
-      "next_stage": 342,
-      "next_name_en": "Abandoned House Cellar"
+      "name_jp": "廃屋の地下室"
     },
     {
       "x": 11955.196,
@@ -236,9 +198,7 @@
       "to_stage": 343,
       "to_map": "rm004_m00",
       "name_en": "Supply Store Ruins",
-      "name_jp": "廃墟の食糧庫",
-      "next_stage": 343,
-      "next_name_en": "Supply Store Ruins"
+      "name_jp": "廃墟の食糧庫"
     },
     {
       "x": 12113.16,
@@ -246,9 +206,7 @@
       "to_stage": 344,
       "to_map": "rm004_m00",
       "name_en": "Wine Cellar Ruins",
-      "name_jp": "崩れかけたワイン庫",
-      "next_stage": 344,
-      "next_name_en": "Wine Cellar Ruins"
+      "name_jp": "崩れかけたワイン庫"
     },
     {
       "x": 111618.75,
@@ -256,9 +214,7 @@
       "to_stage": 345,
       "to_map": "rm004_m00",
       "name_en": "Lighthouse Cellar",
-      "name_jp": "灯台の地下倉庫",
-      "next_stage": 345,
-      "next_name_en": "Lighthouse Cellar"
+      "name_jp": "灯台の地下倉庫"
     },
     {
       "x": -226251.81,
@@ -266,9 +222,7 @@
       "to_stage": 350,
       "to_map": "rm004_m01",
       "name_en": "Seaside Cellar",
-      "name_jp": "海辺の地下室",
-      "next_stage": 350,
-      "next_name_en": "Seaside Cellar"
+      "name_jp": "海辺の地下室"
     },
     {
       "x": -205779.64,
@@ -276,49 +230,7 @@
       "to_stage": 351,
       "to_map": "rm004_m01",
       "name_en": "Beachside Underground Stores",
-      "name_jp": "浜辺の地下保管庫",
-      "next_stage": 351,
-      "next_name_en": "Beachside Underground Stores"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 352,
-      "to_map": "rm004_m01",
-      "name_en": "Underground Stores",
-      "name_jp": "地下倉庫",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 352,
-      "to_map": "rm004_m01",
-      "name_en": "Underground Stores",
-      "name_jp": "地下倉庫",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 353,
-      "to_map": "rm004_m01",
-      "name_en": "Cell",
-      "name_jp": "根の独房",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 353,
-      "to_map": "rm004_m01",
-      "name_en": "Cell",
-      "name_jp": "根の独房",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
+      "name_jp": "浜辺の地下保管庫"
     },
     {
       "x": 97368.17,
@@ -326,9 +238,7 @@
       "to_stage": 354,
       "to_map": "rm004_m01",
       "name_en": "Ruins Site Cellar",
-      "name_jp": "遺跡の地下室",
-      "next_stage": 354,
-      "next_name_en": "Ruins Site Cellar"
+      "name_jp": "遺跡の地下室"
     },
     {
       "x": -79900.52,
@@ -336,9 +246,7 @@
       "to_stage": 355,
       "to_map": "rm004_m01",
       "name_en": "Abandoned House Cellar",
-      "name_jp": "平原の廃墟地下室",
-      "next_stage": 355,
-      "next_name_en": "Abandoned House Cellar"
+      "name_jp": "平原の廃墟地下室"
     },
     {
       "x": -51009.168,
@@ -346,9 +254,7 @@
       "to_stage": 356,
       "to_map": "rm004_m01",
       "name_en": "Ruins Cellar",
-      "name_jp": "廃墟の地下室",
-      "next_stage": 356,
-      "next_name_en": "Ruins Cellar"
+      "name_jp": "廃墟の地下室"
     },
     {
       "x": -70588.77,
@@ -356,9 +262,7 @@
       "to_stage": 357,
       "to_map": "rm004_m01",
       "name_en": "Arid Storage",
-      "name_jp": "乾いた地下倉庫",
-      "next_stage": 357,
-      "next_name_en": "Arid Storage"
+      "name_jp": "乾いた地下倉庫"
     },
     {
       "x": -527.325,
@@ -366,9 +270,7 @@
       "to_stage": 358,
       "to_map": "rm004_m01",
       "name_en": "Ruins Site Cellar",
-      "name_jp": "遺跡の地下室",
-      "next_stage": 358,
-      "next_name_en": "Ruins Site Cellar"
+      "name_jp": "遺跡の地下室"
     },
     {
       "x": 34714.14,
@@ -376,9 +278,7 @@
       "to_stage": 360,
       "to_map": "rm001_m00",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 360,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": 75327.016,
@@ -386,9 +286,7 @@
       "to_stage": 361,
       "to_map": "rm001_m00",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 361,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": 78583.13,
@@ -396,9 +294,7 @@
       "to_stage": 362,
       "to_map": "rm001_m00",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 362,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": 75915.25,
@@ -406,9 +302,7 @@
       "to_stage": 363,
       "to_map": "rm001_m00",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 363,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -189385.4,
@@ -416,9 +310,7 @@
       "to_stage": 364,
       "to_map": "rm001_m00",
       "name_en": "House",
-      "name_jp": "民家",
-      "next_stage": 364,
-      "next_name_en": "House"
+      "name_jp": "民家"
     },
     {
       "x": -280083.0,
@@ -426,9 +318,7 @@
       "to_stage": 365,
       "to_map": "rm001_m00",
       "name_en": "Lighthouse Keeper's House",
-      "name_jp": "灯台守の家",
-      "next_stage": 365,
-      "next_name_en": "Lighthouse Keeper's House"
+      "name_jp": "灯台守の家"
     },
     {
       "x": 33094.473,
@@ -436,9 +326,7 @@
       "to_stage": 370,
       "to_map": "rm001_m01",
       "name_en": "Singing Winds Inn",
-      "name_jp": "ジンゲン組合宿　風啼き亭",
-      "next_stage": 370,
-      "next_name_en": "Singing Winds Inn"
+      "name_jp": "ジンゲン組合宿　風啼き亭"
     },
     {
       "x": 79857.92,
@@ -446,9 +334,7 @@
       "to_stage": 371,
       "to_map": "rm001_m01",
       "name_en": "Raul's Arms and Armor Workshop",
-      "name_jp": "ラウル武具工房",
-      "next_stage": 371,
-      "next_name_en": "Raul's Arms and Armor Workshop"
+      "name_jp": "ラウル武具工房"
     },
     {
       "x": -186932.66,
@@ -456,9 +342,7 @@
       "to_stage": 372,
       "to_map": "rm001_m01",
       "name_en": "Brandon's Armor Shop",
-      "name_jp": "ブランドン武具店",
-      "next_stage": 372,
-      "next_name_en": "Brandon's Armor Shop"
+      "name_jp": "ブランドン武具店"
     },
     {
       "x": 49794.605,
@@ -466,9 +350,7 @@
       "to_stage": 373,
       "to_map": "rm001_m01",
       "name_en": "Lone House in the Valley",
-      "name_jp": "渓谷の一軒家",
-      "next_stage": 373,
-      "next_name_en": "Lone House in the Valley"
+      "name_jp": "渓谷の一軒家"
     },
     {
       "x": 79015.8,
@@ -476,9 +358,7 @@
       "to_stage": 380,
       "to_map": "rm001_m02",
       "name_en": "Red Crystal Inn",
-      "name_jp": "キノザ組合宿　紅水晶亭",
-      "next_stage": 380,
-      "next_name_en": "Red Crystal Inn"
+      "name_jp": "キノザ組合宿　紅水晶亭"
     },
     {
       "x": -184770.97,
@@ -486,9 +366,7 @@
       "to_stage": 381,
       "to_map": "rm001_m02",
       "name_en": "Sleeping Wolf Inn",
-      "name_jp": "ドラワン組合宿　眠り狼亭",
-      "next_stage": 381,
-      "next_name_en": "Sleeping Wolf Inn"
+      "name_jp": "ドラワン組合宿　眠り狼亭"
     },
     {
       "x": 56348.89,
@@ -496,9 +374,7 @@
       "to_stage": 600,
       "to_map": "rm002_m00",
       "name_en": "Casey's General Store",
-      "name_jp": "ケイシーの雑貨店",
-      "next_stage": 600,
-      "next_name_en": "Casey's General Store"
+      "name_jp": "ケイシーの雑貨店"
     },
     {
       "x": -43977.223,
@@ -506,39 +382,31 @@
       "to_stage": 601,
       "to_map": "rm002_m00",
       "name_en": "Hermit's House",
-      "name_jp": "隠者の家",
-      "next_stage": 601,
-      "next_name_en": "Hermit's House"
+      "name_jp": "隠者の家"
     },
     {
       "x": -13226.578,
       "z": -347966.28,
-      "to_stage": 602,
-      "to_map": "rm002_m00",
-      "name_en": "Specialist Trading Post",
-      "name_jp": "術師の取引所",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
+      "to_stage": 410,
+      "to_map": "rm110_m00",
+      "name_en": "Mergoda Ruins: Lower Level",
+      "name_jp": "亡都メルゴダ　下層"
     },
     {
       "x": -11370.516,
       "z": -361635.44,
-      "to_stage": 602,
-      "to_map": "rm002_m00",
-      "name_en": "Specialist Trading Post",
-      "name_jp": "術師の取引所",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "to_stage": 424,
+      "to_map": "rm111_m00",
+      "name_en": "Mergoda Security District",
+      "name_jp": "メルゴダ護政区"
     },
     {
       "x": -19246.633,
       "z": -364992.84,
-      "to_stage": 602,
-      "to_map": "rm002_m00",
-      "name_en": "Specialist Trading Post",
-      "name_jp": "術師の取引所",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "to_stage": 424,
+      "to_map": "rm111_m00",
+      "name_en": "Mergoda Security District",
+      "name_jp": "メルゴダ護政区"
     },
     {
       "x": 60777.32,
@@ -546,69 +414,7 @@
       "to_stage": 610,
       "to_map": "rm002_m01",
       "name_en": "Oswald's Armor Shop",
-      "name_jp": "オズワルドの武具店",
-      "next_stage": 610,
-      "next_name_en": "Oswald's Armor Shop"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 611,
-      "to_map": "rm002_m01",
-      "name_en": "Mergodan Residence",
-      "name_jp": "メルゴダ民の住居",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 611,
-      "to_map": "rm002_m01",
-      "name_en": "Mergodan Residence",
-      "name_jp": "メルゴダ民の住居",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 611,
-      "to_map": "rm002_m01",
-      "name_en": "Mergodan Residence",
-      "name_jp": "メルゴダ民の住居",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 612,
-      "to_map": "rm002_m01",
-      "name_en": "Mergodan Residence",
-      "name_jp": "メルゴダ民の住居",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 612,
-      "to_map": "rm002_m01",
-      "name_en": "Mergodan Residence",
-      "name_jp": "メルゴダ民の住居",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 612,
-      "to_map": "rm002_m01",
-      "name_en": "Mergodan Residence",
-      "name_jp": "メルゴダ民の住居",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "オズワルドの武具店"
     },
     {
       "x": 96601.78,
@@ -616,9 +422,7 @@
       "to_stage": 613,
       "to_map": "rm002_m01",
       "name_en": "Old Capital Ruins",
-      "name_jp": "廃都の住居跡",
-      "next_stage": 613,
-      "next_name_en": "Old Capital Ruins"
+      "name_jp": "廃都の住居跡"
     },
     {
       "x": 62836.766,
@@ -626,99 +430,7 @@
       "to_stage": 620,
       "to_map": "rm002_m02",
       "name_en": "Golden Tankard Inn",
-      "name_jp": "ゾマ組合宿　金の杯亭",
-      "next_stage": 620,
-      "next_name_en": "Golden Tankard Inn"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 621,
-      "to_map": "rm002_m02",
-      "name_en": "An Alchemist's Home",
-      "name_jp": "さる錬金術師の家",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 621,
-      "to_map": "rm002_m02",
-      "name_en": "An Alchemist's Home",
-      "name_jp": "さる錬金術師の家",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 621,
-      "to_map": "rm002_m02",
-      "name_en": "An Alchemist's Home",
-      "name_jp": "さる錬金術師の家",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 622,
-      "to_map": "rm002_m22",
-      "name_en": "Theodor's Alchemy Workshop",
-      "name_jp": "テオドール錬金工房",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 622,
-      "to_map": "rm002_m22",
-      "name_en": "Theodor's Alchemy Workshop",
-      "name_jp": "テオドール錬金工房",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 622,
-      "to_map": "rm002_m22",
-      "name_en": "Theodor's Alchemy Workshop",
-      "name_jp": "テオドール錬金工房",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 623,
-      "to_map": "rm002_m02",
-      "name_en": "Elixir Refining Chamber",
-      "name_jp": "エリクシル精製室",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 623,
-      "to_map": "rm002_m02",
-      "name_en": "Elixir Refining Chamber",
-      "name_jp": "エリクシル精製室",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 623,
-      "to_map": "rm002_m02",
-      "name_en": "Elixir Refining Chamber",
-      "name_jp": "エリクシル精製室",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "ゾマ組合宿　金の杯亭"
     },
     {
       "x": 103394.27,
@@ -726,9 +438,7 @@
       "to_stage": 624,
       "to_map": "rm002_m02",
       "name_en": "Old Capital Ruins",
-      "name_jp": "廃都の住居跡",
-      "next_stage": 624,
-      "next_name_en": "Old Capital Ruins"
+      "name_jp": "廃都の住居跡"
     },
     {
       "x": -91689.95,
@@ -736,9 +446,7 @@
       "to_stage": 400,
       "to_map": "rm105_m00",
       "name_en": "Fort Gritten",
-      "name_jp": "グリッテン砦",
-      "next_stage": 400,
-      "next_name_en": "Fort Gritten"
+      "name_jp": "グリッテン砦"
     },
     {
       "x": -86599.51,
@@ -746,9 +454,7 @@
       "to_stage": 400,
       "to_map": "rm105_m00",
       "name_en": "Fort Gritten",
-      "name_jp": "グリッテン砦",
-      "next_stage": 400,
-      "next_name_en": "Fort Gritten"
+      "name_jp": "グリッテン砦"
     },
     {
       "x": -127865.91,
@@ -756,9 +462,7 @@
       "to_stage": 401,
       "to_map": "rm101_m00",
       "name_en": "Glowworm Cave",
-      "name_jp": "燐光虫の洞窟",
-      "next_stage": 401,
-      "next_name_en": "Glowworm Cave"
+      "name_jp": "燐光虫の洞窟"
     },
     {
       "x": -221011.84,
@@ -766,9 +470,7 @@
       "to_stage": 402,
       "to_map": "rm102_m00",
       "name_en": "Gardnox Fortress",
-      "name_jp": "ガルドノック砦",
-      "next_stage": 402,
-      "next_name_en": "Gardnox Fortress"
+      "name_jp": "ガルドノック砦"
     },
     {
       "x": -221011.84,
@@ -776,29 +478,7 @@
       "to_stage": 402,
       "to_map": "rm102_m00",
       "name_en": "Gardnox Fortress",
-      "name_jp": "ガルドノック砦",
-      "next_stage": 402,
-      "next_name_en": "Gardnox Fortress"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 403,
-      "to_map": "rm103_m00",
-      "name_en": "Dreed Castle",
-      "name_jp": "ドリード城",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 403,
-      "to_map": "rm103_m00",
-      "name_en": "Dreed Castle",
-      "name_jp": "ドリード城",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
+      "name_jp": "ガルドノック砦"
     },
     {
       "x": 8925.503,
@@ -806,9 +486,7 @@
       "to_stage": 404,
       "to_map": "rm104_m00",
       "name_en": "Erte Deenan",
-      "name_jp": "エルテ・ディナン",
-      "next_stage": 404,
-      "next_name_en": "Erte Deenan"
+      "name_jp": "エルテ・ディナン"
     },
     {
       "x": -91710.43,
@@ -816,9 +494,7 @@
       "to_stage": 405,
       "to_map": "rm105_m00",
       "name_en": "Fort Gritten",
-      "name_jp": "グリッテン砦",
-      "next_stage": 405,
-      "next_name_en": "Fort Gritten"
+      "name_jp": "グリッテン砦"
     },
     {
       "x": 87427.305,
@@ -826,9 +502,7 @@
       "to_stage": 406,
       "to_map": "rm106_m00",
       "name_en": "Volden Large Tunnels",
-      "name_jp": "ボルド大坑道",
-      "next_stage": 406,
-      "next_name_en": "Volden Large Tunnels"
+      "name_jp": "ボルド大坑道"
     },
     {
       "x": 84633.69,
@@ -836,9 +510,7 @@
       "to_stage": 406,
       "to_map": "rm106_m00",
       "name_en": "Volden Large Tunnels",
-      "name_jp": "ボルド大坑道",
-      "next_stage": 406,
-      "next_name_en": "Volden Large Tunnels"
+      "name_jp": "ボルド大坑道"
     },
     {
       "x": -46859.08,
@@ -846,9 +518,7 @@
       "to_stage": 408,
       "to_map": "rm108_m00",
       "name_en": "Temple of Purification",
-      "name_jp": "禊の神殿",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
+      "name_jp": "禊の神殿"
     },
     {
       "x": -44540.168,
@@ -856,9 +526,7 @@
       "to_stage": 408,
       "to_map": "rm108_m00",
       "name_en": "Temple of Purification",
-      "name_jp": "禊の神殿",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
+      "name_jp": "禊の神殿"
     },
     {
       "x": -38341.74,
@@ -866,39 +534,7 @@
       "to_stage": 408,
       "to_map": "rm108_m00",
       "name_en": "Temple of Purification",
-      "name_jp": "禊の神殿",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 410,
-      "to_map": "rm110_m00",
-      "name_en": "Mergoda Ruins: Lower Level",
-      "name_jp": "亡都メルゴダ　下層",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 410,
-      "to_map": "rm110_m00",
-      "name_en": "Mergoda Ruins: Lower Level",
-      "name_jp": "亡都メルゴダ　下層",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 410,
-      "to_map": "rm110_m00",
-      "name_en": "Mergoda Ruins: Lower Level",
-      "name_jp": "亡都メルゴダ　下層",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "禊の神殿"
     },
     {
       "x": -11375.903,
@@ -906,9 +542,7 @@
       "to_stage": 411,
       "to_map": "rm111_m00",
       "name_en": "Mergoda Security District",
-      "name_jp": "メルゴダ護政区",
-      "next_stage": 411,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "メルゴダ護政区"
     },
     {
       "x": -19243.47,
@@ -916,9 +550,7 @@
       "to_stage": 411,
       "to_map": "rm111_m00",
       "name_en": "Mergoda Security District",
-      "name_jp": "メルゴダ護政区",
-      "next_stage": 411,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "メルゴダ護政区"
     },
     {
       "x": -11376.323,
@@ -926,9 +558,7 @@
       "to_stage": 411,
       "to_map": "rm111_m00",
       "name_en": "Mergoda Security District",
-      "name_jp": "メルゴダ護政区",
-      "next_stage": 411,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "メルゴダ護政区"
     },
     {
       "x": -19246.633,
@@ -936,9 +566,7 @@
       "to_stage": 411,
       "to_map": "rm111_m00",
       "name_en": "Mergoda Security District",
-      "name_jp": "メルゴダ護政区",
-      "next_stage": 411,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "メルゴダ護政区"
     },
     {
       "x": -146595.95,
@@ -946,9 +574,7 @@
       "to_stage": 412,
       "to_map": "rm112_m00",
       "name_en": "Pawn Cathedral",
-      "name_jp": "ポーン郷",
-      "next_stage": 412,
-      "next_name_en": "Pawn Cathedral"
+      "name_jp": "ポーン郷"
     },
     {
       "x": -77355.49,
@@ -956,9 +582,7 @@
       "to_stage": 413,
       "to_map": "rm113_m00",
       "name_en": "Ancient Ritual Ground",
-      "name_jp": "古の祭祀場",
-      "next_stage": 413,
-      "next_name_en": "Ancient Ritual Ground"
+      "name_jp": "古の祭祀場"
     },
     {
       "x": 82685.52,
@@ -966,9 +590,7 @@
       "to_stage": 414,
       "to_map": "rm114_m00",
       "name_en": "Kinoza Mineral Springs",
-      "name_jp": "キノザ鉱泉",
-      "next_stage": 414,
-      "next_name_en": "Kinoza Mineral Springs"
+      "name_jp": "キノザ鉱泉"
     },
     {
       "x": 31052.498,
@@ -976,9 +598,7 @@
       "to_stage": 415,
       "to_map": "rm108_m01",
       "name_en": "Temple of Purification: South Chamber",
-      "name_jp": "禊の神殿　離殿",
-      "next_stage": 415,
-      "next_name_en": "Temple of Purification: South Chamber"
+      "name_jp": "禊の神殿　離殿"
     },
     {
       "x": -32858.184,
@@ -986,9 +606,7 @@
       "to_stage": 415,
       "to_map": "rm108_m01",
       "name_en": "Temple of Purification: South Chamber",
-      "name_jp": "禊の神殿　離殿",
-      "next_stage": 415,
-      "next_name_en": "Temple of Purification: South Chamber"
+      "name_jp": "禊の神殿　離殿"
     },
     {
       "x": -32898.28,
@@ -996,9 +614,7 @@
       "to_stage": 415,
       "to_map": "rm108_m01",
       "name_en": "Temple of Purification: South Chamber",
-      "name_jp": "禊の神殿　離殿",
-      "next_stage": 415,
-      "next_name_en": "Temple of Purification: South Chamber"
+      "name_jp": "禊の神殿　離殿"
     },
     {
       "x": -77360.39,
@@ -1006,9 +622,7 @@
       "to_stage": 416,
       "to_map": "rm113_m00",
       "name_en": "Ancient Ritual Ground",
-      "name_jp": "古の祭祀場",
-      "next_stage": 416,
-      "next_name_en": "Ancient Ritual Ground"
+      "name_jp": "古の祭祀場"
     },
     {
       "x": -91710.43,
@@ -1016,9 +630,7 @@
       "to_stage": 417,
       "to_map": "rm105_m00",
       "name_en": "Fort Gritten",
-      "name_jp": "グリッテン砦",
-      "next_stage": 417,
-      "next_name_en": "Fort Gritten"
+      "name_jp": "グリッテン砦"
     },
     {
       "x": -91865.58,
@@ -1026,39 +638,7 @@
       "to_stage": 417,
       "to_map": "rm105_m00",
       "name_en": "Fort Gritten",
-      "name_jp": "グリッテン砦",
-      "next_stage": 417,
-      "next_name_en": "Fort Gritten"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 418,
-      "to_map": "rm110_m01",
-      "name_en": "Mergoda Ruins: Royal Palace Level",
-      "name_jp": "亡都メルゴダ　王宮層",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 418,
-      "to_map": "rm110_m01",
-      "name_en": "Mergoda Ruins: Royal Palace Level",
-      "name_jp": "亡都メルゴダ　王宮層",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 418,
-      "to_map": "rm110_m01",
-      "name_en": "Mergoda Ruins: Royal Palace Level",
-      "name_jp": "亡都メルゴダ　王宮層",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "グリッテン砦"
     },
     {
       "x": -84711.38,
@@ -1066,39 +646,7 @@
       "to_stage": 500,
       "to_map": "st0500",
       "name_en": "Hidell Catacombs",
-      "name_jp": "ハイデル地下霊廟",
-      "next_stage": 500,
-      "next_name_en": "Hidell Catacombs"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 501,
-      "to_map": "st0501",
-      "name_en": "Abandoned Boneyard",
-      "name_jp": "廃骨場",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 501,
-      "to_map": "st0501",
-      "name_en": "Abandoned Boneyard",
-      "name_jp": "廃骨場",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": -123459.75,
-      "z": -63486.56,
-      "to_stage": 502,
-      "to_map": "st0502",
-      "name_en": "Blocked Passage",
-      "name_jp": "開かずの路",
-      "next_stage": 342,
-      "next_name_en": "Abandoned House Cellar"
+      "name_jp": "ハイデル地下霊廟"
     },
     {
       "x": -111128.7,
@@ -1106,9 +654,7 @@
       "to_stage": 503,
       "to_map": "st0503",
       "name_en": "Small Cave Tombs",
-      "name_jp": "死者の小窟",
-      "next_stage": 503,
-      "next_name_en": "Small Cave Tombs"
+      "name_jp": "死者の小窟"
     },
     {
       "x": -8779.983,
@@ -1116,9 +662,7 @@
       "to_stage": 504,
       "to_map": "st0504",
       "name_en": "Abandoned Underground Passage",
-      "name_jp": "棄てられた地下道",
-      "next_stage": 504,
-      "next_name_en": "Abandoned Underground Passage"
+      "name_jp": "棄てられた地下道"
     },
     {
       "x": 14228.65,
@@ -1126,9 +670,7 @@
       "to_stage": 505,
       "to_map": "st0505",
       "name_en": "Catacombs",
-      "name_jp": "カタコンベ",
-      "next_stage": 505,
-      "next_name_en": "Catacombs"
+      "name_jp": "カタコンベ"
     },
     {
       "x": -83483.89,
@@ -1136,9 +678,7 @@
       "to_stage": 506,
       "to_map": "st0506",
       "name_en": "Betland Cemetery",
-      "name_jp": "バートランド墓地",
-      "next_stage": 506,
-      "next_name_en": "Betland Cemetery"
+      "name_jp": "バートランド墓地"
     },
     {
       "x": 84958.47,
@@ -1146,9 +686,7 @@
       "to_stage": 507,
       "to_map": "st0507",
       "name_en": "Dead Lord's Labyrinth",
-      "name_jp": "死王の迷宮",
-      "next_stage": 507,
-      "next_name_en": "Dead Lord's Labyrinth"
+      "name_jp": "死王の迷宮"
     },
     {
       "x": 108493.875,
@@ -1156,9 +694,7 @@
       "to_stage": 508,
       "to_map": "st0508",
       "name_en": "Shrine of Resentment",
-      "name_jp": "怨嗟の祠",
-      "next_stage": 508,
-      "next_name_en": "Shrine of Resentment"
+      "name_jp": "怨嗟の祠"
     },
     {
       "x": 90577.34,
@@ -1166,9 +702,7 @@
       "to_stage": 509,
       "to_map": "st0509",
       "name_en": "Empty Chapel",
-      "name_jp": "虚ろの小堂",
-      "next_stage": 509,
-      "next_name_en": "Empty Chapel"
+      "name_jp": "虚ろの小堂"
     },
     {
       "x": -7820.297,
@@ -1176,9 +710,7 @@
       "to_stage": 510,
       "to_map": "st0510",
       "name_en": "Hobolic Cave",
-      "name_jp": "ホボリック洞穴",
-      "next_stage": 510,
-      "next_name_en": "Hobolic Cave"
+      "name_jp": "ホボリック洞穴"
     },
     {
       "x": 37463.797,
@@ -1186,9 +718,7 @@
       "to_stage": 511,
       "to_map": "st0511",
       "name_en": "Miners' Secret Route",
-      "name_jp": "採掘師の隠れ道",
-      "next_stage": 511,
-      "next_name_en": "Miners' Secret Route"
+      "name_jp": "採掘師の隠れ道"
     },
     {
       "x": 65724.36,
@@ -1196,9 +726,7 @@
       "to_stage": 511,
       "to_map": "st0511",
       "name_en": "Miners' Secret Route",
-      "name_jp": "採掘師の隠れ道",
-      "next_stage": 511,
-      "next_name_en": "Miners' Secret Route"
+      "name_jp": "採掘師の隠れ道"
     },
     {
       "x": -25796.24,
@@ -1206,9 +734,7 @@
       "to_stage": 512,
       "to_map": "st0512",
       "name_en": "Forest People's Tunnel",
-      "name_jp": "森民の地下道",
-      "next_stage": 512,
-      "next_name_en": "Forest People's Tunnel"
+      "name_jp": "森民の地下道"
     },
     {
       "x": -53042.418,
@@ -1216,9 +742,7 @@
       "to_stage": 512,
       "to_map": "st0512",
       "name_en": "Forest People's Tunnel",
-      "name_jp": "森民の地下道",
-      "next_stage": 512,
-      "next_name_en": "Forest People's Tunnel"
+      "name_jp": "森民の地下道"
     },
     {
       "x": -212141.97,
@@ -1226,9 +750,7 @@
       "to_stage": 513,
       "to_map": "st0513",
       "name_en": "Roaring Tide Cave",
-      "name_jp": "潮騒洞窟",
-      "next_stage": 513,
-      "next_name_en": "Roaring Tide Cave"
+      "name_jp": "潮騒洞窟"
     },
     {
       "x": 31841.047,
@@ -1236,9 +758,7 @@
       "to_stage": 514,
       "to_map": "st0514",
       "name_en": "Windhowl Cave",
-      "name_jp": "風鳴り洞窟",
-      "next_stage": 514,
-      "next_name_en": "Windhowl Cave"
+      "name_jp": "風鳴り洞窟"
     },
     {
       "x": 50954.938,
@@ -1246,9 +766,7 @@
       "to_stage": 515,
       "to_map": "st0515",
       "name_en": "Cliff-Side Tunnel",
-      "name_jp": "断崖の坑道",
-      "next_stage": 515,
-      "next_name_en": "Cliff-Side Tunnel"
+      "name_jp": "断崖の坑道"
     },
     {
       "x": 67736.89,
@@ -1256,9 +774,7 @@
       "to_stage": 516,
       "to_map": "st0516",
       "name_en": "Volden Narrow Tunnels",
-      "name_jp": "ボルド小坑道",
-      "next_stage": 516,
-      "next_name_en": "Volden Narrow Tunnels"
+      "name_jp": "ボルド小坑道"
     },
     {
       "x": 7932.536,
@@ -1266,9 +782,7 @@
       "to_stage": 517,
       "to_map": "st0517",
       "name_en": "Bandit Hideaway",
-      "name_jp": "盗賊の隠れ家",
-      "next_stage": 517,
-      "next_name_en": "Bandit Hideaway"
+      "name_jp": "盗賊の隠れ家"
     },
     {
       "x": 46497.54,
@@ -1276,9 +790,7 @@
       "to_stage": 518,
       "to_map": "st0518",
       "name_en": "Demon's Grotto",
-      "name_jp": "悪鬼の岩窟",
-      "next_stage": 518,
-      "next_name_en": "Demon's Grotto"
+      "name_jp": "悪鬼の岩窟"
     },
     {
       "x": 7740.553,
@@ -1286,9 +798,7 @@
       "to_stage": 519,
       "to_map": "st0519",
       "name_en": "Southern Wall Fissure",
-      "name_jp": "南壁のひび",
-      "next_stage": 519,
-      "next_name_en": "Southern Wall Fissure"
+      "name_jp": "南壁のひび"
     },
     {
       "x": -71631.914,
@@ -1296,9 +806,7 @@
       "to_stage": 520,
       "to_map": "st0520",
       "name_en": "Bowmaster's Secret Lodge",
-      "name_jp": "秘弓師の住居",
-      "next_stage": 520,
-      "next_name_en": "Bowmaster's Secret Lodge"
+      "name_jp": "秘弓師の住居"
     },
     {
       "x": -71620.51,
@@ -1306,49 +814,7 @@
       "to_stage": 520,
       "to_map": "st0520",
       "name_en": "Bowmaster's Secret Lodge",
-      "name_jp": "秘弓師の住居",
-      "next_stage": 520,
-      "next_name_en": "Bowmaster's Secret Lodge"
-    },
-    {
-      "x": 8925.503,
-      "z": 181839.67,
-      "to_stage": 521,
-      "to_map": "st0521",
-      "name_en": "Le Karvas Patiro",
-      "name_jp": "レ・カルバス・パティーロ",
-      "next_stage": 404,
-      "next_name_en": "Erte Deenan"
-    },
-    {
-      "x": 8925.503,
-      "z": 181839.67,
-      "to_stage": 522,
-      "to_map": "st0522",
-      "name_en": "Le Karvas Lotana",
-      "name_jp": "レ・カルバス・ロタナ",
-      "next_stage": 404,
-      "next_name_en": "Erte Deenan"
-    },
-    {
-      "x": 8925.503,
-      "z": 181839.67,
-      "to_stage": 523,
-      "to_map": "st0523",
-      "name_en": "Le Karvas Salto",
-      "name_jp": "レ・カルバス・サルトー",
-      "next_stage": 404,
-      "next_name_en": "Erte Deenan"
-    },
-    {
-      "x": 8925.503,
-      "z": 181839.67,
-      "to_stage": 524,
-      "to_map": "st0524",
-      "name_en": "Le Karvas Arma",
-      "name_jp": "レ・カルバス・アーマ",
-      "next_stage": 404,
-      "next_name_en": "Erte Deenan"
+      "name_jp": "秘弓師の住居"
     },
     {
       "x": -90448.03,
@@ -1356,9 +822,7 @@
       "to_stage": 525,
       "to_map": "st0525",
       "name_en": "Dark Green Terrace",
-      "name_jp": "深緑のテラス",
-      "next_stage": 525,
-      "next_name_en": "Dark Green Terrace"
+      "name_jp": "深緑のテラス"
     },
     {
       "x": -96604.0,
@@ -1366,9 +830,7 @@
       "to_stage": 526,
       "to_map": "st0526",
       "name_en": "Sacred Spring Terrace",
-      "name_jp": "霊泉のテラス",
-      "next_stage": 526,
-      "next_name_en": "Sacred Spring Terrace"
+      "name_jp": "霊泉のテラス"
     },
     {
       "x": -53996.44,
@@ -1376,9 +838,7 @@
       "to_stage": 527,
       "to_map": "st0527",
       "name_en": "Greenleaf Terrace",
-      "name_jp": "蒼葉のテラス",
-      "next_stage": 527,
-      "next_name_en": "Greenleaf Terrace"
+      "name_jp": "蒼葉のテラス"
     },
     {
       "x": -82056.47,
@@ -1386,9 +846,7 @@
       "to_stage": 528,
       "to_map": "st0528",
       "name_en": "Sunset Terrace",
-      "name_jp": "斜陽のテラス",
-      "next_stage": 528,
-      "next_name_en": "Sunset Terrace"
+      "name_jp": "斜陽のテラス"
     },
     {
       "x": -43171.92,
@@ -1396,129 +854,7 @@
       "to_stage": 529,
       "to_map": "st0529",
       "name_en": "Moonlight Terrace",
-      "name_jp": "月影のテラス",
-      "next_stage": 529,
-      "next_name_en": "Moonlight Terrace"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 530,
-      "to_map": "st0530",
-      "name_en": "Dreed Drainage Channels",
-      "name_jp": "ドリード排水路",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 530,
-      "to_map": "st0530",
-      "name_en": "Dreed Drainage Channels",
-      "name_jp": "ドリード排水路",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 531,
-      "to_map": "st0531",
-      "name_en": "Cesspool",
-      "name_jp": "汚水溜め",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 531,
-      "to_map": "st0531",
-      "name_en": "Cesspool",
-      "name_jp": "汚水溜め",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 532,
-      "to_map": "st0532",
-      "name_en": "Underground Side Entrance",
-      "name_jp": "地下通用口",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 532,
-      "to_map": "st0532",
-      "name_en": "Underground Side Entrance",
-      "name_jp": "地下通用口",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": -46859.08,
-      "z": -183572.62,
-      "to_stage": 533,
-      "to_map": "st0533",
-      "name_en": "Defiled Waterway",
-      "name_jp": "不浄の地下水道",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -44540.168,
-      "z": -175079.08,
-      "to_stage": 533,
-      "to_map": "st0533",
-      "name_en": "Defiled Waterway",
-      "name_jp": "不浄の地下水道",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -38341.74,
-      "z": -168820.42,
-      "to_stage": 533,
-      "to_map": "st0533",
-      "name_en": "Defiled Waterway",
-      "name_jp": "不浄の地下水道",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -46859.08,
-      "z": -183572.62,
-      "to_stage": 534,
-      "to_map": "st0534",
-      "name_en": "North Drainage Channel",
-      "name_jp": "北側排水路",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -44540.168,
-      "z": -175079.08,
-      "to_stage": 534,
-      "to_map": "st0534",
-      "name_en": "North Drainage Channel",
-      "name_jp": "北側排水路",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -38341.74,
-      "z": -168820.42,
-      "to_stage": 534,
-      "to_map": "st0534",
-      "name_en": "North Drainage Channel",
-      "name_jp": "北側排水路",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
+      "name_jp": "月影のテラス"
     },
     {
       "x": -81017.71,
@@ -1526,9 +862,7 @@
       "to_stage": 535,
       "to_map": "st0535",
       "name_en": "Knights' Old Route",
-      "name_jp": "旧騎士団連絡路",
-      "next_stage": 535,
-      "next_name_en": "Knights' Old Route"
+      "name_jp": "旧騎士団連絡路"
     },
     {
       "x": 5607.0654,
@@ -1536,69 +870,7 @@
       "to_stage": 535,
       "to_map": "st0535",
       "name_en": "Knights' Old Route",
-      "name_jp": "旧騎士団連絡路",
-      "next_stage": 535,
-      "next_name_en": "Knights' Old Route"
-    },
-    {
-      "x": -46859.08,
-      "z": -183572.62,
-      "to_stage": 536,
-      "to_map": "st0536",
-      "name_en": "Balcony",
-      "name_jp": "中二階",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -44540.168,
-      "z": -175079.08,
-      "to_stage": 536,
-      "to_map": "st0536",
-      "name_en": "Balcony",
-      "name_jp": "中二階",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -38341.74,
-      "z": -168820.42,
-      "to_stage": 536,
-      "to_map": "st0536",
-      "name_en": "Balcony",
-      "name_jp": "中二階",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -46859.08,
-      "z": -183572.62,
-      "to_stage": 537,
-      "to_map": "st0537",
-      "name_en": "Purified Water Section",
-      "name_jp": "浄水区",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -44540.168,
-      "z": -175079.08,
-      "to_stage": 537,
-      "to_map": "st0537",
-      "name_en": "Purified Water Section",
-      "name_jp": "浄水区",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -38341.74,
-      "z": -168820.42,
-      "to_stage": 537,
-      "to_map": "st0537",
-      "name_en": "Purified Water Section",
-      "name_jp": "浄水区",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
+      "name_jp": "旧騎士団連絡路"
     },
     {
       "x": -165954.69,
@@ -1606,9 +878,7 @@
       "to_stage": 538,
       "to_map": "st0538",
       "name_en": "Knights' Old Storehouse",
-      "name_jp": "旧騎士団資材庫",
-      "next_stage": 538,
-      "next_name_en": "Knights' Old Storehouse"
+      "name_jp": "旧騎士団資材庫"
     },
     {
       "x": -50205.906,
@@ -1616,29 +886,7 @@
       "to_stage": 539,
       "to_map": "st0539",
       "name_en": "Lakeside Cellar",
-      "name_jp": "湖岸地下室",
-      "next_stage": 539,
-      "next_name_en": "Lakeside Cellar"
-    },
-    {
-      "x": 16089.594,
-      "z": -21636.197,
-      "to_stage": 540,
-      "to_map": "st0540",
-      "name_en": "Fort's Old Well",
-      "name_jp": "城の古井戸",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
-    },
-    {
-      "x": 3461.9958,
-      "z": -34718.906,
-      "to_stage": 540,
-      "to_map": "st0540",
-      "name_en": "Fort's Old Well",
-      "name_jp": "城の古井戸",
-      "next_stage": 403,
-      "next_name_en": "Dreed Castle"
+      "name_jp": "湖岸地下室"
     },
     {
       "x": -114488.56,
@@ -1646,9 +894,7 @@
       "to_stage": 541,
       "to_map": "st0541",
       "name_en": "Tel's Withered Well",
-      "name_jp": "テルの枯れ井戸",
-      "next_stage": 541,
-      "next_name_en": "Tel's Withered Well"
+      "name_jp": "テルの枯れ井戸"
     },
     {
       "x": 31668.088,
@@ -1656,9 +902,7 @@
       "to_stage": 542,
       "to_map": "st0542",
       "name_en": "Village's Abandoned Well",
-      "name_jp": "村の枯れ井戸",
-      "next_stage": 542,
-      "next_name_en": "Village's Abandoned Well"
+      "name_jp": "村の枯れ井戸"
     },
     {
       "x": 77253.69,
@@ -1666,9 +910,7 @@
       "to_stage": 543,
       "to_map": "st0543",
       "name_en": "Old Spring",
-      "name_jp": "旧鉱泉湧き口",
-      "next_stage": 543,
-      "next_name_en": "Old Spring"
+      "name_jp": "旧鉱泉湧き口"
     },
     {
       "x": -188214.9,
@@ -1676,9 +918,7 @@
       "to_stage": 544,
       "to_map": "st0544",
       "name_en": "Village Well",
-      "name_jp": "生活用水汲み場",
-      "next_stage": 544,
-      "next_name_en": "Village Well"
+      "name_jp": "生活用水汲み場"
     },
     {
       "x": -162064.44,
@@ -1686,9 +926,7 @@
       "to_stage": 545,
       "to_map": "st0545",
       "name_en": "Decaying Well",
-      "name_jp": "朽ちかけた井戸",
-      "next_stage": 545,
-      "next_name_en": "Decaying Well"
+      "name_jp": "朽ちかけた井戸"
     },
     {
       "x": 54901.945,
@@ -1696,9 +934,7 @@
       "to_stage": 546,
       "to_map": "st0546",
       "name_en": "Keening Well",
-      "name_jp": "啼き井戸",
-      "next_stage": 546,
-      "next_name_en": "Keening Well"
+      "name_jp": "啼き井戸"
     },
     {
       "x": -44299.504,
@@ -1706,9 +942,7 @@
       "to_stage": 547,
       "to_map": "st0547",
       "name_en": "Sage's Old Well",
-      "name_jp": "賢者の古井戸",
-      "next_stage": 547,
-      "next_name_en": "Sage's Old Well"
+      "name_jp": "賢者の古井戸"
     },
     {
       "x": -279165.16,
@@ -1716,9 +950,7 @@
       "to_stage": 548,
       "to_map": "st0548",
       "name_en": "Lighthouse Old Well",
-      "name_jp": "灯台下の古井戸",
-      "next_stage": 548,
-      "next_name_en": "Lighthouse Old Well"
+      "name_jp": "灯台下の古井戸"
     },
     {
       "x": -129461.53,
@@ -1726,9 +958,7 @@
       "to_stage": 549,
       "to_map": "st0549",
       "name_en": "Roadside Dry Well",
-      "name_jp": "ハイデル街道の枯れ井戸",
-      "next_stage": 549,
-      "next_name_en": "Roadside Dry Well"
+      "name_jp": "ハイデル街道の枯れ井戸"
     },
     {
       "x": -132728.84,
@@ -1736,9 +966,7 @@
       "to_stage": 550,
       "to_map": "st0550",
       "name_en": "Training Chapel",
-      "name_jp": "修練の祠",
-      "next_stage": 550,
-      "next_name_en": "Training Chapel"
+      "name_jp": "修練の祠"
     },
     {
       "x": 44418.074,
@@ -1746,9 +974,7 @@
       "to_stage": 551,
       "to_map": "st0551",
       "name_en": "Valley Chapel",
-      "name_jp": "渓谷の小堂",
-      "next_stage": 551,
-      "next_name_en": "Valley Chapel"
+      "name_jp": "渓谷の小堂"
     },
     {
       "x": -68116.766,
@@ -1756,9 +982,7 @@
       "to_stage": 552,
       "to_map": "st0552",
       "name_en": "Mysree Grove Shrine",
-      "name_jp": "標の祠　ミスリウ森林深部",
-      "next_stage": 552,
-      "next_name_en": "Mysree Grove Shrine"
+      "name_jp": "標の祠　ミスリウ森林深部"
     },
     {
       "x": 67310.61,
@@ -1766,9 +990,7 @@
       "to_stage": 553,
       "to_map": "st0553",
       "name_en": "Summit Chapel",
-      "name_jp": "山頂の小堂",
-      "next_stage": 553,
-      "next_name_en": "Summit Chapel"
+      "name_jp": "山頂の小堂"
     },
     {
       "x": -19019.777,
@@ -1776,29 +998,7 @@
       "to_stage": 554,
       "to_map": "st0554",
       "name_en": "Zandora Wastelands Shrine",
-      "name_jp": "標の祠　ザンドラ禁域",
-      "next_stage": 554,
-      "next_name_en": "Zandora Wastelands Shrine"
-    },
-    {
-      "x": -146595.95,
-      "z": 3978.7312,
-      "to_stage": 560,
-      "to_map": "st0560",
-      "name_en": "The Rift",
-      "name_jp": "異界の狭間",
-      "next_stage": 412,
-      "next_name_en": "Pawn Cathedral"
-    },
-    {
-      "x": -146595.95,
-      "z": 3978.7312,
-      "to_stage": 562,
-      "to_map": "st0562",
-      "name_en": "The Rift",
-      "name_jp": "異界の狭間",
-      "next_stage": 412,
-      "next_name_en": "Pawn Cathedral"
+      "name_jp": "標の祠　ザンドラ禁域"
     },
     {
       "x": -76085.48,
@@ -1806,9 +1006,7 @@
       "to_stage": 571,
       "to_map": "st0571",
       "name_en": "The Second Ark",
-      "name_jp": "第二のアーク",
-      "next_stage": 571,
-      "next_name_en": "The Second Ark"
+      "name_jp": "第二のアーク"
     },
     {
       "x": -76092.73,
@@ -1816,9 +1014,7 @@
       "to_stage": 571,
       "to_map": "st0571",
       "name_en": "The Second Ark",
-      "name_jp": "第二のアーク",
-      "next_stage": 571,
-      "next_name_en": "The Second Ark"
+      "name_jp": "第二のアーク"
     },
     {
       "x": -136728.95,
@@ -1826,9 +1022,7 @@
       "to_stage": 573,
       "to_map": "st0573",
       "name_en": "The Ark",
-      "name_jp": "アーク",
-      "next_stage": 573,
-      "next_name_en": "The Ark"
+      "name_jp": "アーク"
     },
     {
       "x": -76085.48,
@@ -1836,239 +1030,7 @@
       "to_stage": 574,
       "to_map": "st0574",
       "name_en": "The Second Ark",
-      "name_jp": "第二のアーク",
-      "next_stage": 574,
-      "next_name_en": "The Second Ark"
-    },
-    {
-      "x": 31052.498,
-      "z": -243545.1,
-      "to_stage": 580,
-      "to_map": "st0580",
-      "name_en": "Lakebottom Connecting Passage",
-      "name_jp": "湖底連絡路",
-      "next_stage": 415,
-      "next_name_en": "Temple of Purification: South Chamber"
-    },
-    {
-      "x": -32858.184,
-      "z": -181786.56,
-      "to_stage": 580,
-      "to_map": "st0580",
-      "name_en": "Lakebottom Connecting Passage",
-      "name_jp": "湖底連絡路",
-      "next_stage": 415,
-      "next_name_en": "Temple of Purification: South Chamber"
-    },
-    {
-      "x": -32898.28,
-      "z": -181763.48,
-      "to_stage": 580,
-      "to_map": "st0580",
-      "name_en": "Lakebottom Connecting Passage",
-      "name_jp": "湖底連絡路",
-      "next_stage": 415,
-      "next_name_en": "Temple of Purification: South Chamber"
-    },
-    {
-      "x": -135279.52,
-      "z": -181007.75,
-      "to_stage": 581,
-      "to_map": "st0581",
-      "name_en": "War Demons' Hideout",
-      "name_jp": "戦鬼の影穴",
-      "next_stage": 722,
-      "next_name_en": "Groaning Old Well"
-    },
-    {
-      "x": 18214.988,
-      "z": -55470.72,
-      "to_stage": 582,
-      "to_map": "st0582",
-      "name_en": "Dreed Waterway Ruins",
-      "name_jp": "ドリード水路跡",
-      "next_stage": 582,
-      "next_name_en": "Dreed Waterway Ruins"
-    },
-    {
-      "x": 89470.22,
-      "z": 43210.336,
-      "to_stage": 583,
-      "to_map": "st0583",
-      "name_en": "Kinoza Drains",
-      "name_jp": "キノザ治水路",
-      "next_stage": 583,
-      "next_name_en": "Kinoza Drains"
-    },
-    {
-      "x": -90616.695,
-      "z": 27946.717,
-      "to_stage": 584,
-      "to_map": "st0584",
-      "name_en": "Lynwood Underground Waterway",
-      "name_jp": "リンウッド地下水路",
-      "next_stage": 584,
-      "next_name_en": "Lynwood Underground Waterway"
-    },
-    {
-      "x": -3495.2954,
-      "z": -76517.086,
-      "to_stage": 585,
-      "to_map": "st0585",
-      "name_en": "Knights' Old Guardhouse",
-      "name_jp": "旧騎士団詰め所",
-      "next_stage": 585,
-      "next_name_en": "Knights' Old Guardhouse"
-    },
-    {
-      "x": -67809.016,
-      "z": -225039.95,
-      "to_stage": 586,
-      "to_map": "st0586",
-      "name_en": "Betland Underground Passage",
-      "name_jp": "バートランド地下道",
-      "next_stage": 586,
-      "next_name_en": "Betland Underground Passage"
-    },
-    {
-      "x": -120021.55,
-      "z": -243872.58,
-      "to_stage": 586,
-      "to_map": "st0586",
-      "name_en": "Betland Underground Passage",
-      "name_jp": "バートランド地下道",
-      "next_stage": 586,
-      "next_name_en": "Betland Underground Passage"
-    },
-    {
-      "x": -156635.1,
-      "z": -292910.62,
-      "to_stage": 587,
-      "to_map": "st0587",
-      "name_en": "Tegor Floodway",
-      "name_jp": "テゴル治水路",
-      "next_stage": 587,
-      "next_name_en": "Tegor Floodway"
-    },
-    {
-      "x": -33289.66,
-      "z": -311327.03,
-      "to_stage": 588,
-      "to_map": "st0588",
-      "name_en": "Mergoda Waterway",
-      "name_jp": "メルゴダ大水網",
-      "next_stage": 588,
-      "next_name_en": "Mergoda Waterway"
-    },
-    {
-      "x": 55715.83,
-      "z": -287087.34,
-      "to_stage": 588,
-      "to_map": "st0588",
-      "name_en": "Mergoda Waterway",
-      "name_jp": "メルゴダ大水網",
-      "next_stage": 588,
-      "next_name_en": "Mergoda Waterway"
-    },
-    {
-      "x": -43171.92,
-      "z": 195274.17,
-      "to_stage": 589,
-      "to_map": "st0589",
-      "name_en": "Blue Waterway",
-      "name_jp": "蒼水路",
-      "next_stage": 529,
-      "next_name_en": "Moonlight Terrace"
-    },
-    {
-      "x": -88143.25,
-      "z": 2086.496,
-      "to_stage": 590,
-      "to_map": "st0590",
-      "name_en": "Mysree Limestone Cave",
-      "name_jp": "ミスリウ鍾乳洞",
-      "next_stage": 590,
-      "next_name_en": "Mysree Limestone Cave"
-    },
-    {
-      "x": -83278.73,
-      "z": 50005.03,
-      "to_stage": 591,
-      "to_map": "st0591",
-      "name_en": "Demon's Den",
-      "name_jp": "魔獣の巣穴",
-      "next_stage": 591,
-      "next_name_en": "Demon's Den"
-    },
-    {
-      "x": -146012.73,
-      "z": 20603.191,
-      "to_stage": 592,
-      "to_map": "st0592",
-      "name_en": "Hunters' Secret Passage",
-      "name_jp": "狩人の抜け穴",
-      "next_stage": 592,
-      "next_name_en": "Hunters' Secret Passage"
-    },
-    {
-      "x": -127080.836,
-      "z": -63116.85,
-      "to_stage": 592,
-      "to_map": "st0592",
-      "name_en": "Hunters' Secret Passage",
-      "name_jp": "狩人の抜け穴",
-      "next_stage": 592,
-      "next_name_en": "Hunters' Secret Passage"
-    },
-    {
-      "x": -39504.566,
-      "z": 171864.88,
-      "to_stage": 700,
-      "to_map": "st0700",
-      "name_en": "Sacred Tree Terrace",
-      "name_jp": "聖樹のテラス",
-      "next_stage": 700,
-      "next_name_en": "Sacred Tree Terrace"
-    },
-    {
-      "x": -53447.89,
-      "z": 166429.78,
-      "to_stage": 701,
-      "to_map": "st0701",
-      "name_en": "Divine Blossom Terrace",
-      "name_jp": "神花のテラス",
-      "next_stage": 701,
-      "next_name_en": "Divine Blossom Terrace"
-    },
-    {
-      "x": 12703.171,
-      "z": -294938.34,
-      "to_stage": 710,
-      "to_map": "st0710",
-      "name_en": "Old Underground Laboratory",
-      "name_jp": "旧地下実験所",
-      "next_stage": 710,
-      "next_name_en": "Old Underground Laboratory"
-    },
-    {
-      "x": 12951.912,
-      "z": -52865.38,
-      "to_stage": 720,
-      "to_map": "st0720",
-      "name_en": "Old Sealed Well",
-      "name_jp": "閉ざされた古井戸",
-      "next_stage": 720,
-      "next_name_en": "Old Sealed Well"
-    },
-    {
-      "x": 48615.96,
-      "z": -61341.684,
-      "to_stage": 721,
-      "to_map": "st0721",
-      "name_en": "Half-finished Well",
-      "name_jp": "掘削中の井戸",
-      "next_stage": 721,
-      "next_name_en": "Half-finished Well"
+      "name_jp": "第二のアーク"
     },
     {
       "x": -135279.52,
@@ -2076,9 +1038,151 @@
       "to_stage": 722,
       "to_map": "st0722",
       "name_en": "Groaning Old Well",
-      "name_jp": "呻きの枯れ井戸",
-      "next_stage": 722,
-      "next_name_en": "Groaning Old Well"
+      "name_jp": "呻きの枯れ井戸"
+    },
+    {
+      "x": 18214.988,
+      "z": -55470.72,
+      "to_stage": 582,
+      "to_map": "st0582",
+      "name_en": "Dreed Waterway Ruins",
+      "name_jp": "ドリード水路跡"
+    },
+    {
+      "x": 89470.22,
+      "z": 43210.336,
+      "to_stage": 583,
+      "to_map": "st0583",
+      "name_en": "Kinoza Drains",
+      "name_jp": "キノザ治水路"
+    },
+    {
+      "x": -90616.695,
+      "z": 27946.717,
+      "to_stage": 584,
+      "to_map": "st0584",
+      "name_en": "Lynwood Underground Waterway",
+      "name_jp": "リンウッド地下水路"
+    },
+    {
+      "x": -3495.2954,
+      "z": -76517.086,
+      "to_stage": 585,
+      "to_map": "st0585",
+      "name_en": "Knights' Old Guardhouse",
+      "name_jp": "旧騎士団詰め所"
+    },
+    {
+      "x": -67809.016,
+      "z": -225039.95,
+      "to_stage": 586,
+      "to_map": "st0586",
+      "name_en": "Betland Underground Passage",
+      "name_jp": "バートランド地下道"
+    },
+    {
+      "x": -120021.55,
+      "z": -243872.58,
+      "to_stage": 586,
+      "to_map": "st0586",
+      "name_en": "Betland Underground Passage",
+      "name_jp": "バートランド地下道"
+    },
+    {
+      "x": -156635.1,
+      "z": -292910.62,
+      "to_stage": 587,
+      "to_map": "st0587",
+      "name_en": "Tegor Floodway",
+      "name_jp": "テゴル治水路"
+    },
+    {
+      "x": -33289.66,
+      "z": -311327.03,
+      "to_stage": 588,
+      "to_map": "st0588",
+      "name_en": "Mergoda Waterway",
+      "name_jp": "メルゴダ大水網"
+    },
+    {
+      "x": 55715.83,
+      "z": -287087.34,
+      "to_stage": 588,
+      "to_map": "st0588",
+      "name_en": "Mergoda Waterway",
+      "name_jp": "メルゴダ大水網"
+    },
+    {
+      "x": -88143.25,
+      "z": 2086.496,
+      "to_stage": 590,
+      "to_map": "st0590",
+      "name_en": "Mysree Limestone Cave",
+      "name_jp": "ミスリウ鍾乳洞"
+    },
+    {
+      "x": -83278.73,
+      "z": 50005.03,
+      "to_stage": 591,
+      "to_map": "st0591",
+      "name_en": "Demon's Den",
+      "name_jp": "魔獣の巣穴"
+    },
+    {
+      "x": -146012.73,
+      "z": 20603.191,
+      "to_stage": 592,
+      "to_map": "st0592",
+      "name_en": "Hunters' Secret Passage",
+      "name_jp": "狩人の抜け穴"
+    },
+    {
+      "x": -127080.836,
+      "z": -63116.85,
+      "to_stage": 592,
+      "to_map": "st0592",
+      "name_en": "Hunters' Secret Passage",
+      "name_jp": "狩人の抜け穴"
+    },
+    {
+      "x": -39504.566,
+      "z": 171864.88,
+      "to_stage": 700,
+      "to_map": "st0700",
+      "name_en": "Sacred Tree Terrace",
+      "name_jp": "聖樹のテラス"
+    },
+    {
+      "x": -53447.89,
+      "z": 166429.78,
+      "to_stage": 701,
+      "to_map": "st0701",
+      "name_en": "Divine Blossom Terrace",
+      "name_jp": "神花のテラス"
+    },
+    {
+      "x": 12703.171,
+      "z": -294938.34,
+      "to_stage": 710,
+      "to_map": "st0710",
+      "name_en": "Old Underground Laboratory",
+      "name_jp": "旧地下実験所"
+    },
+    {
+      "x": 12951.912,
+      "z": -52865.38,
+      "to_stage": 720,
+      "to_map": "st0720",
+      "name_en": "Old Sealed Well",
+      "name_jp": "閉ざされた古井戸"
+    },
+    {
+      "x": 48615.96,
+      "z": -61341.684,
+      "to_stage": 721,
+      "to_map": "st0721",
+      "name_en": "Half-finished Well",
+      "name_jp": "掘削中の井戸"
     },
     {
       "x": -5485.7266,
@@ -2086,9 +1190,7 @@
       "to_stage": 723,
       "to_map": "st0723",
       "name_en": "Arcane Font",
-      "name_jp": "術師の地下泉",
-      "next_stage": 723,
-      "next_name_en": "Arcane Font"
+      "name_jp": "術師の地下泉"
     },
     {
       "x": 99632.836,
@@ -2096,39 +1198,7 @@
       "to_stage": 724,
       "to_map": "st0724",
       "name_en": "Water Channel Ruins",
-      "name_jp": "取水場跡",
-      "next_stage": 724,
-      "next_name_en": "Water Channel Ruins"
-    },
-    {
-      "x": -43171.92,
-      "z": 195274.17,
-      "to_stage": 725,
-      "to_map": "st0725",
-      "name_en": "Deep Water's Edge",
-      "name_jp": "水陰の淵辺",
-      "next_stage": 529,
-      "next_name_en": "Moonlight Terrace"
-    },
-    {
-      "x": -96604.0,
-      "z": 167776.2,
-      "to_stage": 726,
-      "to_map": "st0726",
-      "name_en": "Bower Old Well",
-      "name_jp": "木陰の古井戸",
-      "next_stage": 526,
-      "next_name_en": "Sacred Spring Terrace"
-    },
-    {
-      "x": -53447.89,
-      "z": 166429.78,
-      "to_stage": 727,
-      "to_map": "st0727",
-      "name_en": "Fairy's Withered Well",
-      "name_jp": "妖精の枯れ井戸",
-      "next_stage": 701,
-      "next_name_en": "Divine Blossom Terrace"
+      "name_jp": "取水場跡"
     },
     {
       "x": -216740.45,
@@ -2136,9 +1206,7 @@
       "to_stage": 730,
       "to_map": "st0730",
       "name_en": "Underground Crypt",
-      "name_jp": "地下納骨堂",
-      "next_stage": 730,
-      "next_name_en": "Underground Crypt"
+      "name_jp": "地下納骨堂"
     },
     {
       "x": -111716.16,
@@ -2146,59 +1214,7 @@
       "to_stage": 728,
       "to_map": "st0728",
       "name_en": "Old Waterhole",
-      "name_jp": "旧水汲み場",
-      "next_stage": 728,
-      "next_name_en": "Old Waterhole"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 625,
-      "to_map": "rm002_m02",
-      "name_en": "Mergoda Residential Area",
-      "name_jp": "メルゴダ居住区",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 625,
-      "to_map": "rm002_m02",
-      "name_en": "Mergoda Residential Area",
-      "name_jp": "メルゴダ居住区",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 625,
-      "to_map": "rm002_m02",
-      "name_en": "Mergoda Residential Area",
-      "name_jp": "メルゴダ居住区",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -84711.38,
-      "z": -55540.02,
-      "to_stage": 731,
-      "to_map": "st0731",
-      "name_en": "Hidell Catacombs Depths",
-      "name_jp": "ハイデル地下霊廟　深部",
-      "next_stage": 500,
-      "next_name_en": "Hidell Catacombs"
-    },
-    {
-      "x": -84711.38,
-      "z": -55540.02,
-      "to_stage": 732,
-      "to_map": "st0732",
-      "name_en": "Hidell Catacombs Innermost Depths",
-      "name_jp": "ハイデル地下霊廟　最深部",
-      "next_stage": 500,
-      "next_name_en": "Hidell Catacombs"
+      "name_jp": "旧水汲み場"
     },
     {
       "x": -136728.95,
@@ -2206,9 +1222,7 @@
       "to_stage": 576,
       "to_map": "st0576",
       "name_en": "The Ark",
-      "name_jp": "アーク",
-      "next_stage": 576,
-      "next_name_en": "The Ark"
+      "name_jp": "アーク"
     },
     {
       "x": -77360.39,
@@ -2216,39 +1230,7 @@
       "to_stage": 419,
       "to_map": "rm113_m00",
       "name_en": "Ancient Ritual Ground",
-      "name_jp": "古の祭祀場",
-      "next_stage": 419,
-      "next_name_en": "Ancient Ritual Ground"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 421,
-      "to_map": "rm110_m01",
-      "name_en": "Mergoda Ruins: Royal Palace Level",
-      "name_jp": "亡都メルゴダ　王宮層",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 421,
-      "to_map": "rm110_m01",
-      "name_en": "Mergoda Ruins: Royal Palace Level",
-      "name_jp": "亡都メルゴダ　王宮層",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 421,
-      "to_map": "rm110_m01",
-      "name_en": "Mergoda Ruins: Royal Palace Level",
-      "name_jp": "亡都メルゴダ　王宮層",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "古の祭祀場"
     },
     {
       "x": -53439.297,
@@ -2256,39 +1238,7 @@
       "to_stage": 702,
       "to_map": "st0702",
       "name_en": "Blue Stillness Ruins",
-      "name_jp": "青静の遺跡",
-      "next_stage": 702,
-      "next_name_en": "Blue Stillness Ruins"
-    },
-    {
-      "x": -84856.875,
-      "z": -55659.12,
-      "to_stage": 733,
-      "to_map": "st0733",
-      "name_en": "Dark Great Catacombs",
-      "name_jp": "冥き大地下墓地",
-      "next_stage": 733,
-      "next_name_en": "Dark Great Catacombs"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 424,
-      "to_map": "rm111_m00",
-      "name_en": "Mergoda Security District",
-      "name_jp": "メルゴダ護政区",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 424,
-      "to_map": "rm111_m00",
-      "name_en": "Mergoda Security District",
-      "name_jp": "メルゴダ護政区",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
+      "name_jp": "青静の遺跡"
     },
     {
       "x": -33911.45,
@@ -2296,119 +1246,7 @@
       "to_stage": 820,
       "to_map": "st0820",
       "name_en": "Knights' Depot Ruins",
-      "name_jp": "騎士団補給所跡",
-      "next_stage": 820,
-      "next_name_en": "Knights' Depot Ruins"
-    },
-    {
-      "x": -33911.45,
-      "z": -36521.8,
-      "to_stage": 823,
-      "to_map": "st0823",
-      "name_en": "Dreed Connecting Passage",
-      "name_jp": "ドリード連絡路",
-      "next_stage": 820,
-      "next_name_en": "Knights' Depot Ruins"
-    },
-    {
-      "x": -279165.16,
-      "z": -52136.625,
-      "to_stage": 824,
-      "to_map": "st0824",
-      "name_en": "Moltova Ruins",
-      "name_jp": "モルトバ遺跡",
-      "next_stage": 548,
-      "next_name_en": "Lighthouse Old Well"
-    },
-    {
-      "x": -221011.84,
-      "z": -264662.75,
-      "to_stage": 825,
-      "to_map": "st0825",
-      "name_en": "Gardnox Sewers",
-      "name_jp": "ガルドノック廃水廊",
-      "next_stage": 402,
-      "next_name_en": "Gardnox Fortress"
-    },
-    {
-      "x": -221011.84,
-      "z": -264651.53,
-      "to_stage": 825,
-      "to_map": "st0825",
-      "name_en": "Gardnox Sewers",
-      "name_jp": "ガルドノック廃水廊",
-      "next_stage": 402,
-      "next_name_en": "Gardnox Fortress"
-    },
-    {
-      "x": -33911.45,
-      "z": -36521.8,
-      "to_stage": 940,
-      "to_map": "rm004_m02",
-      "name_en": "Leo's Hideout",
-      "name_jp": "レオのアジト",
-      "next_stage": 820,
-      "next_name_en": "Knights' Depot Ruins"
-    },
-    {
-      "x": -46859.08,
-      "z": -183572.62,
-      "to_stage": 430,
-      "to_map": "rm120_m00",
-      "name_en": "Vortex of Stagnation",
-      "name_jp": "淀みの渦",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -44540.168,
-      "z": -175079.08,
-      "to_stage": 430,
-      "to_map": "rm120_m00",
-      "name_en": "Vortex of Stagnation",
-      "name_jp": "淀みの渦",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -38341.74,
-      "z": -168820.42,
-      "to_stage": 430,
-      "to_map": "rm120_m00",
-      "name_en": "Vortex of Stagnation",
-      "name_jp": "淀みの渦",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -46859.08,
-      "z": -183572.62,
-      "to_stage": 431,
-      "to_map": "rm120_m00",
-      "name_en": "Vortex of Stagnation",
-      "name_jp": "淀みの渦",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -44540.168,
-      "z": -175079.08,
-      "to_stage": 431,
-      "to_map": "rm120_m00",
-      "name_en": "Vortex of Stagnation",
-      "name_jp": "淀みの渦",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
-    },
-    {
-      "x": -38341.74,
-      "z": -168820.42,
-      "to_stage": 431,
-      "to_map": "rm120_m00",
-      "name_en": "Vortex of Stagnation",
-      "name_jp": "淀みの渦",
-      "next_stage": 408,
-      "next_name_en": "Temple of Purification"
+      "name_jp": "騎士団補給所跡"
     },
     {
       "x": -35025.7,
@@ -2416,9 +1254,7 @@
       "to_stage": 840,
       "to_map": "st0840",
       "name_en": "Pit of Screams",
-      "name_jp": "叫びの竪穴",
-      "next_stage": 840,
-      "next_name_en": "Pit of Screams"
+      "name_jp": "叫びの竪穴"
     },
     {
       "x": 18735.023,
@@ -2426,19 +1262,7 @@
       "to_stage": 841,
       "to_map": "st0841",
       "name_en": "Forsaken Well",
-      "name_jp": "見捨てられた井戸",
-      "next_stage": 841,
-      "next_name_en": "Forsaken Well"
-    },
-    {
-      "x": -146595.95,
-      "z": 3978.7312,
-      "to_stage": 565,
-      "to_map": "st0565",
-      "name_en": "The Rift's Inner Depths",
-      "name_jp": "異界の狭間　深層部",
-      "next_stage": 412,
-      "next_name_en": "Pawn Cathedral"
+      "name_jp": "見捨てられた井戸"
     },
     {
       "x": -135989.73,
@@ -2446,89 +1270,7 @@
       "to_stage": 577,
       "to_map": "st0577",
       "name_en": "The Ark's Lower Level",
-      "name_jp": "アーク　裏層",
-      "next_stage": 577,
-      "next_name_en": "The Ark's Lower Level"
-    },
-    {
-      "x": 87427.305,
-      "z": 6978.0303,
-      "to_stage": 809,
-      "to_map": "st0809",
-      "name_en": "Scorching Blocked Passage",
-      "name_jp": "灼熱の封鎖道",
-      "next_stage": 406,
-      "next_name_en": "Volden Large Tunnels"
-    },
-    {
-      "x": 84633.69,
-      "z": 16914.5,
-      "to_stage": 809,
-      "to_map": "st0809",
-      "name_en": "Scorching Blocked Passage",
-      "name_jp": "灼熱の封鎖道",
-      "next_stage": 406,
-      "next_name_en": "Volden Large Tunnels"
-    },
-    {
-      "x": -35025.7,
-      "z": -316051.3,
-      "to_stage": 830,
-      "to_map": "st0830",
-      "name_en": "Ancient Underground Channels",
-      "name_jp": "古き地下水網",
-      "next_stage": 840,
-      "next_name_en": "Pit of Screams"
-    },
-    {
-      "x": -13226.578,
-      "z": -347966.28,
-      "to_stage": 843,
-      "to_map": "st0843",
-      "name_en": "Hidden Observatory",
-      "name_jp": "秘匿の実験場",
-      "next_stage": 410,
-      "next_name_en": "Mergoda Ruins: Lower Level"
-    },
-    {
-      "x": -11370.516,
-      "z": -361635.44,
-      "to_stage": 843,
-      "to_map": "st0843",
-      "name_en": "Hidden Observatory",
-      "name_jp": "秘匿の実験場",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -19246.633,
-      "z": -364992.84,
-      "to_stage": 843,
-      "to_map": "st0843",
-      "name_en": "Hidden Observatory",
-      "name_jp": "秘匿の実験場",
-      "next_stage": 424,
-      "next_name_en": "Mergoda Security District"
-    },
-    {
-      "x": -55066.895,
-      "z": 185139.88,
-      "to_stage": 845,
-      "to_map": "st0845",
-      "name_en": "Stream Alley",
-      "name_jp": "流水の小路",
-      "next_stage": 851,
-      "next_name_en": "Soaring Sky Terrace"
-    },
-    {
-      "x": -97288.73,
-      "z": 151279.2,
-      "to_stage": 850,
-      "to_map": "st0850",
-      "name_en": "Misty Illusion Terrace",
-      "name_jp": "霧幻のテラス",
-      "next_stage": 850,
-      "next_name_en": "Misty Illusion Terrace"
+      "name_jp": "アーク　裏層"
     },
     {
       "x": -55066.895,
@@ -2536,9 +1278,15 @@
       "to_stage": 851,
       "to_map": "st0851",
       "name_en": "Soaring Sky Terrace",
-      "name_jp": "飛天のテラス",
-      "next_stage": 851,
-      "next_name_en": "Soaring Sky Terrace"
+      "name_jp": "飛天のテラス"
+    },
+    {
+      "x": -97288.73,
+      "z": 151279.2,
+      "to_stage": 850,
+      "to_map": "st0850",
+      "name_en": "Misty Illusion Terrace",
+      "name_jp": "霧幻のテラス"
     },
     {
       "x": -92810.914,
@@ -2546,9 +1294,7 @@
       "to_stage": 870,
       "to_map": "st0870",
       "name_en": "Mysree Barrow",
-      "name_jp": "ミスリウ古墳墓",
-      "next_stage": 870,
-      "next_name_en": "Mysree Barrow"
+      "name_jp": "ミスリウ古墳墓"
     },
     {
       "x": -114224.516,
@@ -2556,9 +1302,7 @@
       "to_stage": 871,
       "to_map": "st0871",
       "name_en": "Penitentiary",
-      "name_jp": "罪人の修獄",
-      "next_stage": 871,
-      "next_name_en": "Penitentiary"
+      "name_jp": "罪人の修獄"
     },
     {
       "x": 88591.516,
@@ -2566,9 +1310,7 @@
       "to_stage": 872,
       "to_map": "st0872",
       "name_en": "Mysterious Mausoleum",
-      "name_jp": "幽玄の霊堂",
-      "next_stage": 872,
-      "next_name_en": "Mysterious Mausoleum"
+      "name_jp": "幽玄の霊堂"
     },
     {
       "x": 84850.336,
@@ -2576,9 +1318,7 @@
       "to_stage": 437,
       "to_map": "rm106_m01",
       "name_en": "Volden Large Tunnels",
-      "name_jp": "ボルド大坑道",
-      "next_stage": 437,
-      "next_name_en": "Volden Large Tunnels"
+      "name_jp": "ボルド大坑道"
     },
     {
       "x": 87547.31,
@@ -2586,9 +1326,7 @@
       "to_stage": 437,
       "to_map": "rm106_m01",
       "name_en": "Volden Large Tunnels",
-      "name_jp": "ボルド大坑道",
-      "next_stage": 437,
-      "next_name_en": "Volden Large Tunnels"
+      "name_jp": "ボルド大坑道"
     },
     {
       "x": -77360.39,
@@ -2596,29 +1334,23 @@
       "to_stage": 438,
       "to_map": "rm113_m00",
       "name_en": "Ancient Ritual Ground",
-      "name_jp": "古の祭祀場",
-      "next_stage": 438,
-      "next_name_en": "Ancient Ritual Ground"
+      "name_jp": "古の祭祀場"
     },
     {
       "x": -11375.903,
       "z": -361721.72,
-      "to_stage": 3500,
-      "to_map": "rm134_m50",
-      "name_en": "Alternative Path",
-      "name_jp": "選択の道",
-      "next_stage": 3411,
-      "next_name_en": "Darkness Cloaked Mergoda Security District"
+      "to_stage": 3411,
+      "to_map": "rm111_m10",
+      "name_en": "Darkness Cloaked Mergoda Security District",
+      "name_jp": "闇に覆われたメルゴダ護政区"
     },
     {
       "x": -11376.323,
       "z": -361707.78,
-      "to_stage": 3500,
-      "to_map": "rm134_m50",
-      "name_en": "Alternative Path",
-      "name_jp": "選択の道",
-      "next_stage": 3411,
-      "next_name_en": "Darkness Cloaked Mergoda Security District"
+      "to_stage": 3411,
+      "to_map": "rm111_m10",
+      "name_en": "Darkness Cloaked Mergoda Security District",
+      "name_jp": "闇に覆われたメルゴダ護政区"
     },
     {
       "x": 3461.9958,
@@ -2626,29 +1358,7 @@
       "to_stage": 3311,
       "to_map": "rm103_m02",
       "name_en": "Darkness Cloaked Dreed Castle",
-      "name_jp": "闇に覆われたドリード城",
-      "next_stage": 3311,
-      "next_name_en": "Darkness Cloaked Dreed Castle"
-    },
-    {
-      "x": -11375.903,
-      "z": -361721.72,
-      "to_stage": 3411,
-      "to_map": "rm111_m10",
-      "name_en": "Darkness Cloaked Mergoda Security District",
-      "name_jp": "闇に覆われたメルゴダ護政区",
-      "next_stage": 3411,
-      "next_name_en": "Darkness Cloaked Mergoda Security District"
-    },
-    {
-      "x": -11376.323,
-      "z": -361707.78,
-      "to_stage": 3411,
-      "to_map": "rm111_m10",
-      "name_en": "Darkness Cloaked Mergoda Security District",
-      "name_jp": "闇に覆われたメルゴダ護政区",
-      "next_stage": 3411,
-      "next_name_en": "Darkness Cloaked Mergoda Security District"
+      "name_jp": "闇に覆われたドリード城"
     },
     {
       "x": -221003.4,
@@ -2656,9 +1366,7 @@
       "to_stage": 3600,
       "to_map": "rm102_m00",
       "name_en": "Gardnox Fortress",
-      "name_jp": "ガルドノック砦",
-      "next_stage": 3600,
-      "next_name_en": "Gardnox Fortress"
+      "name_jp": "ガルドノック砦"
     },
     {
       "x": -11377.07,
@@ -2666,19 +1374,1169 @@
       "to_stage": 3601,
       "to_map": "rm110_m01",
       "name_en": "Mergoda Royal Palace Level",
-      "name_jp": "メルゴダ王宮層",
-      "next_stage": 3601,
-      "next_name_en": "Mergoda Royal Palace Level"
+      "name_jp": "メルゴダ王宮層"
+    }
+  ],
+  "field003_m00": [
+    {
+      "to_stage": 800,
+      "to_map": "st0800",
+      "name_en": "Infected Den",
+      "name_jp": "侵食魔の巣窟",
+      "x": 3426.6823999999997,
+      "z": -18210.60825
+    }
+  ],
+  "field005_m00": [
+    {
+      "to_stage": 133,
+      "to_map": "field005_m00",
+      "name_en": "Megadosys Plateau",
+      "name_jp": "メガドシス高地",
+      "x": -2052.68835,
+      "z": -507.4919425
     },
     {
-      "x": -151597.78,
-      "z": -112550.21,
-      "to_stage": 3602,
-      "to_map": "lb000_st3602_m00",
+      "to_stage": 134,
+      "to_map": "field005_m00",
+      "name_en": "Urteca Mountains",
+      "name_jp": "ウルテカ山岳",
+      "x": 43130.9735,
+      "z": -425319.28
+    },
+    {
+      "to_stage": 133,
+      "to_map": "field005_m00",
+      "name_en": "Megadosys Plateau",
+      "name_jp": "メガドシス高地",
+      "x": -8818.407325,
+      "z": -5657.326349999999
+    }
+  ],
+  "lb000_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 11198.73825,
+      "z": 187.73641250000003
+    },
+    {
+      "to_stage": 201,
+      "to_map": "lb001_m00",
+      "name_en": "Audience Chamber",
+      "name_jp": "謁見の間",
+      "x": -13766.6675,
+      "z": -0.027970000000010486
+    },
+    {
+      "to_stage": 202,
+      "to_map": "lb002_m00",
+      "name_en": "Craft Room",
+      "name_jp": "クラフトルーム",
+      "x": 2148.1492,
+      "z": -589.34467
+    },
+    {
+      "to_stage": 203,
+      "to_map": "lb003_m00",
+      "name_en": "Cave Harbor",
+      "name_jp": "港洞",
+      "x": 9244.828,
+      "z": 34.263264
+    }
+  ],
+  "lb001_m00": [
+    {
+      "to_stage": 200,
+      "to_map": "lb000_m00",
       "name_en": "The White Dragon Temple",
-      "name_jp": "白竜神殿",
-      "next_stage": 3602,
-      "next_name_en": "The White Dragon Temple"
+      "name_jp": "白竜神殿レーゼ",
+      "x": 3373.1445,
+      "z": 16.86796000000001
+    }
+  ],
+  "lb002_m00": [
+    {
+      "to_stage": 200,
+      "to_map": "lb000_m00",
+      "name_en": "The White Dragon Temple",
+      "name_jp": "白竜神殿レーゼ",
+      "x": 2057.5764,
+      "z": -1229.2823
+    },
+    {
+      "to_stage": 200,
+      "to_map": "lb000_m00",
+      "name_en": "The White Dragon Temple",
+      "name_jp": "白竜神殿レーゼ",
+      "x": -1908.7887,
+      "z": -1241.4706
+    }
+  ],
+  "lb003_m00": [
+    {
+      "to_stage": 200,
+      "to_map": "lb000_m00",
+      "name_en": "The White Dragon Temple",
+      "name_jp": "白竜神殿レーゼ",
+      "x": -2814.602,
+      "z": -2996.6426
+    }
+  ],
+  "rm000_m02": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -48.339134,
+      "z": 447.94254
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -42.07698,
+      "z": 394.8614
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -1.15631,
+      "z": 348.27884
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 22.56942,
+      "z": 316.5686
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -1.156332,
+      "z": 413.41968
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -8.916527,
+      "z": 398.78238
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -26.356216,
+      "z": 337.95663
+    }
+  ],
+  "rm000_m03": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -40.06609,
+      "z": 345.9477
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -70.995476,
+      "z": 371.24323
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 18.85088,
+      "z": 429.18546
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 1.575438,
+      "z": 359.1193
+    }
+  ],
+  "rm000_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -59.16936,
+      "z": 359.87552
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -21.244913,
+      "z": 339.3266
+    }
+  ],
+  "rm000_m01": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 0.523308,
+      "z": 412.26068
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -17.259356,
+      "z": 351.21173
+    }
+  ],
+  "rm004_m00": [
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": 1075.24905,
+      "z": 1633.088425
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 1090.8353,
+      "z": 1660.6184
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -3258.502075,
+      "z": -2795.31085
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 1198.3850499999999,
+      "z": 1668.03665
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -3258.663,
+      "z": -2797.4672
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 1190.466075,
+      "z": 1705.76565
+    }
+  ],
+  "rm004_m01": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 3799.8462,
+      "z": -702.49587
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 170.811835,
+      "z": 2908.52355
+    },
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": 3798.80905,
+      "z": -755.5084675
+    },
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": 152.808635,
+      "z": 2917.01855
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 3996.07875,
+      "z": -715.7894825
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 154.6767725,
+      "z": 2845.95865
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 146.879155,
+      "z": 2937.263125
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 150.7465325,
+      "z": 2871.531675
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 126.30882875,
+      "z": 2927.569525
+    },
+    {
+      "to_stage": 133,
+      "to_map": "field005_m00",
+      "name_en": "Megadosys Plateau",
+      "name_jp": "メガドシス高地",
+      "x": 166.01139,
+      "z": 2968.3888500000003
+    }
+  ],
+  "rm001_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア"
+    }
+  ],
+  "rm105_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 22.452415,
+      "z": 1733.172
+    }
+  ],
+  "rm101_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 910.7990275,
+      "z": -491.8235625
+    }
+  ],
+  "rm102_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 656.5477,
+      "z": 1963.7458
+    }
+  ],
+  "rm103_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 32.4434,
+      "z": 415.45297
+    }
+  ],
+  "rm104_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 955.5066,
+      "z": -483.27332
+    }
+  ],
+  "rm106_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 307.73840000000007,
+      "z": 813.3849075
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -11139.116,
+      "z": -8884.3789
+    }
+  ],
+  "rm108_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 11427.5695,
+      "z": -19961.553
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -11381.45975,
+      "z": -19832.4405
+    }
+  ],
+  "rm112_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -37.77067,
+      "z": -304.36505
+    }
+  ],
+  "rm113_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 67.49351,
+      "z": 8366.73
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -6.234059999999985,
+      "z": 9086.092
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -6.234059999999985,
+      "z": 9086.092
+    }
+  ],
+  "rm114_m00": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 44.88215,
+      "z": -588.3424
+    }
+  ],
+  "rm108_m01": [
+    {
+      "to_stage": 408,
+      "to_map": "rm108_m00",
+      "name_en": "Temple of Purification",
+      "name_jp": "禊の神殿",
+      "x": -43.196274,
+      "z": -1.070569
+    }
+  ],
+  "rm131_m01": [
+    {
+      "to_stage": 464,
+      "to_map": "rm131_m02",
+      "name_en": "Megado: Royal Palace Level",
+      "name_jp": "城塞都市メガド 王宮層",
+      "x": 5.203970000000027,
+      "z": -25800.9045
+    },
+    {
+      "to_stage": 463,
+      "to_map": "rm131_m01",
+      "name_en": "Megado Cathedral",
+      "name_jp": "メガド大聖堂",
+      "x": 5727.425925,
+      "z": -11511.026125
+    },
+    {
+      "to_stage": 462,
+      "to_map": "rm131_m01",
+      "name_en": "Megado Corridor",
+      "name_jp": "メガド回廊",
+      "x": -5525.05815,
+      "z": -11496.199499999999
+    },
+    {
+      "to_stage": 464,
+      "to_map": "rm131_m02",
+      "name_en": "Megado: Royal Palace Level",
+      "name_jp": "城塞都市メガド 王宮層",
+      "x": 49.12144999999998,
+      "z": -26596.841999999997
+    },
+    {
+      "to_stage": 477,
+      "to_map": "rm131_st0477_m02",
+      "name_en": "Black King's Room",
+      "name_jp": "黒示す王の間",
+      "x": 3347.5486,
+      "z": -21285.4015
+    }
+  ],
+  "rm131_m02": [
+    {
+      "to_stage": 462,
+      "to_map": "rm131_m01",
+      "name_en": "Megado Corridor",
+      "name_jp": "メガド回廊",
+      "x": 17.775115000000014,
+      "z": 1037.366912
+    }
+  ],
+  "st0500": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -11.922398,
+      "z": -65.29585
+    }
+  ],
+  "st0501": [
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": -42.269405,
+      "z": 146.92068
+    }
+  ],
+  "st0503": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -0.000341,
+      "z": 147.00307
+    }
+  ],
+  "st0504": [
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": 30.233242,
+      "z": 259.6929
+    }
+  ],
+  "st0505": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 20.172394,
+      "z": -132.23135
+    }
+  ],
+  "st0506": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 17.409859,
+      "z": -114.80252
+    }
+  ],
+  "st0507": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 7.583352,
+      "z": -106.89093
+    }
+  ],
+  "st0509": [
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": 39.550606,
+      "z": 44.538128
+    }
+  ],
+  "st0510": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 97.96542,
+      "z": 323.9663325
+    }
+  ],
+  "st0511": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 1.7172299999999865,
+      "z": -55.296265000000005
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 20.276929999999993,
+      "z": -26342.248
+    }
+  ],
+  "st0513": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -23.878075,
+      "z": -605.3591
+    }
+  ],
+  "st0514": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -58.264435,
+      "z": -772.2209
+    }
+  ],
+  "st0515": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -43.682355,
+      "z": -11.327392499999998
+    }
+  ],
+  "st0516": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -1.16092,
+      "z": -481.81247
+    }
+  ],
+  "st0517": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -14.605991,
+      "z": -668.5617
+    }
+  ],
+  "st0518": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 39.664753,
+      "z": -485.94513
+    }
+  ],
+  "st0540": [
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": 113.92786199999999,
+      "z": -385.41701
+    }
+  ],
+  "st0541": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 90.80268,
+      "z": -488.1801125
+    }
+  ],
+  "st0542": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 97.25433675,
+      "z": -457.00813
+    }
+  ],
+  "st0543": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 107.75178825,
+      "z": -462.09961250000003
+    }
+  ],
+  "st0544": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 113.92786199999999,
+      "z": -385.41701
+    }
+  ],
+  "st0545": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 93.932579,
+      "z": -468.264545
+    }
+  ],
+  "st0546": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 118.94903475,
+      "z": -421.3311425
+    }
+  ],
+  "st0547": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 96.66575075,
+      "z": -450.164745
+    }
+  ],
+  "st0548": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 84.30397125,
+      "z": -484.3699475
+    }
+  ],
+  "st0549": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 118.308533,
+      "z": -444.3653675
+    }
+  ],
+  "st0550": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 58.018272,
+      "z": 102.191925
+    }
+  ],
+  "st0570": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -11.0,
+      "z": -800.0
+    }
+  ],
+  "st0576": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -15.091759,
+      "z": -801.3091
+    }
+  ],
+  "st0584": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 3886.3604,
+      "z": -679.90753
+    }
+  ],
+  "st0590": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -50.107643,
+      "z": -712.6298
+    }
+  ],
+  "st0591": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 1.7172299999999865,
+      "z": -55.296265000000005
+    }
+  ],
+  "st0592": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -22.049278,
+      "z": -583.0688
+    },
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": -60.6,
+      "z": -35515.664
+    }
+  ],
+  "st0720": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 96.54913775,
+      "z": -455.5075675
+    }
+  ],
+  "st0721": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 114.76787999999999,
+      "z": -433.0392
+    }
+  ],
+  "st0722": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 102.75931125,
+      "z": -460.022395
+    }
+  ],
+  "st0723": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 113.92786199999999,
+      "z": -405.750695
+    }
+  ],
+  "st0724": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 129.18816175,
+      "z": -447.6073675
+    }
+  ],
+  "st0725": [
+    {
+      "to_stage": 529,
+      "to_map": "st0529",
+      "name_en": "Moonlight Terrace",
+      "name_jp": "月影のテラス",
+      "x": 92.58979500000001,
+      "z": -497.3497325
+    }
+  ],
+  "st0726": [
+    {
+      "to_stage": 526,
+      "to_map": "st0526",
+      "name_en": "Sacred Spring Terrace",
+      "name_jp": "霊泉のテラス",
+      "x": 105.06221199999999,
+      "z": -415.321535
+    }
+  ],
+  "st0727": [
+    {
+      "to_stage": 701,
+      "to_map": "st0701",
+      "name_en": "Divine Blossom Terrace",
+      "name_jp": "神花のテラス",
+      "x": 131.37780275,
+      "z": -431.71099
+    }
+  ],
+  "st0728": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 109.091527,
+      "z": -396.8334175
+    }
+  ],
+  "st0730": [
+    {
+      "to_stage": 403,
+      "to_map": "rm103_m00",
+      "name_en": "Dreed Castle",
+      "name_jp": "ドリード城",
+      "x": 57.15792,
+      "z": -64.58342
+    }
+  ],
+  "st0733": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 22.10382,
+      "z": -143.50146
+    }
+  ],
+  "st0800": [
+    {
+      "to_stage": 110,
+      "to_map": "field003_m00",
+      "name_en": "Bloodbane Isle",
+      "name_jp": "魔赤島",
+      "x": 2271.199125,
+      "z": -3489.885625
+    }
+  ],
+  "st0840": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 114.0909415,
+      "z": -451.1659225
+    }
+  ],
+  "st0841": [
+    {
+      "to_stage": 100,
+      "to_map": "field000_m00",
+      "name_en": "Lestania",
+      "name_jp": "レスタニア",
+      "x": 118.5767455,
+      "z": -439.9549875
+    }
+  ],
+  "st0842": [
+    {
+      "to_stage": 110,
+      "to_map": "field003_m00",
+      "name_en": "Bloodbane Isle",
+      "name_jp": "魔赤島",
+      "x": 140.8613415,
+      "z": -325.1485975
+    }
+  ],
+  "st0843": [
+    {
+      "to_stage": 612,
+      "to_map": "rm002_m01",
+      "name_en": "Mergodan Residence",
+      "name_jp": "メルゴダ民の住居",
+      "x": 102.23840275,
+      "z": -472.900965
+    }
+  ],
+  "st0844": [
+    {
+      "to_stage": 121,
+      "to_map": "field004_m00",
+      "name_en": "Elan Water Grove",
+      "name_jp": "エラン水林",
+      "x": 126.74962225,
+      "z": -389.05969500000003
+    }
+  ],
+  "st0845": [
+    {
+      "to_stage": 851,
+      "to_map": "st0851",
+      "name_en": "Soaring Sky Terrace",
+      "name_jp": "飛天のテラス",
+      "x": 111.64178375,
+      "z": -452.9427975
+    }
+  ],
+  "st1026": [
+    {
+      "to_stage": 461,
+      "to_map": "rm131_m04",
+      "name_en": "Fortress City Megado: Residential Level",
+      "name_jp": "城塞都市メガド 居住層",
+      "x": 5342.8736499999995,
+      "z": -30895.538999999997
+    }
+  ],
+  "rm133_m50": [
+    {
+      "to_stage": 139,
+      "to_map": "field005_m00",
+      "name_en": "Firefall Mountain Campsite",
+      "name_jp": "火垂れ山野営地",
+      "x": -2984.34935,
+      "z": 2271.5412
+    }
+  ],
+  "sfd002_m04_st0139": [
+    {
+      "to_stage": 1154,
+      "to_map": "field005_m00",
+      "name_en": "Memory of Urteca",
+      "name_jp": "ウルテカの記憶",
+      "x": 43111.207500000004,
+      "z": -425130.625
+    }
+  ],
+  "rm131_st3210_m02": [
+    {
+      "to_stage": 3211,
+      "to_map": "rm131_st3211_m01",
+      "name_en": "Darkness Cloaked Megado Corridor",
+      "name_jp": "闇に覆われたメガド回廊",
+      "x": 7416.904,
+      "z": 3376.9949475
+    },
+    {
+      "to_stage": 3213,
+      "to_map": "rm131_st3211_m01",
+      "name_en": "Darkness Cloaked Megado Corridor",
+      "name_jp": "闇に覆われたメガド回廊",
+      "x": 7416.904,
+      "z": 3376.9949475
+    }
+  ],
+  "rm131_st3211_m01": [
+    {
+      "to_stage": 3210,
+      "to_map": "rm131_st3210_m02",
+      "name_en": "Darkness Cloaked Mergoda Royal Palace Lvl.",
+      "name_jp": "闇に覆われたメガド王宮層",
+      "x": -79.88905,
+      "z": -27079.6585
+    },
+    {
+      "to_stage": 3212,
+      "to_map": "rm131_st3210_m02",
+      "name_en": "Darkness Cloaked Mergoda Royal Palace Lvl.",
+      "name_jp": "闇に覆われたメガド王宮層",
+      "x": -85.66505000000006,
+      "z": -27219.647
     }
   ]
 }

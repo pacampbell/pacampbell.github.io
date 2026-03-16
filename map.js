@@ -10,6 +10,11 @@ const leafletMap = L.map('map', {
     minZoom: -3,
     zoomSnap: 0.5,
 });
+// Dedicated pane for the map background image — z-index 201 keeps it below
+// the overlayPane (400) so polylines (pd boundaries etc.) always render on top
+// even after swapMapImage recreates the imageOverlay.
+leafletMap.createPane('mapImagePane');
+leafletMap.getPane('mapImagePane').style.zIndex = 201;
 
 function xy(x, y) { return L.latLng(y, x); }
 
@@ -55,13 +60,9 @@ function worldToPixel(worldX, worldZ, info) {
             }
         }
         const localZ  = worldZ - piece.connect_z;                          // ≤ 0
-        const fsz    = Math.abs(piece.full_size ?? piece.size);
-        // Trimmed scale: maps the full Z range of the piece linearly to the visible
-        // pixel slot [pixel_y_start, pixel_y_entrance].  Consistent with the inverse
-        // mapping in the mousemove handler.  Avoids clamping enemies that fall in the
-        // transparent trimmed region of a piece's source image.
-        const pscale = fsz > 0 ? (piece.pixel_height / fsz) : (info.scale);
-        png_y = piece.pixel_y_entrance + localZ * pscale;
+        // Use pixel_y_entrance_v (virtual entrance, accounts for bottom trim) and
+        // info.scale (DUNGEON_MAP_SCALE, same as X axis) — the correct rendering scale.
+        png_y = piece.pixel_y_entrance_v + localZ * info.scale;
         png_y = Math.max(piece.pixel_y_start, Math.min(piece.pixel_y_entrance, png_y));
     } else {
         const scaleZ = info.scale_z ?? info.scale;
@@ -679,10 +680,13 @@ leafletMap.on('mousedown', (e) => {
 
 // ── Group chip / expand-collapse helpers ──────────────────────────────────────
 
-function makeChipIcon(groupId, color, count, expanded, yOffset = 10) {
+function makeChipIcon(groupId, _color, count, expanded, yOffset = 10, isKeyBearerGroup = false) {
+    // Use a brighter variant of the same hue for chip text (dark chip background needs L~0.78).
+    const chipColor = `oklch(0.78 0.13 ${(parseInt(groupId, 10) * 137) % 360})`;
+    const keyBadge  = isKeyBearerGroup ? '<span style="font-size:16px;margin-right:3px;color:#ffd700;" title="Key bearer group">🗝</span>' : '';
     return L.divIcon({
         className: '',
-        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${color}"><span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>G${groupId} <span class="chip-count">${count}</span></div>`,
+        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor}">${keyBadge}<span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>G${groupId} <span class="chip-count">${count}</span></div>`,
         iconSize:   null,
         // When expanded: anchor at bottom of chip so the chip floats above the marker position.
         // When collapsed: anchor near top (yOffset) so chip hangs below the centroid.
@@ -748,6 +752,7 @@ function buildGroupDetails(g) {
             return `<br>SubGroup: ${subBadge}`;
         })() : '';
         const groupLabel = `<span style="color:${g.color};font-weight:bold;">Group: ${g.groupId}</span>`;
+        const isKeyBearer = spawn.KeyBearer === true;
         const emLine = spawn.EmName
             ? `<br><span style="color:#aaa;font-size:11px">${spawn.EmName}</span>` : '';
         const radiiLine = (spawn.AggroRadius || spawn.LinkRadius) ? (() => {
@@ -757,16 +762,17 @@ function buildGroupDetails(g) {
                 ? `<span style="color:#ff7700">&#9675;</span> Link: ${spawn.LinkRadius}` : '';
             return `<br><span style="font-size:11px">${[ag, lk].filter(Boolean).join(' &nbsp; ')}</span>`;
         })() : '';
-        const popupHtml  = `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${emLine}${radiiLine}`;
-        const tooltipText = `${g.groupId}.${idx} [SS:${sg}]`;
+        const keyLine    = isKeyBearer ? '<br><span style="font-size:11px">🗝 Key Bearer</span>' : '';
+        const popupHtml  = `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${emLine}${keyLine}${radiiLine}`;
+        const tooltipText = `${g.groupId}.${idx} [SS:${sg}]${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
 
         const marker = L.circleMarker(latlng, {
             renderer:    spawnRenderer,
-            className:   'enemy-marker',
-            color:       g.color,
+            className:   `enemy-marker${isKeyBearer ? ' key-bearer-spawn' : ''}`,
+            color:       isKeyBearer ? '#c8a000' : g.color,
             fillColor,
             fillOpacity: 0.85,
-            weight:      2.5,
+            weight:      isKeyBearer ? 3.5 : 2.5,
             radius:      5,
         })
             .bindPopup(popupHtml)
@@ -774,7 +780,7 @@ function buildGroupDetails(g) {
 
         marker._sgKey          = sgKey;
         marker._label          = tooltipText;
-        marker._origStyle      = { color: g.color, weight: 2.5, fillOpacity: 0.85 };
+        marker._origStyle      = { color: isKeyBearer ? '#c8a000' : g.color, weight: isKeyBearer ? 3.5 : 2.5, fillOpacity: 0.85 };
         marker._spawn          = spawn;
         marker._info           = info;
         marker._naturalLatLng  = latlng;    // saved for spread reset
@@ -807,7 +813,7 @@ function _expandGroupCore(g) {
     let topPx = g.pts[0][0], topPy = g.pts[0][1];
     for (const [px, py] of g.pts) { if (py > topPy) { topPy = py; topPx = px; } }
     g.labelMarker.setLatLng(xy(topPx, topPy + 10));
-    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, true, g.yOffset));
+    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, true, g.yOffset, g.isKeyBearerGroup));
     for (const [sgKey, markers] of Object.entries(g.sgMarkers)) {
         if (!_sgMarkers[sgKey]) _sgMarkers[sgKey] = [];
         _sgMarkers[sgKey].push(...markers);
@@ -819,7 +825,7 @@ function _collapseGroupCore(g) {
     if (g.territoryRect) territoryLayer.removeLayer(g.territoryRect);
     g.isExpanded = false;
     g.labelMarker.setLatLng(xy(g.centroid.px, g.centroid.py));
-    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, false, g.yOffset));
+    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, false, g.yOffset, g.isKeyBearerGroup));
     for (const sgKey of Object.keys(g.sgMarkers)) delete _sgMarkers[sgKey];
     if (_activeRadiiMarker && g.items.some(it => it.spawn === _activeRadiiMarker._spawn))
         clearSpawnRadii();
@@ -987,9 +993,11 @@ function spawnGroupColor(sg) {
 }
 
 // Deterministic OKLCH colour from a file group ID (GroupNo).
+// L=0.55 is darker than the tan dungeon backgrounds (~0.62) so outlines stand out,
+// and still readable against the dark chip background.  C=0.13 is muted but distinct.
 function groupBorderColor(groupId) {
     const hue = (groupId * 137) % 360;
-    return `oklch(0.72 0.20 ${hue})`;
+    return `oklch(0.55 0.13 ${hue})`;
 }
 
 // ── Floor OBB test ────────────────────────────────────────────────────────────
@@ -1038,9 +1046,11 @@ function loadEnemySpawns(info, stid = null) {
         const stageData = enemyPositions[stageNo];
         if (!stageData) continue;
         for (const [groupId, groupData] of Object.entries(stageData)) {
-            const spawns    = groupData.spawns    ?? groupData;  // back-compat
-            const territory = groupData.territory ?? null;
-            if (!byGroupId.has(groupId)) byGroupId.set(groupId, { territory, items: [], pts: [] });
+            const spawns         = groupData.spawns         ?? groupData;  // back-compat
+            const territory      = groupData.territory      ?? null;
+            const keyBearerGroup = groupData.keyBearerGroup ?? false;
+            if (!byGroupId.has(groupId)) byGroupId.set(groupId, { territory, keyBearerGroup, items: [], pts: [] });
+            else if (keyBearerGroup) byGroupId.get(groupId).keyBearerGroup = true;
             const entry = byGroupId.get(groupId);
             for (let i = 0; i < spawns.length; i++) {
                 const spawn = spawns[i];
@@ -1068,7 +1078,7 @@ function loadEnemySpawns(info, stid = null) {
     }
 
     // Create one chip label marker per group (collapsed by default)
-    for (const [groupId, { territory, items, pts }] of byGroupId) {
+    for (const [groupId, { territory, keyBearerGroup, items, pts }] of byGroupId) {
         if (!pts.length) continue;
         const color = groupBorderColor(parseInt(groupId, 10));
         const cx = pts.reduce((s, p) => s + p[0], 0) / pts.length;
@@ -1080,10 +1090,10 @@ function loadEnemySpawns(info, stid = null) {
         const slotIdx   = bucket.indexOf(groupId);
         const yOffset   = 10 + slotIdx * 20;  // pixels below anchor
 
-        const chipIcon    = makeChipIcon(groupId, color, items.length, false, yOffset);
+        const chipIcon    = makeChipIcon(groupId, color, items.length, false, yOffset, keyBearerGroup);
         const labelMarker = L.marker(xy(cx, cy), { icon: chipIcon, zIndexOffset: 100 });
 
-        const g = { groupId, color, territory, items, pts,
+        const g = { groupId, color, territory, isKeyBearerGroup: keyBearerGroup, items, pts,
                     centroid: { px: cx, py: cy }, yOffset,
                     labelMarker, detailsLayer: null, isExpanded: false, sgMarkers: {} };
         _groupStore.set(groupId, g);
@@ -1139,21 +1149,31 @@ function loadLandmarks(mapName, info) {
 // ── Stage connection markers ───────────────────────────────────────────────────
 function loadConnections(mapName, info) {
     connectionLayer.clearLayers();
+
+    // Clear any previous unpositioned exits list
+    const exitsPanel = document.getElementById('exits-panel');
+    const exitsList  = document.getElementById('exits-list');
+    exitsList.innerHTML = '';
+
     const entries = connectionData[mapName];
-    if (!entries) return;
+    if (!entries) { exitsPanel.style.display = 'none'; return; }
+
+    const unpositioned = [];
 
     for (const conn of entries) {
-        const latlng = worldToPixel(conn.x, conn.z, info);
-        // Navigate to the destination map if we have it; otherwise try next_stage
-        const navMap = (conn.to_map && mapParams[conn.to_map])
-            ? conn.to_map
-            : (conn.next_stage !== conn.to_stage
-                ? Object.entries(mapParams).find(([, v]) => v.stages?.includes(`st${String(conn.next_stage).padStart(4, '0')}`))?.[0]
-                : null);
-        const hasMap = !!navMap;
+        const navMap  = (conn.to_map && mapParams[conn.to_map]) ? conn.to_map : null;
+        const hasMap  = !!navMap;
         const stageId = `st${String(conn.to_stage).padStart(4, '0')}`;
         const destName = (conn.name_en || `Stage ${conn.to_stage}`) + ` (${stageId})`;
-        const color = hasMap ? '#ff6b35' : '#666666';
+
+        // Unpositioned connections (pd stage exits, etc.) go in the sidebar list
+        if (conn.x == null || conn.z == null) {
+            unpositioned.push({ navMap, hasMap, stageId, destName });
+            continue;
+        }
+
+        const latlng = worldToPixel(conn.x, conn.z, info);
+        const color  = hasMap ? '#ff6b35' : '#666666';
 
         const icon = L.divIcon({
             className: '',
@@ -1172,11 +1192,33 @@ function loadConnections(mapName, info) {
         const marker = L.marker(latlng, { icon });
         marker.bindTooltip(destName, { permanent: false, direction: 'top', offset: [0, -10] });
         if (hasMap) {
-            marker.on('click', () => navigateTo(navMap));
+            marker.on('click', () => navigateTo(navMap, stageId));
         } else {
             marker.bindPopup(`No map data for Stage ${conn.to_stage}<br>${destName}`);
         }
         marker.addTo(connectionLayer);
+    }
+
+    // Render unpositioned exits in the sidebar
+    if (unpositioned.length) {
+        for (const { navMap, hasMap, stageId, destName } of unpositioned) {
+            const li = document.createElement('div');
+            li.style.cssText = 'padding:2px 0;font-size:0.78rem;';
+            if (hasMap) {
+                const a = document.createElement('span');
+                a.textContent = destName;
+                a.style.cssText = 'color:#ff6b35;cursor:pointer;text-decoration:underline dotted;';
+                a.addEventListener('click', () => navigateTo(navMap, stageId));
+                li.appendChild(a);
+            } else {
+                li.textContent = destName;
+                li.style.color = '#666';
+            }
+            exitsList.appendChild(li);
+        }
+        exitsPanel.style.display = '';
+    } else {
+        exitsPanel.style.display = 'none';
     }
 }
 
@@ -1254,7 +1296,7 @@ function buildFloorSelector(info) {
 function swapMapImage(info, imgFile) {
     if (imageOverlay) imageOverlay.remove();
     const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
-    imageOverlay = L.imageOverlay('images/maps/' + imgFile, bounds).addTo(leafletMap);
+    imageOverlay = L.imageOverlay('images/maps/' + imgFile, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
 }
 
 // ── Tile-layer selector (pd maps with multi-layer pieces) ─────────────────────
@@ -1300,13 +1342,17 @@ const _lb = (() => {
     const title = document.createElement('div');
     title.style.cssText = 'color:#ffcc44;font-family:monospace;font-size:0.85rem;font-weight:700;user-select:none';
 
+    const DISPLAY_CSS = 'max-width:90vw;max-height:78vh;object-fit:contain;image-rendering:pixelated;border:1px solid #0f3460';
     const img = document.createElement('img');
-    img.style.cssText = 'max-width:90vw;max-height:78vh;object-fit:contain;image-rendering:pixelated;border:1px solid #0f3460';
+    img.style.cssText = DISPLAY_CSS;
+
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = DISPLAY_CSS + ';display:none';
 
     const nav = document.createElement('div');
     nav.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;justify-content:center;cursor:default';
 
-    overlay.append(title, img, nav);
+    overlay.append(title, img, canvas, nav);
     document.body.appendChild(overlay);
     overlay.addEventListener('click', e => {
         if (e.target === overlay) overlay.style.display = 'none';
@@ -1314,35 +1360,65 @@ const _lb = (() => {
     document.addEventListener('keydown', e => { if (e.key === 'Escape') overlay.style.display = 'none'; });
 
     let _activeLayer = null;  // currently shown layer index (null = primary/merged)
+    let _compositeGen = 0;    // incremented on every showLayer call; stale async results are discarded
 
     const layerNav = document.createElement('div');
     layerNav.style.cssText = 'display:none;gap:4px;align-items:center;cursor:default';
     overlay.insertBefore(layerNav, nav);
 
     function showLayer(piece, pieceIdx, layer) {
-        // layer === null means "merged / as used in composite"
+        // layer === null means "composite / merged view"
         _activeLayer = layer;
-        let src, tag;
-        if (layer === null) {
-            if (piece.has_merged) {
-                src = `images/maps/${piece.model}_merged.png`;
-                tag = 'merged';
-            } else {
-                const lyr = piece.layer ?? 0;
-                src = `images/maps/${piece.model}_l${lyr}.png`;
-                tag = `l${lyr}`;
-            }
-        } else {
-            src = `images/maps/${piece.model}_l${layer}.png`;
-            tag = `l${layer}`;
-        }
-        title.textContent = `${pieceIdx}: ${piece.model}_${tag}.png`;
-        img.src = src;
+        const gen = ++_compositeGen;
         layerNav.querySelectorAll('button').forEach(btn => {
             const active = String(btn.dataset.layer) === String(layer);
             btn.style.background  = active ? '#4a90d9' : '#0f3460';
             btn.style.borderColor = active ? '#4a90d9' : '#1a4a7a';
             btn.style.color       = active ? '#fff'    : '#ccd';
+        });
+
+        if (layer !== null) {
+            // Single layer — just show the image
+            canvas.style.display = 'none';
+            img.style.display    = '';
+            img.src = `images/maps/${piece.model}_l${layer}.png`;
+            title.textContent = `${pieceIdx}: ${piece.model}_l${layer}.png`;
+            return;
+        }
+
+        // Composite view
+        if (piece.has_merged) {
+            // Pre-generated merged PNG exists — use it directly
+            canvas.style.display = 'none';
+            img.style.display    = '';
+            img.src = `images/maps/${piece.model}_merged.png`;
+            title.textContent = `${pieceIdx}: ${piece.model}_merged.png`;
+            return;
+        }
+
+        // Composite on-the-fly: draw each layer in order onto a canvas
+        const allLayers = piece.layers ?? [piece.layer ?? 0];
+        title.textContent = `${pieceIdx}: ${piece.model} (composite)`;
+        Promise.all(allLayers.map(lyr => new Promise((res, rej) => {
+            const i = new Image();
+            i.onload = () => res(i);
+            i.onerror = () => rej(new Error(`missing l${lyr}`));
+            i.src = `images/maps/${piece.model}_l${lyr}.png`;
+        }))).then(imgs => {
+            if (_compositeGen !== gen) return; // user switched layer before images loaded
+            canvas.width  = imgs[0].naturalWidth;
+            canvas.height = imgs[0].naturalHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (const i of imgs) ctx.drawImage(i, 0, 0);
+            img.style.display    = 'none';
+            canvas.style.display = '';
+        }).catch(() => {
+            if (_compositeGen !== gen) return;
+            // Fallback: show primary layer if any image fails to load
+            canvas.style.display = 'none';
+            img.style.display    = '';
+            img.src = `images/maps/${piece.model}_l${piece.layer ?? 0}.png`;
         });
     }
 
@@ -1453,11 +1529,11 @@ function loadMap(mapName) {
     _loadedStid = currentStageName();
     currentLayer = 0;
 
-    // Update title
+    // Update title — always append an ID so the user knows which stage they're on.
+    // Prefer the stid from the URL hash (e.g. "st0200"); fall back to the map name.
     const stid = currentStageName();
     const baseName = info.name_en ? splitPascalCase(info.name_en) : mapName;
-    const stageSuffix = stid ? ` (${stid})` : '';
-    const title = baseName + stageSuffix;
+    const title = baseName + ` (${stid ?? mapName})`;
     document.getElementById('map-title').textContent = title;
     document.title = `${title} — DDON Maps`;
 
@@ -1466,7 +1542,7 @@ function loadMap(mapName) {
     const savedView = parseHash().view;
     if (info.img_exists) {
         const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
-        imageOverlay = L.imageOverlay('images/maps/' + info.img_file, bounds).addTo(leafletMap);
+        imageOverlay = L.imageOverlay('images/maps/' + info.img_file, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
         if (savedView) {
             leafletMap.setView(savedView.center, savedView.zoom);
         } else {
@@ -1525,10 +1601,8 @@ function loadMap(mapName) {
                     piece = p; break;
                 }
             }
-            // t=0 at entrance (pixel_y_entrance/bottom), t=1 at deepest visible (pixel_y_start/top)
-            const t = piece.pixel_height > 0 ? (piece.pixel_y_entrance - png_y) / piece.pixel_height : 0;
-            const fsz = piece.full_size ?? piece.size;
-            wz = piece.connect_z + t * fsz;  // full_size → maps full Z range
+            // Inverse of: png_y = pixel_y_entrance_v + localZ * scale
+            wz = piece.connect_z + (png_y - piece.pixel_y_entrance_v) / currentInfo.scale;
         } else {
             const scaleZ = currentInfo.scale_z ?? currentInfo.scale;
             wz = ((currentInfo.img_height - currentInfo.center_y) - py) / scaleZ;
@@ -1548,5 +1622,8 @@ loadMap = function (mapName) {
 };
 
 // ── Init ──────────────────────────────────────────────────────────────────────
+if (!location.hash || location.hash === '#') {
+    history.replaceState(null, '', '#field000_m00:st0100');
+}
 buildSidebar();
 loadMap(currentMapName());
