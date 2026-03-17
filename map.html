@@ -360,6 +360,34 @@
             font-weight: normal;
         }
 
+        /* ── Sidebar collapse ── */
+        #sidebar {
+            transition: width 0.2s ease, min-width 0.2s ease;
+        }
+        #sidebar.collapsed {
+            width: 0 !important;
+            min-width: 0 !important;
+            overflow: hidden;
+        }
+        #sidebar-toggle {
+            position: absolute;
+            top: 130px;
+            left: 10px;
+            z-index: 1001;
+            width: 30px;
+            height: 30px;
+            background: rgba(22, 33, 62, 0.92);
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 16px;
+            line-height: 28px;
+            text-align: center;
+            cursor: pointer;
+            display: none;
+        }
+        #sidebar-toggle:hover { background: #0f3460; }
+
         /* ── Scrollbar ── */
         #map-list::-webkit-scrollbar { width: 6px; }
         #map-list::-webkit-scrollbar-track { background: transparent; }
@@ -369,7 +397,7 @@
 <body>
 <div id="app">
     <div id="sidebar">
-        <h1>DDON Maps</h1>
+        <h1>DDON Maps <button id="sidebar-collapse" title="Collapse sidebar" style="float:right;background:none;border:none;color:#888;font-size:1rem;cursor:pointer;padding:0 4px;line-height:1">◀</button><button id="settings-btn" title="Data source settings" style="float:right;background:none;border:none;color:#888;font-size:1rem;cursor:pointer;padding:0 4px;line-height:1">⚙</button></h1>
         <div id="search-box">
             <input type="text" id="map-search" placeholder="Search maps...">
         </div>
@@ -381,16 +409,28 @@
                 Enemy Spawns
             </label>
             <label class="layer-toggle">
-                <input type="checkbox" id="layer-landmarks" checked>
-                Landmarks
+                <input type="checkbox" id="layer-gather">
+                Gathering Nodes
+            </label>
+            <label class="layer-toggle">
+                <input type="checkbox" id="layer-npc-shops">
+                Shops
             </label>
             <label class="layer-toggle">
                 <input type="checkbox" id="layer-connections" checked>
                 Connections
             </label>
             <label class="layer-toggle">
+                <input type="checkbox" id="layer-landmarks" checked>
+                Landmarks
+            </label>
+            <label class="layer-toggle">
                 <input type="checkbox" id="layer-stage-labels" checked>
                 Area Names
+            </label>
+            <label class="layer-toggle">
+                <input type="checkbox" id="layer-radii">
+                Aggro/Link Radius
             </label>
             <label class="layer-toggle">
                 <input type="checkbox" id="layer-territory">
@@ -422,6 +462,7 @@
     </div>
 
     <div id="map-container">
+        <button id="sidebar-toggle" title="Open sidebar">☰</button>
         <div id="map-title">—</div>
         <div id="floor-selector"></div>
         <div id="tile-layer-selector"></div>
@@ -430,5 +471,146 @@
     </div>
 </div>
 <script type="module" src="map.js"></script>
+
+<!-- ── Data source settings modal ─────────────────────────────────────────── -->
+<style>
+    #settings-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 3000;
+        background: rgba(0,0,0,0.65);
+        align-items: center;
+        justify-content: center;
+    }
+    #settings-modal.open { display: flex; }
+    #settings-box {
+        background: #16213e;
+        border: 1px solid #0f3460;
+        border-radius: 8px;
+        padding: 20px;
+        width: 540px;
+        max-width: 95vw;
+        color: #e0e0e0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+    }
+    #settings-box h2 {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #e94560;
+        margin-bottom: 12px;
+    }
+    .src-row { margin-bottom: 14px; }
+    .src-row-label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .src-status {
+        font-size: 0.72rem;
+        font-weight: 400;
+        color: #666;
+    }
+    .src-row-inputs { display: flex; gap: 6px; }
+    .src-url-input {
+        flex: 1;
+        min-width: 0;
+        padding: 5px 8px;
+        background: #0f3460;
+        border: 1px solid #1a4a7a;
+        border-radius: 4px;
+        color: #e0e0e0;
+        font-size: 0.75rem;
+    }
+    .src-url-input:focus { outline: none; border-color: #4a90d9; }
+    .src-btn {
+        padding: 4px 10px;
+        background: #0f3460;
+        border: 1px solid #1a4a7a;
+        border-radius: 4px;
+        color: #ccd;
+        font-size: 0.75rem;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .src-btn:hover { background: #1a4a7a; }
+    #settings-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid #0f3460;
+    }
+    .settings-action-btn {
+        padding: 5px 14px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        border: 1px solid #1a4a7a;
+    }
+    #settings-apply  { background: #e94560; border-color: #e94560; color: #fff; font-weight: 600; }
+    #settings-apply:hover { background: #c73350; }
+    #settings-cancel, #settings-reset-all { background: #0f3460; color: #ccd; }
+    #settings-cancel:hover, #settings-reset-all:hover { background: #1a4a7a; }
+</style>
+
+<div id="settings-modal">
+  <div id="settings-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <h2 style="margin:0">⚙ Data Sources</h2>
+        <button id="settings-close" style="background:none;border:none;color:#888;font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>
+    </div>
+    <p style="font-size:0.75rem;color:#888;margin-bottom:16px;line-height:1.6;">
+        Override the URLs used to load live game data. Enter any <code style="color:#aaa">https://</code> URL or browse a local file.<br>
+        Local files are stored in your browser and persist across reloads.
+    </p>
+
+    <div class="src-row"
+         data-key="ddon-src-gathering"
+         data-default="https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/GatheringItem.csv">
+        <div class="src-row-label">Gathering Items (CSV) <span class="src-status"></span></div>
+        <div class="src-row-inputs">
+            <input type="text" class="src-url-input">
+            <button class="src-btn src-file-btn">Browse…</button>
+            <button class="src-btn src-reset-btn" title="Reset to default">↩</button>
+            <input type="file" class="src-file-input" accept=".csv,.json" style="display:none">
+        </div>
+    </div>
+
+    <div class="src-row"
+         data-key="ddon-src-spawns"
+         data-default="https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/EnemySpawn.json">
+        <div class="src-row-label">Enemy Spawns (JSON) <span class="src-status"></span></div>
+        <div class="src-row-inputs">
+            <input type="text" class="src-url-input">
+            <button class="src-btn src-file-btn">Browse…</button>
+            <button class="src-btn src-reset-btn" title="Reset to default">↩</button>
+            <input type="file" class="src-file-input" accept=".json" style="display:none">
+        </div>
+    </div>
+
+    <div class="src-row"
+         data-key="ddon-src-shop"
+         data-default="https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/Shop.json">
+        <div class="src-row-label">Shop Data (JSON) <span class="src-status"></span></div>
+        <div class="src-row-inputs">
+            <input type="text" class="src-url-input">
+            <button class="src-btn src-file-btn">Browse…</button>
+            <button class="src-btn src-reset-btn" title="Reset to default">↩</button>
+            <input type="file" class="src-file-input" accept=".json" style="display:none">
+        </div>
+    </div>
+
+    <div id="settings-footer">
+        <button id="settings-reset-all" class="settings-action-btn">Reset All</button>
+        <button id="settings-cancel"    class="settings-action-btn">Cancel</button>
+        <button id="settings-apply"     class="settings-action-btn">Apply &amp; Reload</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

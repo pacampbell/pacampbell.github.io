@@ -2,6 +2,14 @@ import enemyPositions from './resources/enemyPositions.json' with {type: "json"}
 import mapParams from './resources/map_params.json' with {type: "json"};
 import landmarkData from './resources/landmarks.json' with {type: "json"};
 import connectionData from './resources/connections.json' with {type: "json"};
+import gatherPoints from './resources/gatherPoints.json' with {type: "json"};
+import stageIds from './resources/stageIds.json' with {type: "json"};
+import itemNames from './resources/itemNames.json' with {type: "json"};
+import emNames from './resources/emNames.json' with {type: "json"};
+import iconIds from './resources/iconIds.json' with {type: "json"};
+import npcShops from './resources/npcShops.json' with {type: "json"};
+import npcNames from './resources/npcNames.json' with {type: "json"};
+const _iconIdSet = new Set(iconIds);
 
 // ── Leaflet map setup ──────────────────────────────────────────────────────────
 const leafletMap = L.map('map', {
@@ -83,6 +91,8 @@ let connectionLayer = L.layerGroup().addTo(leafletMap);
 let gridLayer        = L.layerGroup();   // off by default
 let territoryLayer   = L.layerGroup();   // off by default; territory rects when groups expand
 let stageLabelsLayer = L.layerGroup().addTo(leafletMap);  // area name text labels
+let gatherLayer      = L.layerGroup();   // off by default
+let npcShopLayer     = L.layerGroup();   // off by default
 let pdBoundaryLayer = L.layerGroup().addTo(leafletMap);
 let spawnRadiiLayer   = L.layerGroup().addTo(leafletMap);  // aggro/link radius circles
 let _spreadOverlay    = L.layerGroup().addTo(leafletMap);  // cross-group spoke lines + anchor dots
@@ -131,6 +141,10 @@ function getLayersHash() {
     if (document.getElementById('layer-grid').checked)          s += 'g';
     if (document.getElementById('layer-territory').checked)     s += 't';
     if (document.getElementById('layer-stage-labels').checked)  s += 'a';
+    if (document.getElementById('layer-gather').checked)        s += 'r';
+    if (document.getElementById('layer-radii').checked)         s += 'i';
+    if (document.getElementById('layer-npc-shops').checked)     s += 'n';
+    if (document.getElementById('sidebar').classList.contains('collapsed')) s += 's';
     const openIds = [..._groupStore.values()]
         .filter(g => g.isExpanded)
         .map(g => g.groupId)
@@ -160,6 +174,9 @@ function saveLayerPrefs() {
         grid:         document.getElementById('layer-grid').checked,
         territory:    document.getElementById('layer-territory').checked,
         stageLabels:  document.getElementById('layer-stage-labels').checked,
+        gather:       document.getElementById('layer-gather').checked,
+        radii:        document.getElementById('layer-radii').checked,
+        npcShops:     document.getElementById('layer-npc-shops').checked,
     };
     try { localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
     updateLayersInHash();
@@ -187,6 +204,9 @@ function loadLayerPrefs() {
     document.getElementById('layer-grid').checked          = isOn('grid',         false);
     document.getElementById('layer-territory').checked     = isOn('territory',    false);
     document.getElementById('layer-stage-labels').checked  = isOn('stageLabels',  true);
+    document.getElementById('layer-gather').checked        = isOn('gather',        false);
+    document.getElementById('layer-radii').checked         = isOn('radii',         false);
+    document.getElementById('layer-npc-shops').checked     = isOn('npcShops',      true);
 
     if (!document.getElementById('layer-landmarks').checked)
         leafletMap.removeLayer(landmarkLayer);
@@ -198,8 +218,14 @@ function loadLayerPrefs() {
         leafletMap.addLayer(territoryLayer);
     if (!document.getElementById('layer-stage-labels').checked)
         leafletMap.removeLayer(stageLabelsLayer);
+    if (document.getElementById('layer-gather').checked)
+        leafletMap.addLayer(gatherLayer);
+    if (document.getElementById('layer-npc-shops').checked)
+        leafletMap.addLayer(npcShopLayer);
     if (!document.getElementById('layer-enemies').checked)
         updateEnemyVisibility();
+    if (isOn('sidebarHidden', false))
+        document.getElementById('sidebar').classList.add('collapsed');
 })();
 
 // ── Layer toggles ──────────────────────────────────────────────────────────────
@@ -222,6 +248,28 @@ document.getElementById('layer-stage-labels').addEventListener('change', e => {
     e.target.checked ? leafletMap.addLayer(stageLabelsLayer) : leafletMap.removeLayer(stageLabelsLayer);
     saveLayerPrefs();
 });
+document.getElementById('layer-gather').addEventListener('change', e => {
+    e.target.checked ? leafletMap.addLayer(gatherLayer) : leafletMap.removeLayer(gatherLayer);
+    saveLayerPrefs();
+});
+document.getElementById('layer-radii').addEventListener('change', e => {
+    if (!e.target.checked) clearSpawnRadii();
+    saveLayerPrefs();
+});
+document.getElementById('layer-npc-shops').addEventListener('change', e => {
+    e.target.checked ? leafletMap.addLayer(npcShopLayer) : leafletMap.removeLayer(npcShopLayer);
+    saveLayerPrefs();
+});
+// ── Sidebar collapse / expand ──────────────────────────────────────────────────
+function setSidebarCollapsed(collapsed) {
+    document.getElementById('sidebar').classList.toggle('collapsed', collapsed);
+    document.getElementById('sidebar-toggle').style.display = collapsed ? 'block' : 'none';
+    leafletMap.invalidateSize();
+    updateLayersInHash();
+}
+document.getElementById('sidebar-collapse').addEventListener('click', () => setSidebarCollapsed(true));
+document.getElementById('sidebar-toggle').addEventListener('click',   () => setSidebarCollapsed(false));
+
 document.getElementById('layer-territory').addEventListener('change', e => {
     if (e.target.checked) {
         leafletMap.addLayer(territoryLayer);
@@ -486,11 +534,15 @@ function parseHash() {
     if (layersPart !== null) {
         const [flagStr, groupsStr = ''] = layersPart.split(';');
         layers = {
-            enemies:     flagStr.includes('e'),
-            landmarks:   flagStr.includes('l'),
-            connections: flagStr.includes('c'),
-            grid:        flagStr.includes('g'),
-            territory:   flagStr.includes('t'),
+            enemies:      flagStr.includes('e'),
+            landmarks:    flagStr.includes('l'),
+            connections:  flagStr.includes('c'),
+            grid:         flagStr.includes('g'),
+            territory:    flagStr.includes('t'),
+            stageLabels:  flagStr.includes('a'),
+            gather:       flagStr.includes('r'),
+            npcShops:     flagStr.includes('n'),
+            sidebarHidden: flagStr.includes('s'),
         };
         openGroups = groupsStr ? groupsStr.split(',').filter(Boolean) : [];
     }
@@ -751,7 +803,7 @@ function buildGroupDetails(g) {
 
     // Spawn circleMarkers
     g.sgMarkers = {};
-    for (const { spawn, idx, sg, latlng } of g.items) {
+    for (const { spawn, idx, sg, latlng, stageNo } of g.items) {
         const fillColor = spawnGroupColor(sg);
         const sgKey     = `${sg}:${g.groupId}`;
 
@@ -763,18 +815,116 @@ function buildGroupDetails(g) {
         })() : '';
         const groupLabel = `<span style="color:${g.color};font-weight:bold;">Group: ${g.groupId}</span>`;
         const isKeyBearer = spawn.KeyBearer === true;
-        const emLine = spawn.EmName
-            ? `<br><span style="color:#aaa;font-size:11px">${spawn.EmName}</span>` : '';
-        const radiiLine = (spawn.AggroRadius || spawn.LinkRadius) ? (() => {
-            const ag = spawn.AggroRadius
-                ? `<span style="color:#ffd700">&#9679;</span> Aggro: ${spawn.AggroRadius}` : '';
-            const lk = spawn.LinkRadius
-                ? `<span style="color:#ff7700">&#9675;</span> Link: ${spawn.LinkRadius}` : '';
-            return `<br><span style="font-size:11px">${[ag, lk].filter(Boolean).join(' &nbsp; ')}</span>`;
-        })() : '';
-        const keyLine    = isKeyBearer ? '<br><span style="font-size:11px">🗝 Key Bearer</span>' : '';
-        const popupHtml  = `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${emLine}${keyLine}${radiiLine}`;
-        const tooltipText = `${g.groupId}.${idx} [SS:${sg}]${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
+        const keyLine = isKeyBearer ? '<br><span style="font-size:11px">🗝 Key Bearer</span>' : '';
+
+        // Build popup HTML optionally enriched with server EnemySpawn data
+        const serverStageId = stageIds[stageNo];
+        const spawnKey = serverStageId != null
+            ? `${serverStageId},${g.groupId},${spawn.posIdx ?? idx}` : null;
+
+        // Per-marker display index for cycling through day/night/always variants
+        let displayIdx = 0;
+
+        const spawnTimeLabel = (t) => {
+            if (!t || t === '00:00,23:59') return '';
+            if (t.startsWith('07:')) return '☀ Day';
+            if (t.startsWith('18:')) return '🌙 Night';
+            return t;
+        };
+
+        const buildDropsHtml = (spawnInfo) => {
+            if (!spawnInfo?.drops?.length) return '';
+            return '<br><table style="font-size:13px;margin-top:6px;border-collapse:collapse;line-height:1.8">' +
+                spawnInfo.drops.map(row => {
+                    // row = [itemId, minQty, maxQty, unknown, isHidden, dropRate]
+                    const itemId   = row[0];
+                    const minQty   = row[1] ?? 1;
+                    const maxQty   = row[2] ?? 1;
+                    const dropRate = row[5];
+                    const entry    = itemNames[String(itemId)];
+                    const name     = entry?.name ?? `Item #${itemId}`;
+                    const iconNo   = entry?.iconNo;
+                    const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
+                    const icon     = iconFile && _iconIdSet.has(iconNo)
+                        ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;margin-right:6px;image-rendering:pixelated">`
+                        : `<span style="display:inline-block;width:28px;margin-right:6px"></span>`;
+                    const href     = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+                    const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
+                    const qty      = maxQty > minQty ? ` ×${minQty}–${maxQty}` : ` ×${minQty}`;
+                    const pct      = dropRate > 0
+                        ? ` <span style="color:#777">(${(dropRate * 100).toFixed(0)}%)</span>` : '';
+                    return `<tr><td style="color:#222;padding-right:8px;white-space:nowrap">${icon}${nameLink}</td><td style="color:#555;white-space:nowrap">${qty}${pct}</td></tr>`;
+                }).join('') +
+                '</table>';
+        };
+
+        const buildEnemyPopup = (spawnCache) => {
+            const entries   = spawnKey && spawnCache ? (spawnCache.get(spawnKey) ?? []) : [];
+            const spawnInfo = entries[displayIdx] ?? null;
+            // An enemy is "present" if: server data isn't loaded yet (unknown),
+            // or any entry has a non-zero level.
+            const hasEnemy  = !spawnCache || entries.some(e => !!e.lv);
+            // Prefer em code from server data; fall back to lot file only while loading
+            const emCode    = spawnInfo?.emCode ?? (hasEnemy ? spawn.EmName : null);
+            const emEntry   = emCode ? emNames[emCode] : null;
+            const dispName  = emEntry?.name ?? null;
+            const lvText    = spawnInfo?.lv ? ` Lv${spawnInfo.lv}` : '';
+            const emCodeLine = dispName && emCode
+                ? `<span style="color:#888;font-size:10px"> (${emCode})</span>` : '';
+            const emLine = dispName
+                ? `<br><span style="color:#333;font-size:12px">${dispName}${lvText}</span>${emCodeLine}` : '';
+
+            // Cycle controls when multiple day/night variants exist
+            const cycleHtml = entries.length > 1 ? (() => {
+                const btnStyle = 'background:#e8e8e8;border:1px solid #bbb;border-radius:3px;padding:0 5px;cursor:pointer;font-size:11px;line-height:16px;';
+                const timeLabel = spawnTimeLabel(spawnInfo?.spawnTime);
+                const timePart  = timeLabel ? ` &nbsp;${timeLabel}&nbsp; ` : ` &nbsp;`;
+                return `<br><span style="font-size:11px;color:#444">` +
+                    `<button class="spawn-prev" style="${btnStyle}">◀</button>` +
+                    `${timePart}<span style="color:#666">${displayIdx + 1}/${entries.length}</span>&nbsp;` +
+                    `<button class="spawn-next" style="${btnStyle}">▶</button></span>`;
+            })() : '';
+
+            const radiiLine = hasEnemy && (spawn.AggroRadius || spawn.LinkRadius) ? (() => {
+                const ag = spawn.AggroRadius
+                    ? `<span style="color:#ffd700">&#9679;</span> Aggro: ${spawn.AggroRadius}` : '';
+                const lk = spawn.LinkRadius
+                    ? `<span style="color:#ff7700">&#9675;</span> Link: ${spawn.LinkRadius}` : '';
+                return `<br><span style="font-size:11px">${[ag, lk].filter(Boolean).join(' &nbsp; ')}</span>`;
+            })() : '';
+            const orbsLine = hasEnemy && (spawnInfo?.bloodOrbs || spawnInfo?.highOrbs) ? (() => {
+                const b = spawnInfo.bloodOrbs ? `🩸 ${spawnInfo.bloodOrbs}` : '';
+                const h = spawnInfo.highOrbs  ? `⭐ ${spawnInfo.highOrbs}`  : '';
+                return `<br><span style="font-size:12px">${[b, h].filter(Boolean).join(' &nbsp; ')}</span>`;
+            })() : '';
+            return `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${cycleHtml}${emLine}${keyLine}${radiiLine}${orbsLine}${buildDropsHtml(spawnInfo)}`;
+        };
+
+        const buildTooltip = (spawnCache) => {
+            const entries  = spawnKey && spawnCache ? (spawnCache.get(spawnKey) ?? []) : [];
+            const hasEnemy = !spawnCache || entries.some(e => !!e.lv);
+            let namePart = '';
+            if (entries.length > 1) {
+                // Show all variants: "Killer Bee Lv3☀ / Skeleton Lv3🌙"
+                const parts = entries
+                    .filter(e => !!e.lv)
+                    .map(e => {
+                        const n = e.emCode ? (emNames[e.emCode]?.name ?? e.emCode) : null;
+                        const t = spawnTimeLabel(e.spawnTime);
+                        return n ? `${n} Lv${e.lv}${t ? [...t][0] : ''}` : null;
+                    })
+                    .filter(Boolean);
+                if (parts.length) namePart = parts.join(' / ') + ' — ';
+            } else if (entries.length === 1 && hasEnemy) {
+                const e0 = entries[0];
+                const n  = e0.emCode ? (emNames[e0.emCode]?.name ?? null) : (spawn.EmName ? (emNames[spawn.EmName]?.name ?? null) : null);
+                if (n) namePart = `${n}${e0.lv ? ` Lv${e0.lv}` : ''} — `;
+            } else if (!spawnCache && hasEnemy && spawn.EmName) {
+                const n = emNames[spawn.EmName]?.name ?? null;
+                if (n) namePart = `${n} — `;
+            }
+            return `${namePart}${g.groupId}.${idx} [SS:${sg}]${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
+        };
 
         const marker = L.circleMarker(latlng, {
             renderer:    spawnRenderer,
@@ -785,16 +935,64 @@ function buildGroupDetails(g) {
             weight:      isKeyBearer ? 3.5 : 2.5,
             radius:      5,
         })
-            .bindPopup(popupHtml)
-            .bindTooltip(tooltipText, { direction: 'top', offset: [0, -8] });
+            .bindPopup(buildEnemyPopup(_enemySpawnCache))
+            .bindTooltip('', { direction: 'top', offset: [0, -8] });
+
+        // Rebuild tooltip fresh on every hover so level/name is always current
+        marker.on('tooltipopen', function() {
+            const tt = buildTooltip(_enemySpawnCache);
+            this.setTooltipContent(tt);
+            this._label = tt;
+            this._naturalTooltip = tt;
+            if (!_enemySpawnCache && spawnKey) {
+                _enemySpawnPromise.then(cache => {
+                    const updated = buildTooltip(cache);
+                    this._label = updated;
+                    this._naturalTooltip = updated;
+                    if (this.isTooltipOpen()) this.setTooltipContent(updated);
+                });
+            }
+        });
+
+        // Rebuild popup content and attach cycle-button handlers on open.
+        // Uses direct innerHTML update on the content div to avoid Leaflet's
+        // setContent/update reflow, which closes tooltips and repositions the popup.
+        let _popupClickHandler = null;
+        marker.on('popupopen', function() {
+            const popup = this.getPopup();
+            const bind = (cache) => {
+                requestAnimationFrame(() => {
+                    const el = popup.getElement();
+                    if (!el) return;
+                    // Update content without triggering Leaflet reflow
+                    const contentDiv = el.querySelector('.leaflet-popup-content');
+                    if (contentDiv) contentDiv.innerHTML = buildEnemyPopup(cache);
+                    // Replace click handler (event delegation — survives innerHTML swaps)
+                    if (_popupClickHandler) el.removeEventListener('click', _popupClickHandler);
+                    const entries = cache?.get(spawnKey) ?? [];
+                    if (entries.length <= 1) return;
+                    _popupClickHandler = (e) => {
+                        const btn = e.target.closest('.spawn-prev, .spawn-next');
+                        if (!btn) return;
+                        e.stopPropagation();
+                        displayIdx = (displayIdx + (btn.classList.contains('spawn-prev') ? -1 : 1) + entries.length) % entries.length;
+                        const cd = el.querySelector('.leaflet-popup-content');
+                        if (cd) cd.innerHTML = buildEnemyPopup(cache);
+                    };
+                    el.addEventListener('click', _popupClickHandler);
+                });
+            };
+            if (_enemySpawnCache) { bind(_enemySpawnCache); return; }
+            _enemySpawnPromise.then(cache => { if (this.isPopupOpen()) bind(cache); });
+        });
 
         marker._sgKey          = sgKey;
-        marker._label          = tooltipText;
+        marker._label          = buildTooltip(_enemySpawnCache);
         marker._origStyle      = { color: isKeyBearer ? '#c8a000' : g.color, weight: isKeyBearer ? 3.5 : 2.5, fillOpacity: 0.85 };
         marker._spawn          = spawn;
         marker._info           = info;
         marker._naturalLatLng  = latlng;    // saved for spread reset
-        marker._naturalTooltip = tooltipText;
+        marker._naturalTooltip = buildTooltip(_enemySpawnCache);
 
         if (!g.sgMarkers[sgKey]) g.sgMarkers[sgKey] = [];
         g.sgMarkers[sgKey].push(marker);
@@ -938,6 +1136,7 @@ function clearSpawnRadii() {
 }
 
 function showSpawnRadii(marker) {
+    if (!document.getElementById('layer-radii').checked) return;
     // Toggle off if clicking the same marker again
     if (_activeRadiiMarker === marker) {
         clearSpawnRadii();
@@ -1071,7 +1270,7 @@ function loadEnemySpawns(info, stid = null) {
                 }
                 const latlng = worldToPixel(pos.x, pos.z, info);
                 entry.pts.push([latlng.lng, latlng.lat]);
-                entry.items.push({ spawn, idx: i, sg: spawn.SpawnGroup ?? 0, latlng });
+                entry.items.push({ spawn, idx: i, sg: spawn.SpawnGroup ?? 0, latlng, stageNo });
             }
         }
     }
@@ -1133,6 +1332,483 @@ const LANDMARK_COLORS = {
 
 // Types that clutter the map without being useful landmarks
 const HIDDEN_LANDMARK_TYPES = new Set(['TYPE_TEXT', 'TYPE_WATER_LINE', 'TYPE_NONE']);
+
+// ── Live server data (fetched from GitHub at runtime) ─────────────────────────
+// File content for local overrides is stored in IndexedDB (higher capacity than
+// localStorage). localStorage only holds the sentinel '__local__' or a URL string.
+const _idb = new Promise(resolve => {
+    try {
+        const req = indexedDB.open('ddon-maps-src', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore('files');
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = () => resolve(null);
+    } catch { resolve(null); }
+});
+function _idbGet(key) {
+    return _idb.then(db => db ? new Promise(res => {
+        const r = db.transaction('files').objectStore('files').get(key);
+        r.onsuccess = () => res(r.result ?? null); r.onerror = () => res(null);
+    }) : null);
+}
+function _idbSet(key, val) {
+    return _idb.then(db => db ? new Promise((res, rej) => {
+        const tx = db.transaction('files', 'readwrite');
+        tx.objectStore('files').put(val, key);
+        tx.oncomplete = res; tx.onerror = rej;
+    }) : null);
+}
+function _idbDel(key) {
+    return _idb.then(db => db ? new Promise((res, rej) => {
+        const tx = db.transaction('files', 'readwrite');
+        tx.objectStore('files').delete(key);
+        tx.oncomplete = res; tx.onerror = rej;
+    }) : null);
+}
+
+// Returns a URL to use for fetching (custom URL, blob from IDB/FSA handle, or default).
+// FSA handles (stored under lsKey+'-handle') always re-read the live file from disk.
+// Stored content (IDB under lsKey) is the fallback when FSA isn't available or lacks permission.
+async function getSrcUrl(lsKey, defaultUrl) {
+    try {
+        const val = localStorage.getItem(lsKey);
+        if (!val) return defaultUrl;
+        if (val === '__local__') {
+            // Try FSA handle first — always reads fresh file from disk
+            const handle = await _idbGet(lsKey + '-handle');
+            if (handle) {
+                try {
+                    const perm = await handle.queryPermission({ mode: 'read' });
+                    if (perm === 'granted') {
+                        const file = await handle.getFile();
+                        return URL.createObjectURL(file);
+                    }
+                    // Permission not yet granted — fall through to stored content.
+                    // User can open ⚙ Settings to grant it (opening the modal = user gesture).
+                } catch { /* handle may be stale; fall through */ }
+            }
+            // Fall back to stored content (IDB or legacy localStorage)
+            const data = await _idbGet(lsKey);
+            if (data) return URL.createObjectURL(new Blob([data]));
+            const lsData = localStorage.getItem(lsKey + '-data');
+            if (lsData) return URL.createObjectURL(new Blob([lsData]));
+            return defaultUrl;
+        }
+        return val;
+    } catch { return defaultUrl; }
+}
+
+// Show a visible error banner in the sidebar when a data source fails to load.
+function showSrcError(label) {
+    let box = document.getElementById('src-errors');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'src-errors';
+        box.style.cssText = 'font-size:0.75rem;padding:2px 8px;';
+        const sidebar = document.getElementById('sidebar');
+        const anchor  = sidebar.querySelector('#search-box') ?? sidebar.children[1];
+        sidebar.insertBefore(box, anchor);
+    }
+    const item = document.createElement('div');
+    item.style.cssText = 'display:flex;align-items:center;gap:5px;margin-bottom:3px;'
+        + 'color:#f99;background:#2a0f0f;border-left:3px solid #c0392b;border-radius:2px;padding:3px 6px;';
+    item.innerHTML = `⚠ <span style="flex:1"><b>${label}</b> failed to load</span>`
+        + `<button data-action="fix" style="font-size:0.7rem;padding:1px 5px;cursor:pointer;`
+        + `background:none;color:#ffd700;border:1px solid #666;border-radius:2px">⚙ Fix</button>`
+        + `<button data-action="dismiss" style="font-size:0.7rem;padding:1px 4px;cursor:pointer;`
+        + `background:none;color:#aaa;border:none">✕</button>`;
+    item.querySelector('[data-action="fix"]').addEventListener('click',
+        () => document.getElementById('settings-btn').click());
+    item.querySelector('[data-action="dismiss"]').addEventListener('click', () => item.remove());
+    box.appendChild(item);
+}
+
+const _DEFAULT_GATHERING_URL = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/GatheringItem.csv';
+const _DEFAULT_SPAWNS_URL    = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/EnemySpawn.json';
+const _DEFAULT_SHOP_URL      = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/Shop.json';
+
+// Cached promises — fetch starts once, result shared by all callers.
+// Map key: "stageId,groupId,posId" → [{itemId, itemNum, maxItemNum, quality, dropChance, isHidden}]
+let _gatherItemsCache = null;
+const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_URL)
+    .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }))
+    .then(text => {
+        const lines = text.split('\n');
+        // First column header is "#StageId" — strip the leading '#'
+        lines[0] = lines[0].replace(/^#/, '');
+        const result = new Map();
+        const headers = lines[0].split(',');
+        const idx = name => headers.indexOf(name);
+        const iStage = idx('StageId'), iGroup = idx('GroupId'),
+              iPos = idx('PosId'), iItem = idx('ItemId'), iNum = idx('ItemNum'),
+              iMax = idx('MaxItemNum'), iQual = idx('Quality'),
+              iHidden = idx('IsHidden'), iChance = idx('DropChance');
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(',');
+            if (cols.length < 5) continue;
+            const key = `${cols[iStage]},${cols[iGroup]},${cols[iPos]}`;
+            if (!result.has(key)) result.set(key, []);
+            result.get(key).push({
+                itemId:     parseInt(cols[iItem]),
+                itemNum:    parseInt(cols[iNum]),
+                maxItemNum: parseInt(cols[iMax]),
+                quality:    parseInt(cols[iQual]),
+                isHidden:   cols[iHidden] === 'true' || cols[iHidden] === '1',
+                dropChance: parseFloat(cols[iChance]),
+            });
+        }
+        _gatherItemsCache = result;
+        return result;
+    })
+    .catch(() => { showSrcError('Gathering Items'); _gatherItemsCache = new Map(); return _gatherItemsCache; });
+
+// Map key for enemy spawns: "stageId,groupId,posIdx" → [{emCode, lv, bloodOrbs, highOrbs, spawnTime, drops}]
+let _enemySpawnCache = null;
+const _enemySpawnPromise = getSrcUrl('ddon-src-spawns', _DEFAULT_SPAWNS_URL)
+    .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
+    .then(data => {
+        const schemas = data.schemas?.enemies ?? [];
+        const iStage     = schemas.indexOf('StageId'),
+              iGroup     = schemas.indexOf('GroupId'),
+              iPosIdx    = schemas.indexOf('PositionIndex'),
+              iEnemyId   = schemas.indexOf('EnemyId'),
+              iLv        = schemas.indexOf('Lv'),
+              iBlood     = schemas.indexOf('BloodOrbs'),
+              iHigh      = schemas.indexOf('HighOrbs'),
+              iSpawnTime = schemas.indexOf('SpawnTime'),
+              iDrops     = schemas.indexOf('DropsTableId');
+        const dropsTables = {};
+        for (const dt of (data.dropsTables ?? [])) dropsTables[dt.id] = dt;
+        const result = new Map();
+        for (const e of (data.enemies ?? [])) {
+            const key  = `${e[iStage]},${e[iGroup]},${e[iPosIdx]}`;
+            const dtId = e[iDrops];
+            const dt   = dtId != null && dtId >= 0 ? dropsTables[dtId] : null;
+            // Convert '0x011200' → 'em011200'
+            const hexStr = e[iEnemyId];
+            const emCode = hexStr ? `em${hexStr.slice(2).toLowerCase().padStart(6, '0')}` : null;
+            const entry = {
+                emCode:    emCode,
+                lv:        e[iLv]        ?? null,
+                bloodOrbs: e[iBlood]     ?? 0,
+                highOrbs:  e[iHigh]      ?? 0,
+                spawnTime: e[iSpawnTime] ?? null,
+                drops:     dt ? dt.items : [],
+            };
+            if (result.has(key)) result.get(key).push(entry);
+            else                 result.set(key, [entry]);
+        }
+        _enemySpawnCache = result;
+        return result;
+    })
+    .catch(() => { showSrcError('Enemy Spawns'); _enemySpawnCache = new Map(); return _enemySpawnCache; });
+
+// Map: ShopId → {walletType, items:[{itemId, price, stock}]}
+let _shopCache = null;
+const _shopPromise = getSrcUrl('ddon-src-shop', _DEFAULT_SHOP_URL)
+    .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
+    .then(data => {
+        const result = new Map();
+        for (const shop of data) {
+            result.set(shop.ShopId, {
+                walletType: shop.Data.WalletType,
+                items:      shop.Data.GoodsParamList ?? [],
+            });
+        }
+        _shopCache = result;
+        return result;
+    })
+    .catch(() => { showSrcError('Shop Data'); _shopCache = new Map(); return _shopCache; });
+
+// ── NPC shop constants ─────────────────────────────────────────────────────────
+const NPC_FUNC_LABELS = {
+    3: 'Shop',               4: 'Item Shop',        5: 'Equipment Shop',
+    6: 'Material Shop',      8: 'Weapon Shop',       9: 'Armor Shop',
+    19: 'Orb Exchange (Crests)',                     20: 'Orb Exchange (Materials)',
+    57: 'Play Point Shop',   74: 'Adventure Pass Shop',  97: 'Bitterblack Shop',
+};
+const NPC_FUNC_COLORS = {
+    3: '#ffd700',  4: '#4caf50',  5: '#2196f3',  6: '#ff9800',
+    8: '#e91e63',  9: '#9c27b0', 19: '#00bcd4', 20: '#00bcd4',
+    57: '#ffeb3b', 74: '#607d8b', 97: '#6a0020',
+};
+const WALLET_LABELS = {
+    1: 'G', 2: 'R', 3: 'BO', 4: 'Tickets', 5: 'Gems',
+    6: 'RP', 9: 'HO', 10: 'DP', 11: 'BP', 15: 'Dragon Marks',
+};
+
+
+// ── Gathering node colors ──────────────────────────────────────────────────────
+// Colours and labels for all known GatheringType enum values + treasure-chest UnitID types.
+const GATHER_COLORS = {
+    // ── Plants ────────────────────────────────────────────────────────────────
+    OM_GATHER_GRASS:       '#4CAF50',  // green
+    OM_GATHER_FLOWER:      '#E91E63',  // pink
+    OM_GATHER_MUSHROOM:    '#9C27B0',  // purple
+    OM_GATHER_CLOTH:       '#CE93D8',  // light purple — cloth/fibre
+    // ── Ore / Crystal ─────────────────────────────────────────────────────────
+    OM_GATHER_CRST_LV1:    '#42A5F5',  // blue
+    OM_GATHER_CRST_LV2:    '#1E88E5',  // medium blue
+    OM_GATHER_CRST_LV3:    '#1565C0',  // dark blue
+    OM_GATHER_CRST_LV4:    '#0D47A1',  // very dark blue
+    // ── Gemstone ──────────────────────────────────────────────────────────────
+    OM_GATHER_JWL_LV1:     '#FFEE58',  // yellow
+    OM_GATHER_JWL_LV2:     '#FDD835',  // deeper yellow
+    OM_GATHER_JWL_LV3:     '#F9A825',  // amber
+    OM_GATHER_TWINKLE:     '#FFF9C4',  // pale yellow — sparkle/twinkle node
+    // ── Lumber ────────────────────────────────────────────────────────────────
+    OM_GATHER_TREE_LV1:    '#A1887F',  // light brown
+    OM_GATHER_TREE_LV2:    '#795548',  // medium brown
+    OM_GATHER_TREE_LV3:    '#5D4037',  // dark brown
+    OM_GATHER_TREE_LV4:    '#3E2723',  // very dark brown
+    // ── Ground / Water ────────────────────────────────────────────────────────
+    OM_GATHER_SAND:        '#FF9800',  // orange
+    OM_GATHER_SHELL:       '#FFCC80',  // light amber
+    OM_GATHER_WATER:       '#00BCD4',  // cyan
+    // ── Items / Misc ──────────────────────────────────────────────────────────
+    OM_GATHER_ANTIQUE:     '#FF5722',  // deep orange
+    OM_GATHER_BOX:         '#8D6E63',  // brownish
+    OM_GATHER_ALCHEMY:     '#00BFA5',  // teal
+    OM_GATHER_BOOK:        '#78909C',  // blue-grey
+    OM_GATHER_ONE_OFF:     '#B0BEC5',  // light grey — one-off / event node
+    OM_GATHER_SHIP:        '#29B6F6',  // light blue — ship/maritime gather
+    // ── Key items ─────────────────────────────────────────────────────────────
+    OM_GATHER_KEY_LV1:     '#EF9A9A',  // light red
+    OM_GATHER_KEY_LV2:     '#EF5350',  // red
+    OM_GATHER_KEY_LV3:     '#C62828',  // dark red
+    OM_GATHER_KEY_LV4:     '#B71C1C',  // very dark red
+    // ── Treasure (gather type on chest OM) ────────────────────────────────────
+    OM_GATHER_TREA_IRON:   '#E0E0E0',  // light grey — common chest
+    OM_GATHER_TREA_OLD:    '#BCAAA4',  // warm grey  — old/common chest
+    OM_GATHER_TREA_TREE:   '#A5D6A7',  // light green — wooden chest
+    OM_GATHER_TREA_SILVER: '#CFD8DC',  // silver-grey
+    OM_GATHER_TREA_GOLD:   '#FFD54F',  // gold
+    // ── Special ───────────────────────────────────────────────────────────────
+    OM_GATHER_CORPSE:      '#546E7A',  // dark grey
+    OM_GATHER_DRAGON:      '#EF5350',  // bright red
+    // ── Treasure chest types (UnitID-based, from SetInfoOmTreasureBox/G) ─────
+    CHEST_IRON:            '#90A4AE',  // iron = grey-blue
+    CHEST_BROWN:           '#A1887F',  // brown
+    CHEST_TREASURE:        '#80CBC4',  // teal-ish
+    CHEST_BRONZE:          '#FFAB40',  // bronze/amber
+    CHEST_SILVER:          '#E0E0E0',  // silver
+    CHEST_GOLD:            '#FFD700',  // gold
+    CHEST_PURPLE:          '#CE93D8',  // purple
+    CHEST_ROUND:           '#FFF59D',  // pale yellow — small round chest
+    CHEST_SEALED_ORANGE:   '#FF6F00',  // orange — BBM sealed
+    CHEST_SEALED_PURPLE:   '#7B1FA2',  // purple — BBM sealed
+    CHEST_SEALED_PEARL:    '#B2EBF2',  // pearlescent — EXM reward
+    CHEST_UNKNOWN:         '#607D8B',  // fallback grey
+};
+
+const GATHER_LABELS = {
+    OM_GATHER_GRASS:       'Grass / Herb',
+    OM_GATHER_FLOWER:      'Flower',
+    OM_GATHER_MUSHROOM:    'Mushroom',
+    OM_GATHER_CLOTH:       'Cloth / Fibre',
+    OM_GATHER_CRST_LV1:    'Crystal (Lv1)',
+    OM_GATHER_CRST_LV2:    'Crystal (Lv2)',
+    OM_GATHER_CRST_LV3:    'Crystal (Lv3)',
+    OM_GATHER_CRST_LV4:    'Crystal (Lv4)',
+    OM_GATHER_JWL_LV1:     'Gemstone (Lv1)',
+    OM_GATHER_JWL_LV2:     'Gemstone (Lv2)',
+    OM_GATHER_JWL_LV3:     'Gemstone (Lv3)',
+    OM_GATHER_TWINKLE:     'Sparkle Node',
+    OM_GATHER_TREE_LV1:    'Lumber (Lv1)',
+    OM_GATHER_TREE_LV2:    'Lumber (Lv2)',
+    OM_GATHER_TREE_LV3:    'Lumber (Lv3)',
+    OM_GATHER_TREE_LV4:    'Lumber (Lv4)',
+    OM_GATHER_SAND:        'Sand',
+    OM_GATHER_SHELL:       'Shell',
+    OM_GATHER_WATER:       'Water',
+    OM_GATHER_ANTIQUE:     'Antique',
+    OM_GATHER_BOX:         'Box',
+    OM_GATHER_ALCHEMY:     'Alchemy Node',
+    OM_GATHER_BOOK:        'Book',
+    OM_GATHER_ONE_OFF:     'One-off Node',
+    OM_GATHER_SHIP:        'Maritime Gather',
+    OM_GATHER_KEY_LV1:     'Locked Chest (Lv1)',
+    OM_GATHER_KEY_LV2:     'Locked Chest (Lv2)',
+    OM_GATHER_KEY_LV3:     'Locked Chest (Lv3)',
+    OM_GATHER_KEY_LV4:     'Locked Chest (Lv4)',
+    OM_GATHER_TREA_IRON:   'Treasure (Iron)',
+    OM_GATHER_TREA_OLD:    'Treasure (Old)',
+    OM_GATHER_TREA_TREE:   'Treasure (Wood)',
+    OM_GATHER_TREA_SILVER: 'Treasure (Silver)',
+    OM_GATHER_TREA_GOLD:   'Treasure (Gold)',
+    OM_GATHER_CORPSE:      'Examine (Corpse)',
+    OM_GATHER_DRAGON:      'Dragon Node',
+    CHEST_IRON:            'Iron Chest',
+    CHEST_BROWN:           'Brown Chest',
+    CHEST_TREASURE:        'Treasure Chest',
+    CHEST_BRONZE:          'Bronze Chest',
+    CHEST_SILVER:          'Silver Chest',
+    CHEST_GOLD:            'Gold Chest',
+    CHEST_PURPLE:          'Purple Chest',
+    CHEST_ROUND:           'Small Round Chest',
+    CHEST_SEALED_ORANGE:   'Sealed Chest (Orange)',
+    CHEST_SEALED_PURPLE:   'Sealed Chest (Purple)',
+    CHEST_SEALED_PEARL:    'Pearlescent Chest',
+    CHEST_UNKNOWN:         'Chest',
+};
+
+function loadGatherPoints(info) {
+    gatherLayer.clearLayers();
+    if (!info.stages?.length) return;
+
+    for (const stageId of info.stages) {
+        const stageNo    = String(parseInt(stageId.slice(2), 10));
+        const nodes      = gatherPoints[stageNo];
+        if (!nodes) continue;
+        const serverStid = stageIds[stageNo];  // server stage_id for CSV lookup
+
+        for (const node of nodes) {
+            const latlng = worldToPixel(node.x, node.z, info);
+            const color  = GATHER_COLORS[node.type] ?? '#aaaaaa';
+            const label  = GATHER_LABELS[node.type] ?? node.type.replace(/^(OM_GATHER_|CHEST_)/, '').replace(/_/g, ' ');
+            const darkBadge = ['CHEST_SEALED_PURPLE', 'OM_GATHER_CRST_LV4', 'OM_GATHER_TREE_LV3',
+                               'OM_GATHER_TREE_LV4', 'OM_GATHER_KEY_LV3', 'OM_GATHER_KEY_LV4',
+                               'OM_GATHER_CORPSE'].includes(node.type);
+            const badgeText = darkBadge ? '#eee' : '#111';
+            const badge     = `<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:${color};color:${badgeText};font-weight:bold;font-size:11px;">${label}</span>`;
+            const typeLine  = `<br><span style="color:#666;font-size:11px">${node.type}</span>`;
+            const coordLine = `<br><span style="font-size:11px;color:#555">X:&nbsp;${node.x.toFixed(0)}&nbsp; Y:&nbsp;${node.y.toFixed(0)}&nbsp; Z:&nbsp;${node.z.toFixed(0)}</span>`;
+
+            const csvKey = serverStid != null ? `${serverStid},${node.groupId},${node.posId}` : null;
+
+            const idLine    = `<br><span style="color:#666;font-size:11px">Group: ${node.groupId} &nbsp; Index: ${node.posId}</span>`;
+
+            const buildGatherPopup = (gatherMap) => {
+                let itemsHtml = '';
+                if (csvKey && gatherMap) {
+                    const items = gatherMap.get(csvKey) ?? [];
+                    if (items.length) {
+                        itemsHtml = '<br><table style="font-size:15px;margin-top:8px;border-collapse:collapse;line-height:2">' +
+                            items.map(it => {
+                                const entry    = itemNames[String(it.itemId)];
+                                const name     = entry?.name ?? `Item #${it.itemId}`;
+                                const iconNo   = entry?.iconNo;
+                                const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
+                                const icon     = iconFile && _iconIdSet.has(iconNo)
+                                    ? `<img src="images/icons/small/${iconFile}" width="32" height="32" style="vertical-align:middle;margin-right:7px;image-rendering:pixelated">`
+                                    : `<span style="display:inline-block;width:32px;margin-right:7px"></span>`;
+                                const href     = `https://reference.dd-on.com/build/i${String(it.itemId).padStart(8, '0')}.html`;
+                                const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
+                                const qty      = it.maxItemNum > it.itemNum
+                                    ? ` ×${it.itemNum}–${it.maxItemNum}`
+                                    : ` ×${it.itemNum}`;
+                                const pct      = it.dropChance > 0
+                                    ? ` <span style="color:#777">(${(it.dropChance * 100).toFixed(0)}%)</span>` : '';
+                                return `<tr><td style="color:#222;padding-right:10px;white-space:nowrap">${icon}${nameLink}</td><td style="color:#555;white-space:nowrap">${qty}${pct}</td></tr>`;
+                            }).join('') +
+                            '</table>';
+                    }
+                }
+                return `${badge}${typeLine}${coordLine}${idLine}${itemsHtml}`;
+            };
+
+            const tooltipText = `${label} — ${node.groupId}.${node.posId}`;
+
+            const marker = L.circleMarker(latlng, {
+                color, fillColor: color, fillOpacity: 0.85, radius: 5, weight: 1, renderer: spawnRenderer,
+            })
+            .bindPopup(buildGatherPopup(_gatherItemsCache))
+            .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -5] })
+            .addTo(gatherLayer);
+
+            if (!_gatherItemsCache && csvKey) {
+                marker.on('popupopen', function() {
+                    if (_gatherItemsCache) {
+                        this.getPopup().setContent(buildGatherPopup(_gatherItemsCache));
+                        this.getPopup().update();
+                        return;
+                    }
+                    _gatherItemsPromise.then(gatherMap => {
+                        if (this.isPopupOpen()) {
+                            this.getPopup().setContent(buildGatherPopup(gatherMap));
+                            this.getPopup().update();
+                        }
+                    });
+                });
+            }
+        }
+    }
+}
+
+function loadNpcShops(info) {
+    npcShopLayer.clearLayers();
+    if (!info.stages?.length) return;
+
+    for (const stageId of info.stages) {
+        const stageNo = String(parseInt(stageId.slice(2), 10));
+        const npcs    = npcShops[stageNo];
+        if (!npcs) continue;
+
+        for (const npc of npcs) {
+            const latlng   = worldToPixel(npc.Position.x, npc.Position.z, info);
+            const funcId   = npc.InstitutionFunctionId;
+            const color    = NPC_FUNC_COLORS[funcId] ?? '#aaaaaa';
+            const funcLabel = NPC_FUNC_LABELS[funcId] ?? `Function ${funcId}`;
+            const npcName  = npcNames[String(npc.NpcId)] ?? `NPC #${npc.NpcId}`;
+
+            const badge = `<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:${color};color:#111;font-weight:bold;font-size:11px;">${funcLabel}</span>`;
+
+            const buildShopPopup = (shopCache) => {
+                const shop     = shopCache?.get(npc.ShopId);
+                const currency = shop ? (WALLET_LABELS[shop.walletType] ?? `Type ${shop.walletType}`) : '?';
+                let itemsHtml  = '';
+                if (shop?.items?.length) {
+                    itemsHtml = `<br><div style="font-size:11px;color:#666;margin-top:2px">Currency: ${currency}</div>` +
+                        '<br><div style="max-height:280px;overflow-y:auto;overflow-x:hidden;margin-top:4px;min-width:280px"><table style="font-size:13px;border-collapse:collapse;line-height:1.8;width:100%">' +
+                        shop.items.map(it => {
+                            const entry    = itemNames[String(it.ItemId)];
+                            const name     = entry?.name ?? `Item #${it.ItemId}`;
+                            const iconNo   = entry?.iconNo;
+                            const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
+                            const icon     = iconFile && _iconIdSet.has(iconNo)
+                                ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;margin-right:6px;image-rendering:pixelated">`
+                                : `<span style="display:inline-block;width:28px;margin-right:6px"></span>`;
+                            const href     = `https://reference.dd-on.com/build/i${String(it.ItemId).padStart(8, '0')}.html`;
+                            const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
+                            const stock = it.Stock === 255 ? '' : ` <span style="color:#888">(×${it.Stock})</span>`;
+                            return `<tr><td style="color:#222;padding-right:8px;white-space:nowrap">${icon}${nameLink}</td>` +
+                                   `<td style="color:#555;white-space:nowrap">${it.Price} ${currency}${stock}</td></tr>`;
+                        }).join('') +
+                        '</table></div>';
+                } else if (!shopCache) {
+                    itemsHtml = '<br><span style="color:#888;font-size:11px">Loading...</span>';
+                } else {
+                    itemsHtml = '<br><span style="color:#888;font-size:11px">No inventory data</span>';
+                }
+                return `${badge}<br><span style="color:#333;font-size:12px;font-weight:bold">${npcName}</span>` +
+                       `<br><span style="color:#666;font-size:11px">Shop ID: ${npc.ShopId}</span>` +
+                       itemsHtml;
+            };
+
+            const icon = L.divIcon({
+                className: '',
+                html: `<div style="width:12px;height:12px;background:${color};border:2px solid #111;transform:rotate(45deg);box-shadow:0 0 3px rgba(0,0,0,0.6);"></div>`,
+                iconSize:    [12, 12],
+                iconAnchor:  [6, 6],
+                popupAnchor: [0, -10],
+            });
+            const marker = L.marker(latlng, { icon })
+            .bindPopup(buildShopPopup(_shopCache), { minWidth: 300 })
+            .bindTooltip(`${npcName} — ${funcLabel}`, { direction: 'top', offset: [0, -10] })
+            .addTo(npcShopLayer);
+
+            marker.on('popupopen', function() {
+                const popup = this.getPopup();
+                const apply = (cache) => {
+                    const el = popup.getElement()?.querySelector('.leaflet-popup-content');
+                    if (el) el.innerHTML = buildShopPopup(cache);
+                    else { popup.setContent(buildShopPopup(cache)); popup.update(); }
+                };
+                if (_shopCache) { apply(_shopCache); return; }
+                _shopPromise.then(cache => { if (this.isPopupOpen()) apply(cache); });
+            });
+        }
+    }
+}
 
 function loadStageLabels(info) {
     stageLabelsLayer.clearLayers();
@@ -1594,6 +2270,8 @@ function loadMap(mapName) {
     loadStageLabels(info);
     loadLandmarks(mapName, info);
     loadConnections(mapName, info);
+    loadGatherPoints(info);
+    loadNpcShops(info);
     // Read openGroups BEFORE loadEnemySpawns — that function calls _updateExpandCollapseBtn
     // → updateLayersInHash which would overwrite the hash (erasing the group list) if read after.
     const { openGroups } = parseHash();
@@ -1683,6 +2361,200 @@ loadMap = function (mapName) {
     _origLoadMap(mapName);
     if (window._setCurrentInfo) window._setCurrentInfo(mapParams[mapName]);
 };
+
+// ── Settings modal ────────────────────────────────────────────────────────────
+{
+    const modal        = document.getElementById('settings-modal');
+    const srcRows      = [...document.querySelectorAll('.src-row')];
+    const pendingHandles = new Map(); // lsKey → FileSystemFileHandle  (FSA path)
+    const pendingFiles   = new Map(); // lsKey → File                  (non-FSA fallback)
+    const pendingResets  = new Set(); // lsKey → user clicked reset this session
+
+    // Updates the status label for a row. Async because it may query FSA handle permission.
+    async function srcStatus(row) {
+        const lsKey = row.dataset.key;
+        const el    = row.querySelector('.src-status');
+        const handle = pendingHandles.get(lsKey);
+        const file   = pendingFiles.get(lsKey);
+        if (handle) {
+            el.textContent = `📁 ${handle.name}`;
+            el.style.color = '#4caf50';
+            return;
+        }
+        if (file) {
+            el.textContent = `📁 ${file.name}`;
+            el.style.color = '#4caf50';
+            return;
+        }
+        if (pendingResets.has(lsKey)) {
+            el.textContent = 'Default';
+            el.style.color = '#666';
+            return;
+        }
+        const stored = localStorage.getItem(lsKey);
+        if (stored === '__local__') {
+            const storedHandle = await _idbGet(lsKey + '-handle');
+            if (storedHandle) {
+                try {
+                    const perm = await storedHandle.queryPermission({ mode: 'read' });
+                    if (perm === 'granted') {
+                        el.textContent = `📁 ${storedHandle.name}`;
+                        el.style.color = '#4caf50';
+                    } else {
+                        el.textContent = `📁 ${storedHandle.name} ⚠ needs permission`;
+                        el.style.color = '#ffa726';
+                    }
+                } catch {
+                    el.textContent = '📁 Local file (stale handle)';
+                    el.style.color = '#f88';
+                }
+            } else {
+                el.textContent = '📁 Local file';
+                el.style.color = '#4caf50';
+            }
+        } else if (stored && stored !== row.dataset.default) {
+            el.textContent = '🔗 Custom URL';
+            el.style.color = '#42a5f5';
+        } else {
+            el.textContent = 'Default';
+            el.style.color = '#666';
+        }
+    }
+
+    // Opening the modal IS a user gesture — we can call requestPermission here.
+    async function openSettings() {
+        pendingHandles.clear();
+        pendingFiles.clear();
+        pendingResets.clear();
+        for (const row of srcRows) {
+            const lsKey  = row.dataset.key;
+            const stored = localStorage.getItem(lsKey);
+            row.querySelector('.src-url-input').value =
+                (!stored || stored === '__local__') ? row.dataset.default : stored;
+            row.querySelector('.src-file-input').value = '';
+            // Auto-request permission for any stored handle that needs it
+            if (stored === '__local__') {
+                const handle = await _idbGet(lsKey + '-handle');
+                if (handle) {
+                    try {
+                        const perm = await handle.queryPermission({ mode: 'read' });
+                        if (perm === 'prompt') await handle.requestPermission({ mode: 'read' });
+                    } catch { /* ignore */ }
+                }
+            }
+            srcStatus(row);
+        }
+        modal.classList.add('open');
+    }
+
+    function closeSettings() { modal.classList.remove('open'); }
+
+    document.getElementById('settings-btn').addEventListener('click', openSettings);
+    document.getElementById('settings-close').addEventListener('click', closeSettings);
+    document.getElementById('settings-cancel').addEventListener('click', closeSettings);
+    modal.addEventListener('click', e => { if (e.target === modal) closeSettings(); });
+
+    for (const row of srcRows) {
+        const lsKey = row.dataset.key;
+
+        // Browse: use File System Access API when available (persists handle, always reads live file).
+        // Fall back to <input type="file"> on browsers without FSA support (stores a snapshot).
+        row.querySelector('.src-file-btn').addEventListener('click', async () => {
+            if (window.showOpenFilePicker) {
+                try {
+                    const [handle] = await showOpenFilePicker();
+                    pendingHandles.set(lsKey, handle);
+                    pendingFiles.delete(lsKey);
+                    row.querySelector('.src-url-input').value = `(local: ${handle.name})`;
+                    srcStatus(row);
+                } catch (e) {
+                    if (e.name !== 'AbortError') console.warn('File picker error:', e);
+                }
+            } else {
+                row.querySelector('.src-file-input').click();
+            }
+        });
+
+        // Fallback file input (non-FSA browsers — stores a content snapshot)
+        row.querySelector('.src-file-input').addEventListener('change', e => {
+            const file = e.target.files[0];
+            if (!file) return;
+            pendingFiles.set(lsKey, file);
+            pendingHandles.delete(lsKey);
+            row.querySelector('.src-url-input').value = `(local: ${file.name})`;
+            srcStatus(row);
+        });
+
+        row.querySelector('.src-reset-btn').addEventListener('click', () => {
+            pendingHandles.delete(lsKey);
+            pendingFiles.delete(lsKey);
+            pendingResets.add(lsKey);
+            row.querySelector('.src-url-input').value = row.dataset.default;
+            row.querySelector('.src-file-input').value = '';
+            srcStatus(row);
+        });
+        row.querySelector('.src-url-input').addEventListener('input', () => {
+            pendingHandles.delete(lsKey);
+            pendingFiles.delete(lsKey);
+            pendingResets.delete(lsKey);
+            row.querySelector('.src-file-input').value = '';
+            srcStatus(row);
+        });
+    }
+
+    document.getElementById('settings-reset-all').addEventListener('click', async () => {
+        pendingHandles.clear();
+        pendingFiles.clear();
+        pendingResets.clear();
+        for (const row of srcRows) {
+            row.querySelector('.src-url-input').value = row.dataset.default;
+            row.querySelector('.src-file-input').value = '';
+            localStorage.removeItem(row.dataset.key);
+            localStorage.removeItem(row.dataset.key + '-data');
+            await _idbDel(row.dataset.key);
+            await _idbDel(row.dataset.key + '-handle');
+            srcStatus(row);
+        }
+    });
+
+    document.getElementById('settings-apply').addEventListener('click', async () => {
+        try {
+            for (const row of srcRows) {
+                const lsKey  = row.dataset.key;
+                const handle = pendingHandles.get(lsKey);
+                const file   = pendingFiles.get(lsKey);
+                if (handle) {
+                    // FSA path: store handle; file is always re-read live from disk
+                    await _idbSet(lsKey + '-handle', handle);
+                    await _idbDel(lsKey);              // no content blob needed
+                    localStorage.setItem(lsKey, '__local__');
+                    localStorage.removeItem(lsKey + '-data');
+                } else if (file) {
+                    // Non-FSA fallback: store content snapshot
+                    const text = await file.text();
+                    await _idbSet(lsKey, text);
+                    await _idbDel(lsKey + '-handle');  // clear any old handle
+                    localStorage.setItem(lsKey, '__local__');
+                    localStorage.removeItem(lsKey + '-data');
+                } else {
+                    const val = row.querySelector('.src-url-input').value.trim();
+                    if (!val || val === row.dataset.default) {
+                        localStorage.removeItem(lsKey);
+                        await _idbDel(lsKey);
+                        await _idbDel(lsKey + '-handle');
+                    } else {
+                        localStorage.setItem(lsKey, val);
+                        await _idbDel(lsKey);
+                        await _idbDel(lsKey + '-handle');
+                    }
+                }
+            }
+            location.reload();
+        } catch (e) {
+            alert('Failed to save settings: ' + e.message);
+        }
+    });
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 if (!location.hash || location.hash === '#') {
