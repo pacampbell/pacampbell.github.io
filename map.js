@@ -1708,11 +1708,16 @@ function loadGatherPoints(info) {
 
             const tooltipText = `${label} — ${node.groupId}.${node.posId}`;
 
-            const marker = L.circleMarker(latlng, {
-                color, fillColor: color, fillOpacity: 0.85, radius: 5, weight: 1, renderer: spawnRenderer,
-            })
+            const gatherIcon = L.divIcon({
+                className: '',
+                html: `<div style="width:9px;height:9px;background:${color};border:2px solid rgba(255,255,255,0.7);box-shadow:0 0 3px rgba(0,0,0,0.7);"></div>`,
+                iconSize:    [9, 9],
+                iconAnchor:  [4, 4],
+                popupAnchor: [0, -8],
+            });
+            const marker = L.marker(latlng, { icon: gatherIcon })
             .bindPopup(buildGatherPopup(_gatherItemsCache))
-            .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -5] })
+            .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -8] })
             .addTo(gatherLayer);
 
             if (!_gatherItemsCache && csvKey) {
@@ -1732,6 +1737,8 @@ function loadGatherPoints(info) {
             }
         }
     }
+
+
 }
 
 function loadNpcShops(info) {
