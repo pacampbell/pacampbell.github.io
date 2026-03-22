@@ -9,7 +9,129 @@ import emNames from './resources/emNames.json' with {type: "json"};
 import iconIds from './resources/iconIds.json' with {type: "json"};
 import npcShops from './resources/npcShops.json' with {type: "json"};
 import npcNames from './resources/npcNames.json' with {type: "json"};
+import namedParamList from './resources/namedParams.json'  with {type: "json"};
+import hmPresetList   from './resources/hmPresets.json'    with {type: "json"};
+import emThinkInfo      from './resources/emThinkInfo.json'      with {type: "json"};
+import thinkTableNotes from './resources/thinkTableNotes.json' with {type: "json"};
+import emMontageInfo   from './resources/emMontageInfo.json'   with {type: "json"};
+import montageNotes    from './resources/montageNotes.json'    with {type: "json"};
+import breakTargets   from './resources/breakTargets.json'   with {type: "json"};
+import emRadii        from './resources/emRadii.json'        with {type: "json"};
 const _iconIdSet = new Set(iconIds);
+// Build lookup map: id → named param entry
+const namedParamsById = new Map(namedParamList.map(p => [p.id, p]));
+const hmPresetsByEmCode = new Map(hmPresetList.filter(p => p.emCode).map(p => [p.emCode, p]));
+// Helper: given a named param entry, return display label for the picker button
+function namedParamLabel(p) {
+    if (!p) return '0 (None)';
+    const trimName = p.name?.trim();
+    const typeSuffix = p.type === 'NAMED_TYPE_PREFIX' ? ' [Pfx]'
+        : p.type === 'NAMED_TYPE_REPLACE'             ? ' [Rep]'
+        : p.type === 'NAMED_TYPE_SUFFIX'              ? ' [Sfx]'
+        : '';
+    return trimName ? `${p.id}: ${trimName}${typeSuffix}` : `#${p.id}${typeSuffix}`;
+}
+// Helper: build inner stats table for a named param entry (used in edit panel)
+function buildNamedStatsInner(p) {
+    if (!p) return '';
+    const stat = (label, val) => {
+        if (val == null) return '';
+        const cls = val > 100 ? 'nsi-high' : val < 100 ? 'nsi-low' : 'nsi-norm';
+        return `<tr><td class="nsi-lbl">${label}</td><td class="${cls}">${val}%</td></tr>`;
+    };
+    return `<table class="nsi-table">` +
+        stat('HP', p.hp) + stat('Atk P', p.atkP) + stat('Atk M', p.atkM) +
+        stat('Def P', p.defP) + stat('Def M', p.defM) +
+        stat('Exp', p.exp) + stat('Power', p.power) +
+        `</table>`;
+}
+// Returns a persistent wrapper div (always present; hidden when namedId is 0)
+function buildNamedStatsHtml(namedId) {
+    const p = namedId ? namedParamsById.get(namedId) : null;
+    const inner = p ? buildNamedStatsInner(p) : '';
+    return `<div class="se-named-stats"${!inner ? ' style="display:none"' : ''}>${inner}</div>`;
+}
+// ── Named-stats companion panel (floats beside the enemy popup in edit mode) ──
+function buildNamedParamPanelHtml(p, baseEmName) {
+    if (!p || p.id === 0) return '';
+    const typeName = p.type.replace('NAMED_TYPE_', '');
+    const trimName = p.name?.trim();
+    let combined = null;
+    if (trimName) {
+        const em = baseEmName ?? '…';
+        const hi = `<span class="np-name-hi">${trimName}</span>`;
+        if      (p.type === 'NAMED_TYPE_PREFIX')  combined = `${hi} ${em}`;
+        else if (p.type === 'NAMED_TYPE_SUFFIX')  combined = `${em} ${hi}`;
+        else if (p.type === 'NAMED_TYPE_REPLACE') combined = hi;
+    }
+    const pct = v => v != null ? `${v}%` : '—';
+    const row = (label, val) => {
+        const v = pct(val);
+        const n = parseFloat(v);
+        const cls = n > 100 ? 'np-high' : n < 100 ? 'np-low' : '';
+        return `<tr><td>${label}</td><td${cls ? ` class="${cls}"` : ''}>${v}</td></tr>`;
+    };
+    const sec = (title, ...rows) =>
+        `<tr class="np-stat-sec"><td colspan="2">${title}</td></tr>` + rows.join('');
+    return (combined ? `<div class="np-preview-combined">${combined}</div>` : '') +
+        `<div class="np-preview-type">${typeName} · ID ${p.id}</div>` +
+        `<table class="np-stat-table">` +
+        sec('HP',
+            row('HP Rate',  p.hp),
+            row('HP Sub',   p.hpSub)) +
+        sec('Attack',
+            row('Base Phys',  p.atkP),
+            row('Base Magic', p.atkM),
+            row('Wep Phys',   p.atkWepP),
+            row('Wep Magic',  p.atkWepM)) +
+        sec('Defence',
+            row('Base Phys',  p.defP),
+            row('Base Magic', p.defM),
+            row('Wep Phys',   p.defWepP),
+            row('Wep Magic',  p.defWepM),
+            row('Guard Base', p.guardBase),
+            row('Guard Wep',  p.guardWep)) +
+        sec('Other',
+            row('Ailment Dmg', p.ailment),
+            row('Experience',  p.exp),
+            row('Power',       p.power)) +
+        sec('Endurance',
+            row('Blow Main',   p.blowMain),
+            row('Blow Sub',    p.blowSub),
+            row('Down Main',   p.downMain),
+            row('OCD',         p.ocd),
+            row('Shake Main',  p.shakeMain),
+            row('Shrink Main', p.shrinkMain),
+            row('Shrink Sub',  p.shrinkSub)) +
+        `</table>`;
+}
+let _namedStatsPanelAnchor = null;
+function _repositionNamedStatsPanel() {
+    const panel = document.getElementById('named-stats-panel');
+    if (!panel || panel.style.display === 'none' || !_namedStatsPanelAnchor) return;
+    const r  = _namedStatsPanelAnchor.getBoundingClientRect();
+    const pw = panel.offsetWidth || 150;
+    let left = r.right + 8;
+    if (left + pw > window.innerWidth - 8) left = r.left - pw - 8;
+    panel.style.left = Math.max(8, left) + 'px';
+    panel.style.top  = r.top + 'px';
+}
+function showNamedStatsPanel(namedId, anchorEl, baseEmName = null) {
+    const panel = document.getElementById('named-stats-panel');
+    if (!panel) return;
+    const p    = namedId ? namedParamsById.get(namedId) : null;
+    const html = p ? buildNamedParamPanelHtml(p, baseEmName) : '';
+    if (!html) { panel.style.display = 'none'; _namedStatsPanelAnchor = null; return; }
+    panel.innerHTML = html;
+    panel.style.display = 'block';
+    _namedStatsPanelAnchor = anchorEl ?? null;
+    _repositionNamedStatsPanel();
+}
+function hideNamedStatsPanel() {
+    const panel = document.getElementById('named-stats-panel');
+    if (panel) panel.style.display = 'none';
+    _namedStatsPanelAnchor = null;
+}
 
 // ── Leaflet map setup ──────────────────────────────────────────────────────────
 const leafletMap = L.map('map', {
@@ -91,8 +213,9 @@ let connectionLayer = L.layerGroup().addTo(leafletMap);
 let gridLayer        = L.layerGroup();   // off by default
 let territoryLayer   = L.layerGroup();   // off by default; territory rects when groups expand
 let stageLabelsLayer = L.layerGroup().addTo(leafletMap);  // area name text labels
-let gatherLayer      = L.layerGroup();   // off by default
-let npcShopLayer     = L.layerGroup();   // off by default
+let gatherLayer       = L.layerGroup();   // off by default
+let npcShopLayer      = L.layerGroup();   // off by default
+let breakTargetLayer  = L.layerGroup();   // off by default
 let pdBoundaryLayer = L.layerGroup().addTo(leafletMap);
 let spawnRadiiLayer   = L.layerGroup().addTo(leafletMap);  // aggro/link radius circles
 let _spreadOverlay    = L.layerGroup().addTo(leafletMap);  // cross-group spoke lines + anchor dots
@@ -105,7 +228,28 @@ const spawnRenderer = L.canvas({ padding: 0.5 });
 const _groupStore = new Map(); // groupId string → { groupId, color, territory, items, pts,
                                //   centroid, labelMarker, detailsLayer, isExpanded }
 let _currentMapInfo  = null;   // stored at loadEnemySpawns time; used by lazy expand
+
+// ── Edit mode state ────────────────────────────────────────────────────────────
+let _editMode        = false;
+let _editDirty       = false;       // any unsaved changes this session
+let _dirtySet        = new Set();   // which source keys have unsaved changes
+let _rawEnemyData    = null;        // full EnemySpawn.json object kept for write-back
+let _rawEnemySchemas = null;        // field-index shortcuts (same as iLv etc. but accessible globally)
+let _rawGatheringRows    = null;    // mutable array of CSV row-objects for write-back
+let _rawGatheringHeaders = null;    // original CSV header string (including leading '#')
+let _rawShopData     = null;        // full Shop.json array kept for write-back
 let _currentFloorObbs = null;
+let _dragItemId        = null;        // item ID being dragged from the Items panel
+let _gatherPopupDropFn = null;        // fn(itemId) for the currently open gather popup
+let _shopPopupDropFn   = null;        // fn(itemId) for the currently open shop popup
+let _dragEmCode        = null;        // emCode being dragged from the Enemies panel
+let _spawnPopupDropFn  = null;        // fn(emCode) for the currently open spawn popup
+let _dropsTablesMap    = new Map();   // id → {id, name, mdlType, items[]} — populated on spawn parse
+let _markDirty         = null;        // set by edit block; callable from gather/shop code
+let _attachDragReorder = null;        // set by edit block; callable from gather/shop code
+let _renderEditPanel   = null;        // set by edit block; callable from spawn popup code
+let _rebuildOpenPopup  = null;        // set on enemy popupopen; rebuilds active popup HTML
+let _dtEditorReadAndSave = null;      // set by openDropTableEditor; saves + closes the editor
 
 function updateEnemyVisibility() {
     const checked = document.getElementById('layer-enemies').checked;
@@ -143,7 +287,8 @@ function getLayersHash() {
     if (document.getElementById('layer-stage-labels').checked)  s += 'a';
     if (document.getElementById('layer-gather').checked)        s += 'r';
     if (document.getElementById('layer-radii').checked)         s += 'i';
-    if (document.getElementById('layer-npc-shops').checked)     s += 'n';
+    if (document.getElementById('layer-npc-shops').checked)        s += 'n';
+    if (document.getElementById('layer-break-targets').checked)    s += 'b';
     if (document.getElementById('sidebar').classList.contains('collapsed')) s += 's';
     const openIds = [..._groupStore.values()]
         .filter(g => g.isExpanded)
@@ -177,6 +322,7 @@ function saveLayerPrefs() {
         gather:       document.getElementById('layer-gather').checked,
         radii:        document.getElementById('layer-radii').checked,
         npcShops:     document.getElementById('layer-npc-shops').checked,
+        breakTargets: document.getElementById('layer-break-targets').checked,
     };
     try { localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
     updateLayersInHash();
@@ -206,7 +352,8 @@ function loadLayerPrefs() {
     document.getElementById('layer-stage-labels').checked  = isOn('stageLabels',  true);
     document.getElementById('layer-gather').checked        = isOn('gather',        false);
     document.getElementById('layer-radii').checked         = isOn('radii',         false);
-    document.getElementById('layer-npc-shops').checked     = isOn('npcShops',      true);
+    document.getElementById('layer-npc-shops').checked      = isOn('npcShops',      true);
+    document.getElementById('layer-break-targets').checked  = isOn('breakTargets',  false);
 
     if (!document.getElementById('layer-landmarks').checked)
         leafletMap.removeLayer(landmarkLayer);
@@ -222,6 +369,8 @@ function loadLayerPrefs() {
         leafletMap.addLayer(gatherLayer);
     if (document.getElementById('layer-npc-shops').checked)
         leafletMap.addLayer(npcShopLayer);
+    if (document.getElementById('layer-break-targets').checked)
+        leafletMap.addLayer(breakTargetLayer);
     if (!document.getElementById('layer-enemies').checked)
         updateEnemyVisibility();
     if (isOn('sidebarHidden', false))
@@ -258,6 +407,10 @@ document.getElementById('layer-radii').addEventListener('change', e => {
 });
 document.getElementById('layer-npc-shops').addEventListener('change', e => {
     e.target.checked ? leafletMap.addLayer(npcShopLayer) : leafletMap.removeLayer(npcShopLayer);
+    saveLayerPrefs();
+});
+document.getElementById('layer-break-targets').addEventListener('change', e => {
+    e.target.checked ? leafletMap.addLayer(breakTargetLayer) : leafletMap.removeLayer(breakTargetLayer);
     saveLayerPrefs();
 });
 // ── Sidebar collapse / expand ──────────────────────────────────────────────────
@@ -853,7 +1006,7 @@ function buildGroupDetails(g) {
                     const qty      = maxQty > minQty ? ` ×${minQty}–${maxQty}` : ` ×${minQty}`;
                     const pct      = dropRate > 0
                         ? ` <span style="color:#777">(${(dropRate * 100).toFixed(0)}%)</span>` : '';
-                    return `<tr><td style="color:#222;padding-right:8px;white-space:nowrap">${icon}${nameLink}</td><td style="color:#555;white-space:nowrap">${qty}${pct}</td></tr>`;
+                    return `<tr><td style="color:#222;padding-right:8px">${icon}${nameLink}</td><td style="color:#555;white-space:nowrap;vertical-align:top;padding-top:4px">${qty}${pct}</td></tr>`;
                 }).join('') +
                 '</table>';
         };
@@ -869,10 +1022,27 @@ function buildGroupDetails(g) {
             const emEntry   = emCode ? emNames[emCode] : null;
             const dispName  = emEntry?.name ?? null;
             const lvText    = spawnInfo?.lv ? ` Lv${spawnInfo.lv}` : '';
-            const emCodeLine = dispName && emCode
-                ? `<span style="color:#888;font-size:10px"> (${emCode})</span>` : '';
-            const emLine = dispName
-                ? `<br><span style="color:#333;font-size:12px">${dispName}${lvText}</span>${emCodeLine}` : '';
+            // Named param prefix/suffix/replace display
+            const namedParam = spawnInfo?.namedId ? namedParamsById.get(spawnInfo.namedId) : null;
+            const namedTrimmed = namedParam?.name?.trim();
+            const namedDisplayName = namedTrimmed && namedParam.type !== 'NAMED_TYPE_NONE'
+                ? namedTrimmed : null;
+            const namedFull = namedDisplayName ? (() => {
+                if (namedParam.type === 'NAMED_TYPE_REPLACE') return namedDisplayName;
+                if (namedParam.type === 'NAMED_TYPE_PREFIX') return dispName ? `${namedDisplayName} ${dispName}` : namedDisplayName;
+                if (namedParam.type === 'NAMED_TYPE_SUFFIX') return dispName ? `${dispName} ${namedDisplayName}` : namedDisplayName;
+                return null;
+            })() : null;
+            const _infectionPrefix = [null, 'Infected', 'Severely Infected', 'War-Ready'];
+            const _infPrefix = spawnInfo?.infection ? _infectionPrefix[spawnInfo.infection] : null;
+            const shownName = _infPrefix
+                ? `${_infPrefix} ${namedFull ?? dispName ?? ''}`
+                : (namedFull ?? dispName);
+            const isReplaced = namedParam?.type === 'NAMED_TYPE_REPLACE' && dispName;
+            const emCodeLine = shownName && emCode
+                ? `<span style="color:#888;font-size:10px"> (${isReplaced ? `${dispName} · ` : ''}${emCode})</span>` : '';
+            const emLine = shownName
+                ? `<br><span class="se-enemy-name" style="color:#333;font-size:12px">${shownName}${lvText}</span>${emCodeLine}` : '';
 
             // Cycle controls when multiple day/night variants exist
             const cycleHtml = entries.length > 1 ? (() => {
@@ -885,31 +1055,258 @@ function buildGroupDetails(g) {
                     `<button class="spawn-next" style="${btnStyle}">▶</button></span>`;
             })() : '';
 
-            const radiiLine = hasEnemy && (spawn.AggroRadius || spawn.LinkRadius) ? (() => {
-                const ag = spawn.AggroRadius
-                    ? `<span style="color:#ffd700">&#9679;</span> Aggro: ${spawn.AggroRadius}` : '';
-                const lk = spawn.LinkRadius
-                    ? `<span style="color:#ff7700">&#9675;</span> Link: ${spawn.LinkRadius}` : '';
+            const radiiLine = hasEnemy ? (() => {
+                const _ec    = spawnInfo?.emCode ?? spawn.EmName ?? null;
+                const _radii = _ec ? (emRadii[_ec] ?? null) : null;
+                const aggroR = _radii?.aggroRadius ?? spawn.AggroRadius;
+                const linkR  = _radii?.linkRadius  ?? spawn.LinkRadius;
+                if (!aggroR && !linkR) return '';
+                const ag = aggroR ? `<span style="color:#ffd700">&#9679;</span> Aggro: ${aggroR}` : '';
+                const lk = linkR  ? `<span style="color:#ff7700">&#9675;</span> Link: ${linkR}`  : '';
                 return `<br><span style="font-size:11px">${[ag, lk].filter(Boolean).join(' &nbsp; ')}</span>`;
             })() : '';
-            const orbsLine = hasEnemy && (spawnInfo?.bloodOrbs || spawnInfo?.highOrbs) ? (() => {
-                const b = spawnInfo.bloodOrbs ? `🩸 ${spawnInfo.bloodOrbs}` : '';
-                const h = spawnInfo.highOrbs  ? `⭐ ${spawnInfo.highOrbs}`  : '';
-                return `<br><span style="font-size:12px">${[b, h].filter(Boolean).join(' &nbsp; ')}</span>`;
+            const orbsLine = hasEnemy && ((spawnInfo?.isBloodOrbEnemy && spawnInfo?.bloodOrbs) || (spawnInfo?.isHighOrbEnemy && spawnInfo?.highOrbs)) ? (() => {
+                const b = (spawnInfo.isBloodOrbEnemy && spawnInfo.bloodOrbs) ? `<span title="Blood Orbs">🩸</span> ${spawnInfo.bloodOrbs}` : '';
+                const h = (spawnInfo.isHighOrbEnemy  && spawnInfo.highOrbs)  ? `<span title="High Orbs">⭐</span> ${spawnInfo.highOrbs}`   : '';
+                return `<br><span style="font-size:12px">${[b, h].filter(Boolean).join(' &nbsp;&nbsp; ')}</span>`;
             })() : '';
-            return `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${cycleHtml}${emLine}${keyLine}${radiiLine}${orbsLine}${buildDropsHtml(spawnInfo)}`;
+            const editSection = _editMode ? (() => {
+                if (!spawnKey) return '';
+                if (!spawnInfo) {
+                    // Empty node — show drop zone only
+                    return `<div class="popup-edit-section">` +
+                        `<div class="se-spawn-view se-spawn-empty" style="min-height:40px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(120,120,120,0.4);border-radius:3px;margin:4px 0">` +
+                        `<span style="color:#666;font-size:11px;pointer-events:none">Drop an enemy here to add a spawn</span>` +
+                        `</div></div>`;
+                }
+                const rawIdx = spawnInfo._rawIdx ?? '';
+                const inp = (key, val, w='48px', type='number') =>
+                    `<input class="popup-edit-input" data-edit="${key}" type="${type}" value="${val ?? ''}" style="width:${w}">`;
+                const chk = (key, val, label, title='') =>
+                    `<label style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap;cursor:pointer"${title ? ` title="${title}"` : ''}><input type="checkbox" data-edit="${key}"${val ? ' checked' : ''}> <span style="font-size:11px">${label}</span></label>`;
+                const lbl = (text, content, title='') =>
+                    `<label style="display:inline-flex;flex-direction:column;gap:1px"${title ? ` title="${title}"` : ''}>` +
+                    `<span style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:0.4px">${text}</span>${content}</label>`;
+                const grp = (title, ...rows) =>
+                    `<div style="margin-top:4px">` +
+                    `<div style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:0.6px;border-bottom:1px solid rgba(128,128,128,0.2);padding-bottom:1px;margin-bottom:2px">${title}</div>` +
+                    rows.map(r => `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px">${r}</div>`).join('') +
+                    `</div>`;
+                const PRESETS = [
+                    { label: 'Always', value: '00:00,23:59' },
+                    { label: '☀ Day',  value: '07:00,17:59' },
+                    { label: '🌙 Night',value: '18:00,06:59' },
+                ];
+                const curTime  = spawnInfo.spawnTime ?? '00:00,23:59';
+                // Dropdown: Always / Day / Night (falls back to first preset if custom value)
+                const timePicker =
+                    `<select class="popup-edit-input" data-edit="spawnTime" style="font-size:11px;min-width:100px">` +
+                    PRESETS.map(p =>
+                        `<option value="${p.value}"${p.value === curTime ? ' selected' : ''}>${p.label}</option>`
+                    ).join('') +
+                    (PRESETS.some(p => p.value === curTime) ? '' :
+                        `<option value="${curTime}" selected>${curTime} (custom)</option>`) +
+                    `</select>`;
+                // HmPreset + ThinkTbl controls (reused in both column and full-width contexts)
+                const hmPresetCtrl = (() => {
+                    const ep  = spawnInfo.emCode ? hmPresetsByEmCode.get(spawnInfo.emCode) : null;
+                    const txt = ep ? `${ep.id}${ep.name ? ' — ' + ep.name : ''}` : '—';
+                    return `<span style="font-size:11px;color:#666;padding:2px 4px;align-self:center" title="Derived from enemy type">${txt}</span>`;
+                })();
+                const thinkTblCtrl = (() => {
+                    const ti    = spawnInfo.emCode ? emThinkInfo[spawnInfo.emCode] : null;
+                    const cur   = spawnInfo.startThink ?? 0;
+                    const notes = ti ? (thinkTableNotes[ti.res] ?? {}) : {};
+                    const title = ti
+                        ? `Think table index — ${ti.res}, observed range 0–${ti.max} in spawn data`
+                        : 'AI behaviour table index';
+                    const control = ti
+                        ? `<select class="popup-edit-input" data-edit="startThink" style="width:auto;font-size:11px" title="${title}">` +
+                          Array.from({length: ti.max + 1}, (_,i) => {
+                              const note = notes[i] ? ` — ${notes[i]}` : '';
+                              return `<option value="${i}"${cur===i?' selected':''}>${i}${note}</option>`;
+                          }).join('') + `</select>`
+                        : inp('startThink', cur, '56px');
+                    const resLabel = ti ? ` [${ti.res}]` : '';
+                    return lbl(`Think Tbl${resLabel}`, control, title);
+                })();
+                return `<div class="popup-edit-section"><div class="se-spawn-view">` +
+                    grp('Drops',
+                        ...(() => {
+                            const dtId  = spawnInfo.dropsTableId ?? -1;
+                            const dt    = dtId >= 0 ? _dropsTablesMap.get(dtId) : null;
+                            const label = dt ? dt.name : 'None';
+                            const idBadge = dtId >= 0 ? `<span style="color:#999;font-size:10px"> (id:${dtId}, ${dt?.items?.length ?? 0} items)</span>` : '';
+                            const row1 = `<input type="hidden" data-edit="dropsTableId" value="${dtId}">` +
+                                `<div class="se-drops-row1" style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">` +
+                                `<span class="se-drops-label" style="font-size:11px;color:#444;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${label} (id:${dtId})">${label}${idBadge}</span>` +
+                                `<button class="popup-edit-btn se-drops-picker-btn" style="font-size:10px;padding:1px 6px">Change</button>` +
+                                (dtId >= 0 ? `<button class="popup-edit-btn se-drops-edit-btn" data-dt="${dtId}" style="font-size:10px;padding:1px 6px">Edit</button>` : '') +
+                                `</div>`;
+                            const items = dt?.items ?? [];
+                            if (!items.length) return [row1];
+                            const chips = items.map(row => {
+                                const itemId   = row[0] ?? 0;
+                                const minQty   = row[1] ?? 1;
+                                const maxQty   = row[2] ?? 1;
+                                const dropRate = row[5] ?? 0;
+                                const iconNo   = itemNames[String(itemId)]?.iconNo;
+                                const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6,'0')}.png` : null;
+                                const name     = itemNames[String(itemId)]?.name ?? `#${itemId}`;
+                                const qty      = maxQty > minQty ? `×${minQty}–${maxQty}` : `×${minQty}`;
+                                const pct      = dropRate > 0 ? ` ${(dropRate * 100).toFixed(0)}%` : '';
+                                const imgEl    = iconFile && _iconIdSet.has(iconNo)
+                                    ? `<img src="images/icons/small/${iconFile}" width="20" height="20" style="image-rendering:pixelated;vertical-align:middle" title="${name}">`
+                                    : `<span style="display:inline-block;width:20px;height:20px;background:#ddd;border-radius:2px;font-size:8px;text-align:center;line-height:20px;vertical-align:middle" title="${name}">${itemId}</span>`;
+                                return `<span style="display:inline-flex;align-items:center;gap:2px;white-space:nowrap">` +
+                                    imgEl +
+                                    `<span style="font-size:9px;color:#666">${qty}${pct}</span>` +
+                                    `</span>`;
+                            }).join('');
+                            return [row1, `<div class="se-drops-chips" style="display:flex;flex-wrap:wrap;gap:4px 6px">${chips}</div>`];
+                        })()
+                    ) +
+                    `<div class="se-grp-cols">` +
+                    // ── Left column ──────────────────────────────────────────
+                    `<div>` +
+                    grp('Stats',
+                        lbl('Level',      inp('lv',  spawnInfo.lv  ?? 1, '52px')) +
+                        lbl('Experience', inp('exp', spawnInfo.exp ?? 0, '60px')) +
+                        lbl('Play Pts',   inp('ppDrop', spawnInfo.ppDrop ?? 0, '56px'), 'Play Points — post-cap experience gained after reaching max EXP'),
+                        lbl('Named ID',
+                            `<input type="hidden" data-edit="namedId" value="${spawnInfo.namedId ?? 0}">` +
+                            `<button class="popup-edit-btn se-named-picker-btn" data-named-id="${spawnInfo.namedId ?? 0}" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left" title="Click to pick a named enemy param">${namedParamLabel(namedParamsById.get(spawnInfo.namedId ?? 0))}</button>`
+                        ),
+                    ) +
+                    grp('Spawn',
+                        lbl('Time', timePicker),
+                        lbl('Scale %',   inp('scale',      spawnInfo.scale      ?? 100, '56px')) +
+                        lbl('Sub Group', inp('subGroupId', spawnInfo.subGroupId ?? 0,   '56px')) +
+                        lbl('Set Type', (() => {
+                            const cur = spawnInfo.setType ?? 0;
+                            const opts = [
+                                [0, '0 — Normal'],
+                                [1, '1 — (Unknown)'],
+                                [2, '2 — Gather Spawn'],
+                                [3, '3 — Network Spawn'],
+                            ];
+                            return `<select class="popup-edit-input" data-edit="setType" style="width:auto;font-size:11px" title="0: Normal position from layout&#10;2: Spawns at linked gather node (mOmUID)&#10;3: Spawns at live network/player position">` +
+                                opts.map(([v, l]) => `<option value="${v}"${cur===v?' selected':''}>${l}</option>`).join('') +
+                                `</select>`;
+                        })()),
+                        lbl('Repop Num', inp('repopNum',   spawnInfo.repopNum   ?? 0,   '56px')) +
+                        lbl('Repop Cnt', inp('repopCount', spawnInfo.repopCount ?? 0,   '56px')),
+                    ) +
+                    `</div>` +
+                    // ── Right column ─────────────────────────────────────────
+                    `<div>` +
+                    grp('Combat',
+                        lbl('Variant', (() => {
+                            const cur = spawnInfo.infection ?? 0;
+                            const opts = [
+                                [0, '0 — None'],
+                                [1, '1 — Infected'],
+                                [2, '2 — Severely Infected'],
+                                [3, '3 — War-Ready'],
+                            ];
+                            return `<select class="popup-edit-input" data-edit="infection" style="width:auto;font-size:11px">` +
+                                opts.map(([v, l]) => `<option value="${v}"${cur===v?' selected':''}>${l}</option>`).join('') +
+                                `</select>`;
+                        })()) +
+                        lbl('Target Type', (() => {
+                            const cur = spawnInfo.targetTypeId ?? 1;
+                            const opts = [
+                                [1, '1 — None'],
+                                [2, '2 — #2'],
+                                [3, '3 — #3'],
+                                [4, '4 — #4'],
+                                [6, '6 — Area Boss'],
+                                [7, '7 — Stage Boss'],
+                            ];
+                            return `<select class="popup-edit-input" data-edit="targetTypeId" style="width:auto;font-size:11px">` +
+                                opts.map(([v, l]) => `<option value="${v}"${cur===v?' selected':''}>${l}</option>`).join('') +
+                                `</select>`;
+                        })()) +
+                        (() => {
+                            const mi    = spawnInfo.emCode ? (emMontageInfo[spawnInfo.emCode]?.length > 0 ? emMontageInfo[spawnInfo.emCode] : null) : null;
+                            const cur   = spawnInfo.montage ?? 0;
+                            const notes = mi ? (montageNotes[spawnInfo.emCode] ?? {}) : {};
+                            const title = mi
+                                ? `Montage Fix — controls the enemy's appearance (model parts, colors, attachments). 0 typically randomizes the look each spawn; other values lock a specific variant. Valid indices extracted from the enemy's .dme file: ${mi.join(', ')}`
+                                : 'Montage Fix — controls the enemy\'s appearance (model parts, colors, attachments). 0 typically randomizes the look each spawn; other values lock a specific variant.';
+                            const control = mi
+                                ? `<select class="popup-edit-input" data-edit="montage" style="width:auto;font-size:11px" title="${title}">` +
+                                  mi.map(v => {
+                                      const note = notes[String(v)] ? ` — ${notes[String(v)]}` : '';
+                                      return `<option value="${v}"${cur===v?' selected':''}>${v}${note}</option>`;
+                                  }).join('') +
+                                  (mi.includes(cur) ? '' : `<option value="${cur}" selected>${cur} (custom)</option>`) +
+                                  `</select>`
+                                : inp('montage', cur, '56px');
+                            return lbl('Montage Fix', control, title);
+                        })(),
+                    ) +
+                    grp('Rewards',
+                        `<div style="display:flex;flex-direction:column;gap:4px">` +
+                        [['🩸', 'Blood Orbs', 'bloodOrbs', spawnInfo.bloodOrbs ?? 0, 'isBloodOrbEnemy', spawnInfo.isBloodOrbEnemy],
+                         ['⭐', 'High Orbs',  'highOrbs',  spawnInfo.highOrbs  ?? 0, 'isHighOrbEnemy',  spawnInfo.isHighOrbEnemy]].map(([icon, name, key, val, markKey, marked]) =>
+                            `<div style="display:flex;align-items:center;gap:5px">` +
+                            `<span style="width:14px;text-align:center;font-size:13px">${icon}</span>` +
+                            `<span style="color:#888;font-size:9px;text-transform:uppercase;letter-spacing:0.4px;width:54px">${name}</span>` +
+                            inp(key, val, '56px') +
+                            `<label class="orb-map-toggle" title="Mark as ${name} spawn on map">` +
+                            `<input type="checkbox" class="popup-edit-input" data-edit="${markKey}"${marked ? ' checked' : ''}>📍</label>` +
+                            `</div>`
+                        ).join('') +
+                        `</div>`,
+                    ) +
+                    grp('Boss',
+                        lbl('Raid Boss ID', inp('raidBossId', spawnInfo.raidBossId ?? 0, '64px')),
+                        chk('isBossGauge', spawnInfo.isBossGauge, 'Boss Gauge') + '&nbsp;&nbsp;' +
+                        chk('isBossBGM',   spawnInfo.isBossBGM,   'Boss BGM')   + '&nbsp;&nbsp;' +
+                        chk('isAreaBoss',  spawnInfo.isAreaBoss,   'Area Boss'),
+                    ) +
+                    grp('Behaviour',
+                        lbl('Hm Preset', hmPresetCtrl) + thinkTblCtrl,
+                        chk('isManualSet', spawnInfo.isManualSet, 'Manual Set', 'IsManualSet — game server flag for this spawn entry'),
+                    ) +
+                    `</div>` +
+                    `</div>` +
+                    `</div>` +
+                    `<div style="display:flex;gap:6px;margin-top:8px">` +
+                    `<button class="popup-edit-btn" data-edit-action="apply" data-raw="${rawIdx}" style="flex:1">✔ Apply</button>` +
+                    `<button class="popup-edit-btn danger" data-edit-action="remove-spawn" data-raw="${rawIdx}">🗑 Remove</button>` +
+                    `</div></div>`;
+            })() : '';
+            return `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${cycleHtml}${emLine}${keyLine}${radiiLine}${orbsLine}${_editMode ? '' : buildDropsHtml(spawnInfo)}${editSection}`;
         };
 
         const buildTooltip = (spawnCache) => {
             const entries  = spawnKey && spawnCache ? (spawnCache.get(spawnKey) ?? []) : [];
             const hasEnemy = !spawnCache || entries.some(e => !!e.lv);
+            // Helper: resolve display name with named param applied
+            const infectionPrefix = [null, 'Infected', 'Severely Infected', 'War-Ready'];
+            const resolveDisplayName = (e) => {
+                const baseName = e.emCode ? (emNames[e.emCode]?.name ?? e.emCode) : null;
+                if (!baseName) return null;
+                const np = e.namedId ? namedParamsById.get(e.namedId) : null;
+                const npName = np?.name?.trim();
+                let name;
+                if (!npName || np.type === 'NAMED_TYPE_NONE') name = baseName;
+                else if (np.type === 'NAMED_TYPE_REPLACE') name = npName;
+                else if (np.type === 'NAMED_TYPE_PREFIX')  name = `${npName} ${baseName}`;
+                else if (np.type === 'NAMED_TYPE_SUFFIX')  name = `${baseName} ${npName}`;
+                else name = baseName;
+                const prefix = e.infection ? infectionPrefix[e.infection] : null;
+                return prefix ? `${prefix} ${name}` : name;
+            };
             let namePart = '';
             if (entries.length > 1) {
                 // Show all variants: "Killer Bee Lv3☀ / Skeleton Lv3🌙"
                 const parts = entries
                     .filter(e => !!e.lv)
                     .map(e => {
-                        const n = e.emCode ? (emNames[e.emCode]?.name ?? e.emCode) : null;
+                        const n = resolveDisplayName(e);
                         const t = spawnTimeLabel(e.spawnTime);
                         return n ? `${n} Lv${e.lv}${t ? [...t][0] : ''}` : null;
                     })
@@ -917,13 +1314,15 @@ function buildGroupDetails(g) {
                 if (parts.length) namePart = parts.join(' / ') + ' — ';
             } else if (entries.length === 1 && hasEnemy) {
                 const e0 = entries[0];
-                const n  = e0.emCode ? (emNames[e0.emCode]?.name ?? null) : (spawn.EmName ? (emNames[spawn.EmName]?.name ?? null) : null);
+                const n  = resolveDisplayName(e0) ?? (spawn.EmName ? (emNames[spawn.EmName]?.name ?? null) : null);
                 if (n) namePart = `${n}${e0.lv ? ` Lv${e0.lv}` : ''} — `;
             } else if (!spawnCache && hasEnemy && spawn.EmName) {
                 const n = emNames[spawn.EmName]?.name ?? null;
                 if (n) namePart = `${n} — `;
             }
-            return `${namePart}${g.groupId}.${idx} [SS:${sg}]${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
+            const e0 = entries[0] ?? null;
+            const orbBadge = (e0?.isBloodOrbEnemy && e0?.bloodOrbs ? ' 🩸' : '') + (e0?.isHighOrbEnemy && e0?.highOrbs ? ' ⭐' : '');
+            return `${namePart}${g.groupId}.${idx} [SS:${sg}]${orbBadge}${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
         };
 
         const marker = L.circleMarker(latlng, {
@@ -935,7 +1334,7 @@ function buildGroupDetails(g) {
             weight:      isKeyBearer ? 3.5 : 2.5,
             radius:      5,
         })
-            .bindPopup(buildEnemyPopup(_enemySpawnCache))
+            .bindPopup(buildEnemyPopup(_enemySpawnCache), { minWidth: 320, maxWidth: 500 })
             .bindTooltip('', { direction: 'top', offset: [0, -8] });
 
         // Rebuild tooltip fresh on every hover so level/name is always current
@@ -959,38 +1358,312 @@ function buildGroupDetails(g) {
         // setContent/update reflow, which closes tooltips and repositions the popup.
         let _popupClickHandler = null;
         marker.on('popupopen', function() {
+            leafletMap.on('move', _repositionNamedStatsPanel);
             const popup = this.getPopup();
+            _rebuildOpenPopup = () => {
+                const el = popup.getElement();
+                if (!el) return;
+                const cd = el.querySelector('.leaflet-popup-content');
+                if (cd) {
+                    cd.innerHTML = buildEnemyPopup(_enemySpawnCache);
+                    cd.style.width = '';
+                    popup._updateLayout?.();
+                    popup._updatePosition?.();
+                    const ents0  = _enemySpawnCache?.get(spawnKey) ?? [];
+                    const si0    = ents0[displayIdx] ?? null;
+                    const baseEm0 = si0?.emCode ? (emNames[si0.emCode]?.name ?? null) : null;
+                    const ni = cd.querySelector('[data-edit="namedId"]');
+                    if (_editMode && ni) showNamedStatsPanel(parseInt(ni.value) || 0, el, baseEm0);
+                    else hideNamedStatsPanel();
+                }
+            };
             const bind = (cache) => {
                 requestAnimationFrame(() => {
                     const el = popup.getElement();
                     if (!el) return;
                     // Update content without triggering Leaflet reflow
                     const contentDiv = el.querySelector('.leaflet-popup-content');
-                    if (contentDiv) contentDiv.innerHTML = buildEnemyPopup(cache);
+                    if (contentDiv) {
+                        contentDiv.innerHTML = buildEnemyPopup(cache);
+                        // Reposition popup to account for new content size (edit mode
+                        // popup is taller than the initial view-mode content).
+                        // _updateLayout/_updatePosition don't trigger tooltip teardown.
+                        popup._updateLayout?.();
+                        popup._updatePosition?.();
+                        const ents   = cache?.get(spawnKey) ?? [];
+                        const si     = ents[displayIdx] ?? null;
+                        const baseEm = si?.emCode ? (emNames[si.emCode]?.name ?? null) : null;
+                        const ni = contentDiv.querySelector('[data-edit="namedId"]');
+                        if (_editMode && ni) showNamedStatsPanel(parseInt(ni.value) || 0, el, baseEm);
+                        else hideNamedStatsPanel();
+                    }
                     // Replace click handler (event delegation — survives innerHTML swaps)
                     if (_popupClickHandler) el.removeEventListener('click', _popupClickHandler);
-                    const entries = cache?.get(spawnKey) ?? [];
-                    if (entries.length <= 1) return;
+                    // Always read entries fresh from cache — the cache may gain entries after
+                    // this handler is registered (e.g. drag-drop onto a previously empty spot).
+                    const getEntries = () => cache?.get(spawnKey) ?? [];
                     _popupClickHandler = (e) => {
-                        const btn = e.target.closest('.spawn-prev, .spawn-next');
-                        if (!btn) return;
+                        // ── Cycle prev/next ───────────────────────────────────
+                        const cycleBtn = e.target.closest('.spawn-prev, .spawn-next');
+                        if (cycleBtn) {
+                            const entries = getEntries();
+                            if (entries.length <= 1) return;
+                            e.stopPropagation();
+                            displayIdx = (displayIdx + (cycleBtn.classList.contains('spawn-prev') ? -1 : 1) + entries.length) % entries.length;
+                            const cd = el.querySelector('.leaflet-popup-content');
+                            if (cd) {
+                                cd.innerHTML = buildEnemyPopup(cache);
+                                popup._updateLayout?.();
+                                popup._updatePosition?.();
+                                const si     = entries[displayIdx] ?? null;
+                                const baseEm = si?.emCode ? (emNames[si.emCode]?.name ?? null) : null;
+                                const ni = cd.querySelector('[data-edit="namedId"]');
+                                if (_editMode && ni) showNamedStatsPanel(parseInt(ni.value) || 0, el, baseEm);
+                                else hideNamedStatsPanel();
+                            }
+                            return;
+                        }
+                        // ── Named param picker button ─────────────────────────
+                        const namedPickerBtn = e.target.closest('.se-named-picker-btn');
+                        if (namedPickerBtn && _editMode) {
+                            e.stopPropagation();
+                            const section = el.querySelector('.popup-edit-section');
+                            const spawnInfo0 = getEntries()[displayIdx] ?? null;
+                            const emCode0    = spawnInfo0?.emCode ?? spawn.EmName ?? null;
+                            const baseEmName = emCode0 ? (emNames[emCode0]?.name ?? null) : null;
+                            openNamedParamPicker(section, baseEmName);
+                            return;
+                        }
+                        // ── Drop table picker ─────────────────────────────────
+                        const dtPickerBtn = e.target.closest('.se-drops-picker-btn');
+                        if (dtPickerBtn && _editMode) {
+                            e.stopPropagation();
+                            const section = el.querySelector('.popup-edit-section');
+                            openDropTablePicker(section);
+                            return;
+                        }
+                        // ── Drop table editor (from spawn) ────────────────────
+                        const dtEditBtn = e.target.closest('.se-drops-edit-btn');
+                        if (dtEditBtn && _editMode) {
+                            e.stopPropagation();
+                            openDropTableEditor(parseInt(dtEditBtn.dataset.dt));
+                            return;
+                        }
+                        // ── Spawn time presets ────────────────────────────────
+                        // ── Edit actions ──────────────────────────────────────
+                        if (!_editMode) return;
+                        const actionBtn = e.target.closest('[data-edit-action]');
+                        if (!actionBtn) return;
                         e.stopPropagation();
-                        displayIdx = (displayIdx + (btn.classList.contains('spawn-prev') ? -1 : 1) + entries.length) % entries.length;
-                        const cd = el.querySelector('.leaflet-popup-content');
-                        if (cd) cd.innerHTML = buildEnemyPopup(cache);
+                        const rawIdx  = parseInt(actionBtn.dataset.raw);
+                        const action  = actionBtn.dataset.editAction;
+                        const section = el.querySelector('.popup-edit-section');
+                        if (action === 'apply' && section) {
+                            const g = (key) => section.querySelector(`[data-edit="${key}"]`);
+                            const iv = (key, def=0) => parseInt(g(key)?.value) || def;
+                            const bv = (key) => g(key)?.checked ?? false;
+                            const sv = (key) => g(key)?.value?.trim() || null;
+                            const lv         = iv('lv', 1) || null;
+                            const blood      = iv('bloodOrbs');
+                            const high       = iv('highOrbs');
+                            const scale      = iv('scale', 100);
+                            const exp        = iv('exp');
+                            const repopNum   = iv('repopNum');
+                            const subGroupId = iv('subGroupId');
+                            const setType    = iv('setType');
+                            const infection  = iv('infection');
+                            const targetTypeId = iv('targetTypeId');
+                            const spawnTime  = (() => {
+                                const v = g('spawnTime')?.value || '00:00,23:59';
+                                return v === '00:00,23:59' ? null : v;
+                            })();
+                            const namedId     = (() => {
+                                const btn = section.querySelector('.se-named-picker-btn');
+                                if (btn?.dataset.namedId != null) return parseInt(btn.dataset.namedId) || 0;
+                                return iv('namedId');
+                            })();
+                            const raidBossId  = iv('raidBossId');
+                            const isBossGauge = bv('isBossGauge');
+                            const isBossBGM   = bv('isBossBGM');
+                            const isAreaBoss  = bv('isAreaBoss');
+                            const isManualSet      = bv('isManualSet');
+                            const isBloodOrbEnemy  = bv('isBloodOrbEnemy');
+                            const isHighOrbEnemy   = bv('isHighOrbEnemy');
+                            const repopCount  = iv('repopCount');
+                            const startThink  = iv('startThink');
+                            const montage     = iv('montage');
+                            const ppDrop      = iv('ppDrop');
+                            const dropsTableId = iv('dropsTableId', -1);
+                            // Update cache entry (read fresh — entries may have been added after handler registration)
+                            const entry = getEntries()[displayIdx];
+                            if (entry) {
+                                Object.assign(entry, {
+                                    lv, bloodOrbs: blood, highOrbs: high,
+                                    scale, exp, repopNum, repopCount, subGroupId, setType,
+                                    infection, targetTypeId, spawnTime, namedId,
+                                    raidBossId, isBossGauge, isBossBGM, isAreaBoss,
+                                    isManualSet, isBloodOrbEnemy, isHighOrbEnemy,
+                                    startThink, montage, ppDrop,
+                                    dropsTableId,
+                                    drops: dropsTableId >= 0 ? (_dropsTablesMap.get(dropsTableId)?.items ?? []) : [],
+                                });
+                            }
+                            // Update raw JSON row
+                            if (_rawEnemyData && !isNaN(rawIdx)) {
+                                const row = _rawEnemyData.enemies[rawIdx];
+                                if (row) {
+                                    const { iLv, iBlood, iHigh, iScale, iSubGroup, iNamed, iRaidBoss,
+                                            iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
+                                            iExp, iRepopNum, iRepopCount, iTargetType, iSpawnTime,
+                                            iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop,
+                                            iIsBloodOrbEnemy, iIsHighOrbEnemy, iDrops } = _rawEnemySchemas;
+                                    row[iLv]         = lv;
+                                    row[iBlood]      = blood;
+                                    row[iHigh]       = high;
+                                    if (iScale       >= 0) row[iScale]       = scale;
+                                    if (iExp         >= 0) row[iExp]         = exp;
+                                    if (iRepopNum    >= 0) row[iRepopNum]    = repopNum;
+                                    if (iRepopCount  >= 0) row[iRepopCount]  = repopCount;
+                                    if (iSubGroup    >= 0) row[iSubGroup]    = subGroupId;
+                                    if (iSetType     >= 0) row[iSetType]     = setType;
+                                    if (iInfection   >= 0) row[iInfection]   = infection;
+                                    if (iTargetType  >= 0) row[iTargetType]  = targetTypeId;
+                                    if (iSpawnTime   >= 0) row[iSpawnTime]   = spawnTime;
+                                    if (iNamed       >= 0) row[iNamed]       = namedId;
+                                    if (iRaidBoss    >= 0) row[iRaidBoss]    = raidBossId;
+                                    if (iIsBossG     >= 0) row[iIsBossG]     = isBossGauge;
+                                    if (iIsBossBGM   >= 0) row[iIsBossBGM]   = isBossBGM;
+                                    if (iIsAreaBoss  >= 0) row[iIsAreaBoss]  = isAreaBoss;
+                                    if (iIsManualSet     >= 0) row[iIsManualSet]     = isManualSet;
+                                    if (iIsBloodOrbEnemy >= 0) row[iIsBloodOrbEnemy] = isBloodOrbEnemy;
+                                    if (iIsHighOrbEnemy  >= 0) row[iIsHighOrbEnemy]  = isHighOrbEnemy;
+                                    // HmPresetNo is derived from em code — not written back from UI
+                                    if (iStartThink  >= 0) row[iStartThink]  = startThink;
+                                    if (iMontage     >= 0) row[iMontage]     = montage;
+                                    if (iPPDrop      >= 0) row[iPPDrop]      = ppDrop;
+                                    row[iDrops] = dropsTableId;
+                                }
+                            }
+                            if (_markDirty) _markDirty('ddon-src-spawns');
+                            const cd = el.querySelector('.leaflet-popup-content');
+                            if (cd) {
+                                cd.innerHTML = buildEnemyPopup(cache);
+                                popup._updateLayout?.();
+                                popup._updatePosition?.();
+                            }
+                        } else if (action === 'remove-spawn') {
+                            // Remove from cache
+                            const arr = cache.get(spawnKey);
+                            if (arr) {
+                                arr.splice(displayIdx, 1);
+                                if (!arr.length) cache.delete(spawnKey);
+                                else displayIdx = Math.min(displayIdx, arr.length - 1);
+                            }
+                            // Remove from raw data
+                            if (_rawEnemyData && !isNaN(rawIdx)) {
+                                _rawEnemyData.enemies.splice(rawIdx, 1);
+                                // Shift _rawIdx on all remaining entries
+                                for (const entryArr of cache.values())
+                                    for (const ent of entryArr)
+                                        if (ent._rawIdx > rawIdx) ent._rawIdx--;
+                            }
+                            if (_markDirty) _markDirty('ddon-src-spawns');
+                            marker.closePopup();
+                            if (_editMode && _renderEditPanel) _renderEditPanel();
+                        }
                     };
                     el.addEventListener('click', _popupClickHandler);
+
+                    // ── Drag-drop: enemy panel → spawn popup ──────────────────
+                    if (_editMode && spawnKey) {
+                        _spawnPopupDropFn = (emCode) => {
+                            // Convert emCode → raw hex EnemyId (e.g. 'em011200' → '0x011200')
+                            const hexId = '0x' + emCode.slice(2).toUpperCase();
+                            const newEntry = {
+                                emCode, lv: 1, bloodOrbs: 0, highOrbs: 0,
+                                spawnTime: null, drops: [], scale: 100,
+                                subGroupId: 0, namedId: 2298, raidBossId: 0,
+                                setType: 1, infection: 0, isBossGauge: false,
+                                isBossBGM: false, isAreaBoss: false, isManualSet: false,
+                                isBloodOrbEnemy: false, isHighOrbEnemy: false,
+                                dropsTableId: -1,
+                                exp: 0, repopNum: 0, repopCount: 0, targetTypeId: 1,
+                                hmPreset: 0, startThink: 0, montage: 0, ppDrop: 0,
+                                _rawIdx: -1,
+                            };
+                            if (_rawEnemyData) {
+                                const { iStage, iGroup, iPosIdx, iEnemyId, iLv, iBlood, iHigh,
+                                        iSpawnTime, iDrops, iScale, iSubGroup, iNamed, iRaidBoss,
+                                        iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
+                                        iIsBloodOrbEnemy, iIsHighOrbEnemy,
+                                        iExp, iRepopNum, iRepopCount, iTargetType,
+                                        iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop } = _rawEnemySchemas;
+                                const [sid, gid, pidx] = spawnKey.split(',');
+                                const newRaw = new Array(_rawEnemyData.schemas.enemies.length).fill(null);
+                                newRaw[iStage]    = Number(sid);
+                                newRaw[iGroup]    = Number(gid);
+                                newRaw[iPosIdx]   = Number(pidx);
+                                newRaw[iEnemyId]  = hexId;
+                                newRaw[iLv]       = 1;
+                                newRaw[iBlood]    = 0;
+                                newRaw[iHigh]     = 0;
+                                newRaw[iSpawnTime]= null;
+                                newRaw[iDrops]    = -1;
+                                if (iScale       >= 0) newRaw[iScale]       = 100;
+                                if (iSubGroup    >= 0) newRaw[iSubGroup]    = 0;
+                                if (iNamed       >= 0) newRaw[iNamed]       = 2298;
+                                if (iRaidBoss    >= 0) newRaw[iRaidBoss]    = 0;
+                                if (iSetType     >= 0) newRaw[iSetType]     = 1;
+                                if (iInfection   >= 0) newRaw[iInfection]   = 0;
+                                if (iIsBossG     >= 0) newRaw[iIsBossG]     = false;
+                                if (iIsBossBGM   >= 0) newRaw[iIsBossBGM]   = false;
+                                if (iIsAreaBoss  >= 0) newRaw[iIsAreaBoss]  = false;
+                                if (iIsManualSet     >= 0) newRaw[iIsManualSet]     = false;
+                                if (iIsBloodOrbEnemy >= 0) newRaw[iIsBloodOrbEnemy] = false;
+                                if (iIsHighOrbEnemy  >= 0) newRaw[iIsHighOrbEnemy]  = false;
+                                if (iExp         >= 0) newRaw[iExp]         = 0;
+                                if (iRepopNum    >= 0) newRaw[iRepopNum]    = 0;
+                                if (iRepopCount  >= 0) newRaw[iRepopCount]  = 0;
+                                if (iTargetType  >= 0) newRaw[iTargetType]  = 1;
+                                if (iHmPreset    >= 0) newRaw[iHmPreset]    = hmPresetsByEmCode.get(emCode)?.id ?? 0;
+                                if (iStartThink  >= 0) newRaw[iStartThink]  = 0;
+                                if (iMontage     >= 0) newRaw[iMontage]     = 0;
+                                if (iPPDrop      >= 0) newRaw[iPPDrop]      = 0;
+                                _rawEnemyData.enemies.push(newRaw);
+                                newEntry._rawIdx = _rawEnemyData.enemies.length - 1;
+                            }
+                            let arr = cache.get(spawnKey);
+                            if (!arr) { arr = []; cache.set(spawnKey, arr); }
+                            arr.push(newEntry);
+                            displayIdx = arr.length - 1;
+                            if (_markDirty) _markDirty('ddon-src-spawns');
+                            const cd = el.querySelector('.leaflet-popup-content');
+                            if (cd) {
+                                cd.innerHTML = buildEnemyPopup(cache);
+                                const view = cd.querySelector('.se-spawn-view');
+                                if (view) {
+                                    view.style.transition = 'background 0.1s';
+                                    view.style.background = 'rgba(80,200,120,0.25)';
+                                    setTimeout(() => { view.style.background = ''; }, 700);
+                                }
+                            }
+                        };
+                    } else {
+                        _spawnPopupDropFn = null;
+                    }
                 });
             };
             if (_enemySpawnCache) { bind(_enemySpawnCache); return; }
             _enemySpawnPromise.then(cache => { if (this.isPopupOpen()) bind(cache); });
         });
+        marker.on('popupclose', () => { _spawnPopupDropFn = null; _rebuildOpenPopup = null; hideNamedStatsPanel(); leafletMap.off('move', _repositionNamedStatsPanel); });
 
         marker._sgKey          = sgKey;
         marker._label          = buildTooltip(_enemySpawnCache);
         marker._origStyle      = { color: isKeyBearer ? '#c8a000' : g.color, weight: isKeyBearer ? 3.5 : 2.5, fillOpacity: 0.85 };
         marker._spawn          = spawn;
         marker._info           = info;
+        marker._spawnKey       = spawnKey;
         marker._naturalLatLng  = latlng;    // saved for spread reset
         marker._naturalTooltip = buildTooltip(_enemySpawnCache);
 
@@ -1149,14 +1822,24 @@ function showSpawnRadii(marker) {
     const info  = marker._info;
     if (!spawn || !info) return;
 
+    // Resolve emCode: prefer the first EnemySpawn.json entry for this spawn,
+    // fall back to the lot-file placeholder (EmName).
+    const spawnEntries = marker._spawnKey && _enemySpawnCache
+        ? (_enemySpawnCache.get(marker._spawnKey) ?? []) : [];
+    const emCode = spawnEntries[0]?.emCode ?? spawn.EmName ?? null;
+    const radii  = emCode ? (emRadii[emCode] ?? null) : null;
+
     // Convert world-unit radius → map CRS units (image pixels).
     // info.scale is pixels-per-world-unit (used for the X axis on all map types).
     const scale = info.scale;
     const latlng = marker.getLatLng();
 
-    if (spawn.AggroRadius) {
+    const aggroR = radii?.aggroRadius ?? spawn.AggroRadius;
+    const linkR  = radii?.linkRadius  ?? spawn.LinkRadius;
+
+    if (aggroR) {
         L.circle(latlng, {
-            radius:      spawn.AggroRadius * scale,
+            radius:      aggroR * scale,
             color:       '#ffd700',
             weight:      1.5,
             opacity:     0.9,
@@ -1167,9 +1850,9 @@ function showSpawnRadii(marker) {
         }).addTo(spawnRadiiLayer);
     }
 
-    if (spawn.LinkRadius) {
+    if (linkR) {
         L.circle(latlng, {
-            radius:      spawn.LinkRadius * scale,
+            radius:      linkR * scale,
             color:       '#ff7700',
             weight:      2,
             opacity:     0.9,
@@ -1434,6 +2117,7 @@ const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_U
     .then(text => {
         const lines = text.split('\n');
         // First column header is "#StageId" — strip the leading '#'
+        _rawGatheringHeaders = lines[0]; // keep original (with '#') for write-back
         lines[0] = lines[0].replace(/^#/, '');
         const result = new Map();
         const headers = lines[0].split(',');
@@ -1442,18 +2126,27 @@ const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_U
               iPos = idx('PosId'), iItem = idx('ItemId'), iNum = idx('ItemNum'),
               iMax = idx('MaxItemNum'), iQual = idx('Quality'),
               iHidden = idx('IsHidden'), iChance = idx('DropChance');
+        _rawGatheringRows = [];
         for (let i = 1; i < lines.length; i++) {
             const cols = lines[i].split(',');
             if (cols.length < 5) continue;
-            const key = `${cols[iStage]},${cols[iGroup]},${cols[iPos]}`;
-            if (!result.has(key)) result.set(key, []);
-            result.get(key).push({
+            const row = {
+                stageId:    cols[iStage],
+                groupId:    cols[iGroup],
+                posId:      cols[iPos],
                 itemId:     parseInt(cols[iItem]),
                 itemNum:    parseInt(cols[iNum]),
                 maxItemNum: parseInt(cols[iMax]),
                 quality:    parseInt(cols[iQual]),
                 isHidden:   cols[iHidden] === 'true' || cols[iHidden] === '1',
-                dropChance: parseFloat(cols[iChance]),
+                dropChance: iChance >= 0 ? parseFloat(cols[iChance]) : 1,
+            };
+            _rawGatheringRows.push(row);
+            const key = `${row.stageId},${row.groupId},${row.posId}`;
+            if (!result.has(key)) result.set(key, []);
+            result.get(key).push({
+                itemId: row.itemId, itemNum: row.itemNum, maxItemNum: row.maxItemNum,
+                quality: row.quality, isHidden: row.isHidden, dropChance: row.dropChance,
             });
         }
         _gatherItemsCache = result;
@@ -1467,32 +2160,88 @@ const _enemySpawnPromise = getSrcUrl('ddon-src-spawns', _DEFAULT_SPAWNS_URL)
     .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
     .then(data => {
         const schemas = data.schemas?.enemies ?? [];
-        const iStage     = schemas.indexOf('StageId'),
-              iGroup     = schemas.indexOf('GroupId'),
-              iPosIdx    = schemas.indexOf('PositionIndex'),
-              iEnemyId   = schemas.indexOf('EnemyId'),
-              iLv        = schemas.indexOf('Lv'),
-              iBlood     = schemas.indexOf('BloodOrbs'),
-              iHigh      = schemas.indexOf('HighOrbs'),
-              iSpawnTime = schemas.indexOf('SpawnTime'),
-              iDrops     = schemas.indexOf('DropsTableId');
+        const iStage      = schemas.indexOf('StageId'),
+              iGroup      = schemas.indexOf('GroupId'),
+              iPosIdx     = schemas.indexOf('PositionIndex'),
+              iEnemyId    = schemas.indexOf('EnemyId'),
+              iLv         = schemas.indexOf('Lv'),
+              iBlood      = schemas.indexOf('BloodOrbs'),
+              iHigh       = schemas.indexOf('HighOrbs'),
+              iSpawnTime  = schemas.indexOf('SpawnTime'),
+              iDrops      = schemas.indexOf('DropsTableId'),
+              iScale      = schemas.indexOf('Scale'),
+              iSubGroup   = schemas.indexOf('SubGroupId'),
+              iNamed      = schemas.indexOf('NamedEnemyParamsId'),
+              iRaidBoss   = schemas.indexOf('RaidBossId'),
+              iSetType    = schemas.indexOf('SetType'),
+              iInfection  = schemas.indexOf('InfectionType'),
+              iIsBossG    = schemas.indexOf('IsBossGauge'),
+              iIsBossBGM  = schemas.indexOf('IsBossBGM'),
+              iIsAreaBoss = schemas.indexOf('IsAreaBoss'),
+              iExp        = schemas.indexOf('Experience'),
+              iRepopNum   = schemas.indexOf('RepopNum'),
+              iRepopCount = schemas.indexOf('RepopCount'),
+              iTargetType = schemas.indexOf('EnemyTargetTypesId'),
+              iHmPreset   = schemas.indexOf('HmPresetNo'),
+              iStartThink = schemas.indexOf('StartThinkTblNo'),
+              iMontage    = schemas.indexOf('MontageFixNo'),
+              iIsManualSet     = schemas.indexOf('IsManualSet'),
+              iPPDrop          = schemas.indexOf('PPDrop'),
+              iIsBloodOrbEnemy = schemas.indexOf('IsBloodOrbEnemy'),
+              iIsHighOrbEnemy  = schemas.indexOf('IsHighOrbEnemy');
+        // Store raw data and schema indices for write-back
+        _rawEnemyData    = data;
+        _rawEnemySchemas = {
+            iStage, iGroup, iPosIdx, iEnemyId, iLv, iBlood, iHigh, iSpawnTime, iDrops,
+            iScale, iSubGroup, iNamed, iRaidBoss, iSetType, iInfection,
+            iIsBossG, iIsBossBGM, iIsAreaBoss, iExp, iRepopNum, iRepopCount,
+            iTargetType, iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop,
+            iIsBloodOrbEnemy, iIsHighOrbEnemy,
+        };
         const dropsTables = {};
-        for (const dt of (data.dropsTables ?? [])) dropsTables[dt.id] = dt;
+        _dropsTablesMap = new Map();
+        for (const dt of (data.dropsTables ?? [])) { dropsTables[dt.id] = dt; _dropsTablesMap.set(dt.id, dt); }
         const result = new Map();
-        for (const e of (data.enemies ?? [])) {
+        for (let rawIdx = 0; rawIdx < (data.enemies?.length ?? 0); rawIdx++) {
+            const e    = data.enemies[rawIdx];
             const key  = `${e[iStage]},${e[iGroup]},${e[iPosIdx]}`;
             const dtId = e[iDrops];
             const dt   = dtId != null && dtId >= 0 ? dropsTables[dtId] : null;
             // Convert '0x011200' → 'em011200'
             const hexStr = e[iEnemyId];
             const emCode = hexStr ? `em${hexStr.slice(2).toLowerCase().padStart(6, '0')}` : null;
+            const bloodOrbs = e[iBlood] ?? 0;
+            const highOrbs  = e[iHigh]  ?? 0;
             const entry = {
-                emCode:    emCode,
-                lv:        e[iLv]        ?? null,
-                bloodOrbs: e[iBlood]     ?? 0,
-                highOrbs:  e[iHigh]      ?? 0,
-                spawnTime: e[iSpawnTime] ?? null,
-                drops:     dt ? dt.items : [],
+                emCode,
+                lv:          e[iLv]         ?? null,
+                bloodOrbs,
+                highOrbs,
+                spawnTime:     e[iSpawnTime]  ?? null,
+                dropsTableId:  dtId ?? -1,
+                drops:         dt ? dt.items : [],
+                scale:       e[iScale]      ?? 100,
+                subGroupId:  e[iSubGroup]   ?? 0,
+                namedId:     e[iNamed]      ?? 0,
+                raidBossId:  e[iRaidBoss]   ?? 0,
+                setType:     e[iSetType]    ?? 0,
+                infection:   e[iInfection]  ?? 0,
+                isBossGauge: e[iIsBossG]     ?? false,
+                isBossBGM:   e[iIsBossBGM]  ?? false,
+                isAreaBoss:  e[iIsAreaBoss]  ?? false,
+                isManualSet:      e[iIsManualSet] ?? false,
+                // Fallback mirrors server logic: old schema derives from orb value > 0
+                isBloodOrbEnemy:  iIsBloodOrbEnemy >= 0 ? (e[iIsBloodOrbEnemy] ?? false) : bloodOrbs > 0,
+                isHighOrbEnemy:   iIsHighOrbEnemy  >= 0 ? (e[iIsHighOrbEnemy]  ?? false) : highOrbs  > 0,
+                exp:         e[iExp]         ?? 0,
+                repopNum:    e[iRepopNum]    ?? 0,
+                repopCount:  e[iRepopCount]  ?? 0,
+                targetTypeId:e[iTargetType]  ?? 0,
+                hmPreset:    e[iHmPreset]    ?? 0,
+                startThink:  e[iStartThink]  ?? 0,
+                montage:     e[iMontage]     ?? 0,
+                ppDrop:      e[iPPDrop]      ?? 0,
+                _rawIdx:     rawIdx,
             };
             if (result.has(key)) result.get(key).push(entry);
             else                 result.set(key, [entry]);
@@ -1507,6 +2256,7 @@ let _shopCache = null;
 const _shopPromise = getSrcUrl('ddon-src-shop', _DEFAULT_SHOP_URL)
     .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
     .then(data => {
+        _rawShopData = data; // store for write-back
         const result = new Map();
         for (const shop of data) {
             result.set(shop.ShopId, {
@@ -1651,17 +2401,25 @@ const GATHER_LABELS = {
     CHEST_UNKNOWN:         'Chest',
 };
 
-function loadGatherPoints(info) {
+function loadGatherPoints(info, stid = null) {
     gatherLayer.clearLayers();
     if (!info.stages?.length) return;
 
-    for (const stageId of info.stages) {
+    const floorObbs     = info.floor_obbs ?? null;
+    const filterByFloor = floorObbs !== null;
+    const stagesToLoad  = (stid && info.stages.includes(stid)) ? [stid] : info.stages;
+
+    for (const stageId of stagesToLoad) {
         const stageNo    = String(parseInt(stageId.slice(2), 10));
         const nodes      = gatherPoints[stageNo];
         if (!nodes) continue;
         const serverStid = stageIds[stageNo];  // server stage_id for CSV lookup
 
         for (const node of nodes) {
+            if (filterByFloor) {
+                const floor = getEnemyFloor(node.x, node.y, node.z, floorObbs);
+                if (floor !== null && floor !== currentLayer) continue;
+            }
             const latlng = worldToPixel(node.x, node.z, info);
             const color  = GATHER_COLORS[node.type] ?? '#aaaaaa';
             const label  = GATHER_LABELS[node.type] ?? node.type.replace(/^(OM_GATHER_|CHEST_)/, '').replace(/_/g, ' ');
@@ -1670,20 +2428,22 @@ function loadGatherPoints(info) {
                                'OM_GATHER_CORPSE'].includes(node.type);
             const badgeText = darkBadge ? '#eee' : '#111';
             const badge     = `<span style="display:inline-block;padding:1px 6px;border-radius:3px;background:${color};color:${badgeText};font-weight:bold;font-size:11px;">${label}</span>`;
-            const typeLine  = `<br><span style="color:#666;font-size:11px">${node.type}</span>`;
+            const listIdPart = node.itemListId != null ? ` <span style="color:#888;font-size:10px">· List ${node.itemListId}</span>` : '';
+            const typeLine  = `<br><span style="color:#666;font-size:11px">${node.type} <span style="color:#888;font-size:10px">(${node.groupId}.${node.posId})</span>${listIdPart}</span>`;
             const coordLine = `<br><span style="font-size:11px;color:#555">X:&nbsp;${node.x.toFixed(0)}&nbsp; Y:&nbsp;${node.y.toFixed(0)}&nbsp; Z:&nbsp;${node.z.toFixed(0)}</span>`;
 
             const csvKey = serverStid != null ? `${serverStid},${node.groupId},${node.posId}` : null;
-
-            const idLine    = `<br><span style="color:#666;font-size:11px">Group: ${node.groupId} &nbsp; Index: ${node.posId}</span>`;
 
             const buildGatherPopup = (gatherMap) => {
                 let itemsHtml = '';
                 if (csvKey && gatherMap) {
                     const items = gatherMap.get(csvKey) ?? [];
-                    if (items.length) {
-                        itemsHtml = '<br><table style="font-size:15px;margin-top:8px;border-collapse:collapse;line-height:2">' +
-                            items.map(it => {
+                    const displayItems = _editMode ? items : items.filter(it => !it.isHidden);
+                    if (displayItems.length) {
+                        itemsHtml =
+                            '<div class="ge-items-view" style="margin-top:6px">' +
+                            '<table style="font-size:15px;border-collapse:collapse;line-height:2">' +
+                            displayItems.map(it => {
                                 const entry    = itemNames[String(it.itemId)];
                                 const name     = entry?.name ?? `Item #${it.itemId}`;
                                 const iconNo   = entry?.iconNo;
@@ -1698,12 +2458,43 @@ function loadGatherPoints(info) {
                                     : ` ×${it.itemNum}`;
                                 const pct      = it.dropChance > 0
                                     ? ` <span style="color:#777">(${(it.dropChance * 100).toFixed(0)}%)</span>` : '';
-                                return `<tr><td style="color:#222;padding-right:10px;white-space:nowrap">${icon}${nameLink}</td><td style="color:#555;white-space:nowrap">${qty}${pct}</td></tr>`;
+                                const hiddenStyle = it.isHidden ? ' opacity:0.35;font-style:italic' : '';
+                                const hiddenTitle = it.isHidden ? ' title="Hidden"' : '';
+                                return `<tr style="${hiddenStyle}"${hiddenTitle}><td style="color:#222;padding-right:10px;white-space:nowrap">${icon}${nameLink}</td><td style="color:#555;white-space:nowrap">${qty}${pct}</td></tr>`;
                             }).join('') +
-                            '</table>';
+                            '</table></div>';
+                    } else if (_editMode && !items.length) {
+                        // Empty drop zone placeholder shown only in edit mode when no items at all
+                        itemsHtml = '<div class="ge-items-view ge-items-empty" style="min-height:44px;display:flex;align-items:center;justify-content:center;margin-top:8px;border-radius:4px"><span style="color:#888;font-size:11px;font-style:italic;pointer-events:none">Drop items here to add</span></div>';
                     }
                 }
-                return `${badge}${typeLine}${coordLine}${idLine}${itemsHtml}`;
+                // Edit section — shown only in edit mode when cache is loaded
+                let editSection = '';
+                if (_editMode && gatherMap && csvKey) {
+                    const items = gatherMap.get(csvKey) ?? [];
+                    const rows  = items.map((it, i) => {
+                        const nm     = itemNames[String(it.itemId)]?.name ?? `Item #${it.itemId}`;
+                        const chance = Math.round(((it.dropChance || 0)) * 100);
+                        return `<tr data-idx="${i}">` +
+                            `<td style="padding:2px 4px;color:#222;min-width:70px">${nm}</td>` +
+                            `<td style="padding:2px 1px"><input class="popup-edit-input ge-min" type="number" min="1" value="${it.itemNum || 1}" style="width:36px" title="Min qty"></td>` +
+                            `<td style="padding:2px 1px">–</td>` +
+                            `<td style="padding:2px 1px"><input class="popup-edit-input ge-max" type="number" min="1" value="${it.maxItemNum || 1}" style="width:36px" title="Max qty"></td>` +
+                            `<td style="padding:2px 1px;white-space:nowrap" title="Drop chance %"><input class="popup-edit-input ge-chance" type="number" min="0" max="100" step="1" value="${chance}" style="width:44px">%</td>` +
+                            `<td style="padding:2px 1px" title="Rarity (quality)"><input class="popup-edit-input ge-qual" type="number" min="0" max="9" value="${it.quality || 0}" style="width:38px"></td>` +
+                            `<td style="padding:2px 3px" title="Hidden"><input type="checkbox" class="ge-hidden"${it.isHidden ? ' checked' : ''}></td>` +
+                            `<td style="padding:2px 3px"><button class="popup-edit-btn danger ge-remove" data-idx="${i}" style="padding:1px 4px">✕</button></td>` +
+                            `</tr>`;
+                    }).join('');
+                    editSection = `<div class="popup-edit-section">` +
+                        `<table class="popup-edit-items-table" id="ge-table-${csvKey.replace(/,/g,'-')}">${rows}</table>` +
+                        `<div class="popup-edit-row" style="margin-top:5px">` +
+                        `<input class="popup-edit-input" id="ge-add-id" type="number" placeholder="Item ID" style="width:70px">` +
+                        `<button class="popup-edit-btn" data-edit-action="ge-add-item">+ Add</button>` +
+                        `<button class="popup-edit-btn" data-edit-action="ge-apply">✔ Apply</button>` +
+                        `</div></div>`;
+                }
+                return `${badge}${typeLine}${coordLine}${itemsHtml}${editSection}`;
             };
 
             const tooltipText = `${label} — ${node.groupId}.${node.posId}`;
@@ -1720,25 +2511,255 @@ function loadGatherPoints(info) {
             .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -8] })
             .addTo(gatherLayer);
 
-            if (!_gatherItemsCache && csvKey) {
-                marker.on('popupopen', function() {
-                    if (_gatherItemsCache) {
-                        this.getPopup().setContent(buildGatherPopup(_gatherItemsCache));
-                        this.getPopup().update();
-                        return;
-                    }
-                    _gatherItemsPromise.then(gatherMap => {
-                        if (this.isPopupOpen()) {
-                            this.getPopup().setContent(buildGatherPopup(gatherMap));
-                            this.getPopup().update();
-                        }
+            // Drop target: drag items from the Items panel onto a gather node marker.
+            // Guard against multiple 'add' events (layer toggled off/on repeatedly).
+            if (csvKey) {
+                marker.on('add', function() {
+                    const el = this.getElement();
+                    if (!el || el._ddonDropBound) return;
+                    el._ddonDropBound = true;
+                    const self = this;
+                    el.addEventListener('dragover', (e) => {
+                        if (_dragItemId == null || !_editMode) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'copy';
+                        el.style.outline = '2px solid #fff';
+                        el.style.outlineOffset = '3px';
                     });
+                    el.addEventListener('dragleave', () => {
+                        el.style.outline = '';
+                        el.style.outlineOffset = '';
+                    });
+                    el.addEventListener('drop', (e) => {
+                        el.style.outline = '';
+                        el.style.outlineOffset = '';
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (_dragItemId == null || !_editMode) return;
+                        const itemId = _dragItemId;
+                        const doAdd = (gatherMap) => {
+                            const items = gatherMap.get(csvKey);
+                            if (!items) return;
+                            const [rs, rg, rp] = csvKey.split(',');
+                            const newItem = { itemId, itemNum: 1, maxItemNum: 1, quality: 0, isHidden: false, dropChance: 1 };
+                            items.push(newItem);
+                            if (_rawGatheringRows)
+                                _rawGatheringRows.push({ stageId: rs, groupId: rg, posId: rp, ...newItem });
+                            if (_markDirty) _markDirty('ddon-src-gathering');
+                            if (self.isPopupOpen()) {
+                                self.getPopup().setContent(buildGatherPopup(gatherMap));
+                                self.getPopup().update();
+                            }
+                        };
+                        if (_gatherItemsCache) doAdd(_gatherItemsCache);
+                        else _gatherItemsPromise.then(doAdd);
+                    });
+                });
+            }
+
+            // Always set up popupopen: handles async cache load + edit-mode interactions.
+            if (csvKey) {
+                const rebuildGatherPopup = (m, gatherMap) => {
+                    m.getPopup().setContent(buildGatherPopup(gatherMap));
+                    m.getPopup().update();
+                    if (_editMode && _attachDragReorder) {
+                        const popupEl = m.getPopup().getElement();
+                        const tbl = popupEl?.querySelector('.popup-edit-items-table');
+                        const items = gatherMap.get(csvKey) ?? [];
+                        _attachDragReorder(tbl, items, (reorderedItems) => {
+                            // Sync raw rows to match new order
+                            if (_rawGatheringRows) {
+                                const [rs, rg, rp] = csvKey.split(',');
+                                const others = _rawGatheringRows.filter(
+                                    r => !(r.stageId === rs && r.groupId === rg && r.posId === rp));
+                                const reordered = reorderedItems.map(it => ({
+                                    stageId: rs, groupId: rg, posId: rp,
+                                    itemId: it.itemId, itemNum: it.itemNum, maxItemNum: it.maxItemNum,
+                                    quality: it.quality, isHidden: it.isHidden, dropChance: it.dropChance,
+                                }));
+                                _rawGatheringRows = [...others, ...reordered];
+                            }
+                            if (_markDirty) _markDirty('ddon-src-gathering');
+                            rebuildGatherPopup(m, gatherMap);
+                        });
+                    }
+                };
+                let _gatherClickHandler = null;
+                marker.on('popupclose', () => {
+                    // Clear the drop target so document-level handlers ignore stale popups.
+                    if (_gatherPopupDropFn?._marker === marker) _gatherPopupDropFn = null;
+                });
+                marker.on('popupopen', function() {
+                    const self = this;
+                    const attach = (gatherMap) => {
+                        rebuildGatherPopup(self, gatherMap);
+                        // Attach edit action handler
+                        const popupEl = self.getPopup().getElement();
+                        if (!popupEl) return;
+                        if (_gatherClickHandler) popupEl.removeEventListener('click', _gatherClickHandler);
+                        if (!_editMode) return;
+                        _gatherClickHandler = (e) => {
+                            const actionBtn = e.target.closest('[data-edit-action]');
+                            const removeBtn = e.target.closest('.ge-remove');
+                            if (!actionBtn && !removeBtn) return;
+                            e.stopPropagation();
+                            const items = gatherMap.get(csvKey) ?? [];
+                            if (removeBtn) {
+                                const idx = parseInt(removeBtn.dataset.idx);
+                                items.splice(idx, 1);
+                                // Sync to raw rows
+                                if (_rawGatheringRows) {
+                                    const [rs, rg, rp] = csvKey.split(',');
+                                    const before = _rawGatheringRows.length;
+                                    // Remove the idx-th matching row
+                                    let matchCount = 0;
+                                    _rawGatheringRows = _rawGatheringRows.filter(row => {
+                                        if (row.stageId === rs && row.groupId === rg && row.posId === rp) {
+                                            return matchCount++ !== idx;
+                                        }
+                                        return true;
+                                    });
+                                }
+                                if (_markDirty) _markDirty('ddon-src-gathering');
+                                rebuildGatherPopup(self, gatherMap);
+                            } else if (actionBtn.dataset.editAction === 'ge-apply') {
+                                const tbl = popupEl.querySelector('.popup-edit-items-table');
+                                if (!tbl) return;
+                                const [rs, rg, rp] = csvKey.split(',');
+                                tbl.querySelectorAll('tr[data-idx]').forEach(tr => {
+                                    const idx     = parseInt(tr.dataset.idx);
+                                    const minV    = parseInt(tr.querySelector('.ge-min').value) || 1;
+                                    const maxV    = parseInt(tr.querySelector('.ge-max').value) || minV;
+                                    const chance  = Math.min(100, Math.max(0, parseFloat(tr.querySelector('.ge-chance').value) || 0)) / 100;
+                                    const qualV   = parseInt(tr.querySelector('.ge-qual').value) || 0;
+                                    const hiddenV = tr.querySelector('.ge-hidden').checked;
+                                    if (items[idx]) {
+                                        items[idx].itemNum    = minV;
+                                        items[idx].maxItemNum = Math.max(minV, maxV);
+                                        items[idx].dropChance = chance;
+                                        items[idx].quality    = qualV;
+                                        items[idx].isHidden   = hiddenV;
+                                    }
+                                    if (_rawGatheringRows) {
+                                        let matchCount = 0;
+                                        for (const row of _rawGatheringRows) {
+                                            if (row.stageId === rs && row.groupId === rg && row.posId === rp) {
+                                                if (matchCount === idx) {
+                                                    row.itemNum    = minV;
+                                                    row.maxItemNum = Math.max(minV, maxV);
+                                                    row.dropChance = chance;
+                                                    row.quality    = qualV;
+                                                    row.isHidden   = hiddenV;
+                                                    break;
+                                                }
+                                                matchCount++;
+                                            }
+                                        }
+                                    }
+                                });
+                                if (_markDirty) _markDirty('ddon-src-gathering');
+                                rebuildGatherPopup(self, gatherMap);
+                            } else if (actionBtn.dataset.editAction === 'ge-add-item') {
+                                const idInput = popupEl.querySelector('#ge-add-id');
+                                const newId   = parseInt(idInput?.value);
+                                if (!newId || isNaN(newId)) return;
+                                const newItem = { itemId: newId, itemNum: 1, maxItemNum: 1, quality: 0, isHidden: false, dropChance: 1 };
+                                items.push(newItem);
+                                if (_rawGatheringRows) {
+                                    const [rs, rg, rp] = csvKey.split(',');
+                                    _rawGatheringRows.push({ stageId: rs, groupId: rg, posId: rp, ...newItem });
+                                }
+                                if (idInput) idInput.value = '';
+                                if (_markDirty) _markDirty('ddon-src-gathering');
+                                rebuildGatherPopup(self, gatherMap);
+                            }
+                        };
+                        popupEl.addEventListener('click', _gatherClickHandler);
+
+                        // Register this node's add-item function for the document-level
+                        // drag-drop handler (see edit block).  Tagged with marker ref so
+                        // the popupclose handler can safely clear it.
+                        const doAddDraggedItem = (itemId) => {
+                            const [rs, rg, rp] = csvKey.split(',');
+                            const items = gatherMap.get(csvKey) ?? [];
+                            const newItem = { itemId, itemNum: 1, maxItemNum: 1, quality: 0, isHidden: false, dropChance: 1 };
+                            items.push(newItem);
+                            if (_rawGatheringRows)
+                                _rawGatheringRows.push({ stageId: rs, groupId: rg, posId: rp, ...newItem });
+                            if (_markDirty) _markDirty('ddon-src-gathering');
+                            rebuildGatherPopup(self, gatherMap);
+                            // Flash the edit section green to confirm the drop.
+                            const flashEl = self.getPopup()?.getElement()?.querySelector('.ge-items-view');
+                            if (flashEl) {
+                                flashEl.style.transition = 'background 0.1s';
+                                flashEl.style.background = 'rgba(80,200,120,0.25)';
+                                setTimeout(() => { flashEl.style.background = ''; }, 700);
+                            }
+                        };
+                        doAddDraggedItem._marker = marker;
+                        _gatherPopupDropFn = doAddDraggedItem;
+                    };
+                    if (_gatherItemsCache) { attach(_gatherItemsCache); return; }
+                    _gatherItemsPromise.then(gm => { if (self.isPopupOpen()) attach(gm); });
                 });
             }
         }
     }
 
 
+}
+
+function loadBreakTargets(info, stid = null) {
+    breakTargetLayer.clearLayers();
+    if (!info.stages?.length) return;
+
+    const floorObbs     = info.floor_obbs ?? null;
+    const filterByFloor = floorObbs !== null;
+    const stagesToLoad  = (stid && info.stages.includes(stid)) ? [stid] : info.stages;
+
+    for (const stageId of stagesToLoad) {
+        const stageNo = String(parseInt(stageId.slice(2), 10));
+        const nodes   = breakTargets[stageNo];
+        if (!nodes) continue;
+
+        for (const node of nodes) {
+            if (filterByFloor) {
+                const floor = getEnemyFloor(node.x, node.y, node.z, floorObbs);
+                if (floor !== null && floor !== currentLayer) continue;
+            }
+            const latlng = worldToPixel(node.x, node.z, info);
+
+            const questLine  = node.questName
+                ? `<br><span style="color:#c97a00;font-size:10px;font-style:italic">${node.questName}</span>`
+                : '';
+            const hitsLine   = node.hitNum != null
+                ? `<br><span style="font-size:10px;color:#888">${node.hitNum} hit${node.hitNum !== 1 ? 's' : ''} to destroy</span>`
+                : '';
+            const coordLine  = `<br><span style="font-size:11px;color:#555">X:&nbsp;${node.x.toFixed(0)}&nbsp; Y:&nbsp;${node.y.toFixed(0)}&nbsp; Z:&nbsp;${node.z.toFixed(0)}</span>`;
+            const groupLine  = `<br><span style="color:#666;font-size:10px">Group ${node.groupId} · pos ${node.posId}</span>`;
+
+            const popupHtml  =
+                `<span style="font-weight:bold;color:#e65c00">Destroyable Object</span>` +
+                questLine + hitsLine + groupLine + coordLine;
+
+            const tooltipText = node.questName
+                ? `Destroyable Object — ${node.questName}`
+                : `Destroyable Object (group ${node.groupId})`;
+
+            const icon = L.divIcon({
+                className: '',
+                html: `<div style="width:11px;height:11px;background:#e65c00;border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 4px rgba(0,0,0,0.8);transform:rotate(45deg)"></div>`,
+                iconSize:    [11, 11],
+                iconAnchor:  [5, 5],
+                popupAnchor: [0, -10],
+            });
+
+            L.marker(latlng, { icon })
+                .bindPopup(popupHtml)
+                .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -10] })
+                .addTo(breakTargetLayer);
+        }
+    }
 }
 
 function loadNpcShops(info) {
@@ -1762,33 +2783,64 @@ function loadNpcShops(info) {
             const buildShopPopup = (shopCache) => {
                 const shop     = shopCache?.get(npc.ShopId);
                 const currency = shop ? (WALLET_LABELS[shop.walletType] ?? `Type ${shop.walletType}`) : '?';
-                let itemsHtml  = '';
-                if (shop?.items?.length) {
-                    itemsHtml = `<br><div style="font-size:11px;color:#666;margin-top:2px">Currency: ${currency}</div>` +
-                        '<br><div style="max-height:280px;overflow-y:auto;overflow-x:hidden;margin-top:4px;min-width:280px"><table style="font-size:13px;border-collapse:collapse;line-height:1.8;width:100%">' +
-                        shop.items.map(it => {
-                            const entry    = itemNames[String(it.ItemId)];
-                            const name     = entry?.name ?? `Item #${it.ItemId}`;
-                            const iconNo   = entry?.iconNo;
-                            const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
-                            const icon     = iconFile && _iconIdSet.has(iconNo)
-                                ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;margin-right:6px;image-rendering:pixelated">`
-                                : `<span style="display:inline-block;width:28px;margin-right:6px"></span>`;
-                            const href     = `https://reference.dd-on.com/build/i${String(it.ItemId).padStart(8, '0')}.html`;
-                            const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
-                            const stock = it.Stock === 255 ? '' : ` <span style="color:#888">(×${it.Stock})</span>`;
-                            return `<tr><td style="color:#222;padding-right:8px;white-space:nowrap">${icon}${nameLink}</td>` +
-                                   `<td style="color:#555;white-space:nowrap">${it.Price} ${currency}${stock}</td></tr>`;
-                        }).join('') +
-                        '</table></div>';
-                } else if (!shopCache) {
-                    itemsHtml = '<br><span style="color:#888;font-size:11px">Loading...</span>';
-                } else {
-                    itemsHtml = '<br><span style="color:#888;font-size:11px">No inventory data</span>';
+                const header   = `${badge}<br><span style="color:#333;font-size:12px;font-weight:bold">${npcName}</span>` +
+                                 `<br><span style="color:#666;font-size:11px">Shop ID: ${npc.ShopId}</span>`;
+
+                if (!shopCache) return header + '<br><span style="color:#888;font-size:11px">Loading...</span>';
+
+                if (!shop) return header + '<br><span style="color:#888;font-size:11px">No inventory data</span>';
+
+                const currencyLine = `<br><div style="font-size:11px;color:#666;margin-top:2px">Currency: ${currency}</div>`;
+
+                const itemIcon = (it) => {
+                    const entry    = itemNames[String(it.ItemId)];
+                    const iconNo   = entry?.iconNo;
+                    const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
+                    return iconFile && _iconIdSet.has(iconNo)
+                        ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;margin-right:6px;image-rendering:pixelated">`
+                        : `<span style="display:inline-block;width:28px;margin-right:6px"></span>`;
+                };
+
+                if (_editMode) {
+                    // ── Edit mode: editable rows with price, stock, remove ──────────
+                    const rows = shop.items.map((it, idx) => {
+                        const name = itemNames[String(it.ItemId)]?.name ?? `Item #${it.ItemId}`;
+                        return `<tr data-idx="${idx}">` +
+                            `<td style="color:#888;padding-right:4px;cursor:grab;user-select:none;white-space:nowrap;width:1px" title="Drag to reorder">⠿</td>` +
+                            `<td style="padding-right:6px;font-size:12px">${itemIcon(it)}${name}</td>` +
+                            `<td style="padding-right:4px;white-space:nowrap;width:1px"><input class="popup-edit-input sh-price" type="number" min="0" value="${it.Price}" style="width:68px" title="Price"></td>` +
+                            `<td style="white-space:nowrap;width:1px"><input class="popup-edit-input sh-stock" type="number" min="1" max="255" value="${it.Stock}" style="width:48px" title="Stock (255 = unlimited)"> ` +
+                            `<button class="popup-edit-btn danger sh-remove" data-idx="${idx}" style="padding:1px 5px" title="Remove item">✕</button></td>` +
+                            `</tr>`;
+                    }).join('');
+                    const emptyZone = shop.items.length === 0
+                        ? `<div class="npc-shop-view npc-shop-empty" style="min-height:44px;display:flex;align-items:center;justify-content:center;margin-top:6px;border-radius:4px"><span style="color:#888;font-size:11px;font-style:italic;pointer-events:none">Drop items here to add</span></div>`
+                        : '';
+                    const tblHtml = shop.items.length
+                        ? `<div class="npc-shop-view" style="margin-top:4px;max-height:260px;overflow-y:auto;overflow-x:hidden">` +
+                          `<table class="popup-edit-items-table sh-items-table" style="font-size:12px;border-collapse:collapse;line-height:1.9;width:100%">${rows}</table>` +
+                          `</div>`
+                        : '';
+                    const footer = `<div class="popup-edit-row" style="margin-top:5px">` +
+                        `<button class="popup-edit-btn" data-edit-action="sh-apply" title="Save price/stock changes">✔ Apply</button>` +
+                        `</div>`;
+                    return header + currencyLine + tblHtml + emptyZone + footer;
                 }
-                return `${badge}<br><span style="color:#333;font-size:12px;font-weight:bold">${npcName}</span>` +
-                       `<br><span style="color:#666;font-size:11px">Shop ID: ${npc.ShopId}</span>` +
-                       itemsHtml;
+
+                // ── View mode ────────────────────────────────────────────────────
+                if (!shop.items.length) return header + '<br><span style="color:#888;font-size:11px">No inventory data</span>';
+                const viewRows = shop.items.map(it => {
+                    const entry    = itemNames[String(it.ItemId)];
+                    const name     = entry?.name ?? `Item #${it.ItemId}`;
+                    const href     = `https://reference.dd-on.com/build/i${String(it.ItemId).padStart(8, '0')}.html`;
+                    const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
+                    const stock    = it.Stock === 255 ? '' : ` <span style="color:#888">(×${it.Stock})</span>`;
+                    return `<tr><td style="color:#222;padding-right:8px;white-space:nowrap">${itemIcon(it)}${nameLink}</td>` +
+                           `<td style="color:#555;white-space:nowrap">${it.Price} ${currency}${stock}</td></tr>`;
+                }).join('');
+                return header + currencyLine +
+                    `<br><div style="max-height:280px;overflow-y:auto;overflow-x:hidden;margin-top:4px;min-width:280px">` +
+                    `<table style="font-size:13px;border-collapse:collapse;line-height:1.8;width:100%">${viewRows}</table></div>`;
             };
 
             const icon = L.divIcon({
@@ -1799,19 +2851,96 @@ function loadNpcShops(info) {
                 popupAnchor: [0, -10],
             });
             const marker = L.marker(latlng, { icon })
-            .bindPopup(buildShopPopup(_shopCache), { minWidth: 300 })
+            .bindPopup(buildShopPopup(_shopCache), { minWidth: 340 })
             .bindTooltip(`${npcName} — ${funcLabel}`, { direction: 'top', offset: [0, -10] })
             .addTo(npcShopLayer);
 
+            let _shopClickHandler = null;
+            marker.on('popupclose', () => {
+                if (_shopPopupDropFn?._marker === marker) _shopPopupDropFn = null;
+            });
             marker.on('popupopen', function() {
                 const popup = this.getPopup();
-                const apply = (cache) => {
+                const self  = this;
+
+                const rebuildShopPopup = (cache) => {
                     const el = popup.getElement()?.querySelector('.leaflet-popup-content');
                     if (el) el.innerHTML = buildShopPopup(cache);
                     else { popup.setContent(buildShopPopup(cache)); popup.update(); }
+                    wireShopEdit(cache);
                 };
-                if (_shopCache) { apply(_shopCache); return; }
-                _shopPromise.then(cache => { if (this.isPopupOpen()) apply(cache); });
+
+                const wireShopEdit = (cache) => {
+                    const popupEl = popup.getElement();
+                    if (!popupEl) return;
+
+                    // Drag-to-reorder
+                    if (_editMode && _attachDragReorder) {
+                        const shop = cache?.get(npc.ShopId);
+                        const tbl  = popupEl.querySelector('.sh-items-table');
+                        if (tbl && shop?.items?.length) {
+                            _attachDragReorder(tbl, shop.items, () => {
+                                if (_markDirty) _markDirty('ddon-src-shop');
+                                rebuildShopPopup(cache);
+                            });
+                        }
+                    }
+
+                    if (!_editMode) return;
+
+                    // Click handler: apply / remove
+                    if (_shopClickHandler) popupEl.removeEventListener('click', _shopClickHandler);
+                    _shopClickHandler = (e) => {
+                        const actionBtn = e.target.closest('[data-edit-action]');
+                        const removeBtn = e.target.closest('.sh-remove');
+                        if (!actionBtn && !removeBtn) return;
+                        e.stopPropagation();
+                        const shop = cache?.get(npc.ShopId);
+                        if (!shop) return;
+                        if (removeBtn) {
+                            const idx = parseInt(removeBtn.dataset.idx);
+                            shop.items.splice(idx, 1);
+                            if (_markDirty) _markDirty('ddon-src-shop');
+                            rebuildShopPopup(cache);
+                        } else if (actionBtn.dataset.editAction === 'sh-apply') {
+                            const tbl = popupEl.querySelector('.sh-items-table');
+                            if (!tbl) return;
+                            tbl.querySelectorAll('tr[data-idx]').forEach(tr => {
+                                const idx   = parseInt(tr.dataset.idx);
+                                const price = Math.max(0, parseInt(tr.querySelector('.sh-price').value) || 0);
+                                const stock = Math.min(255, Math.max(1, parseInt(tr.querySelector('.sh-stock').value) || 255));
+                                if (shop.items[idx]) {
+                                    shop.items[idx].Price = price;
+                                    shop.items[idx].Stock = stock;
+                                }
+                            });
+                            if (_markDirty) _markDirty('ddon-src-shop');
+                            rebuildShopPopup(cache);
+                        }
+                    };
+                    popupEl.addEventListener('click', _shopClickHandler);
+
+                    // Register drop function for Items panel drag-drop
+                    const doAddDraggedItem = (itemId) => {
+                        const shop = cache?.get(npc.ShopId);
+                        if (!shop) return;
+                        const defaultPrice = itemNames[String(itemId)]?.sellPrice ?? 0;
+                        shop.items.push({ ItemId: itemId, Price: defaultPrice, Stock: 255 });
+                        if (_markDirty) _markDirty('ddon-src-shop');
+                        rebuildShopPopup(cache);
+                        const flashEl = self.getPopup()?.getElement()?.querySelector('.npc-shop-view');
+                        if (flashEl) {
+                            flashEl.style.transition = 'background 0.1s';
+                            flashEl.style.background = 'rgba(80,200,120,0.25)';
+                            setTimeout(() => { flashEl.style.background = ''; }, 700);
+                        }
+                    };
+                    doAddDraggedItem._marker = marker;
+                    _shopPopupDropFn = doAddDraggedItem;
+                };
+
+                if (_shopCache) { rebuildShopPopup(_shopCache); return; }
+                _shopPromise.then(cache => { if (self.isPopupOpen()) rebuildShopPopup(cache); });
             });
         }
     }
@@ -2000,8 +3129,11 @@ function buildFloorSelector(info) {
             currentLayer = layer;
             swapMapImage(info, img_file);
             el.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.textContent === `Floor ${layer}`));
-            // Re-filter enemy markers for the new floor (only matters on multi-floor maps)
-            if (info.floor_obbs) loadEnemySpawns(info, currentStageName());
+            // Re-filter enemy and gather markers for the new floor (only matters on multi-floor maps)
+            if (info.floor_obbs) {
+                loadEnemySpawns(info, currentStageName());
+                loadGatherPoints(info, currentStageName());
+            }
         });
         el.appendChild(btn);
     }
@@ -2277,8 +3409,9 @@ function loadMap(mapName) {
     loadStageLabels(info);
     loadLandmarks(mapName, info);
     loadConnections(mapName, info);
-    loadGatherPoints(info);
+    loadGatherPoints(info, currentStageName());
     loadNpcShops(info);
+    loadBreakTargets(info, currentStageName());
     // Read openGroups BEFORE loadEnemySpawns — that function calls _updateExpandCollapseBtn
     // → updateLayersInHash which would overwrite the hash (erasing the group list) if read after.
     const { openGroups } = parseHash();
@@ -2381,51 +3514,54 @@ loadMap = function (mapName) {
     async function srcStatus(row) {
         const lsKey = row.dataset.key;
         const el    = row.querySelector('.src-status');
+        const dlBtn = row.querySelector('.src-download-btn');
         const handle = pendingHandles.get(lsKey);
         const file   = pendingFiles.get(lsKey);
+        let isLocal = false;
         if (handle) {
             el.textContent = `📁 ${handle.name}`;
             el.style.color = '#4caf50';
-            return;
-        }
-        if (file) {
+            isLocal = true;
+        } else if (file) {
             el.textContent = `📁 ${file.name}`;
             el.style.color = '#4caf50';
-            return;
-        }
-        if (pendingResets.has(lsKey)) {
+            isLocal = true;
+        } else if (pendingResets.has(lsKey)) {
             el.textContent = 'Default';
             el.style.color = '#666';
-            return;
-        }
-        const stored = localStorage.getItem(lsKey);
-        if (stored === '__local__') {
-            const storedHandle = await _idbGet(lsKey + '-handle');
-            if (storedHandle) {
-                try {
-                    const perm = await storedHandle.queryPermission({ mode: 'read' });
-                    if (perm === 'granted') {
-                        el.textContent = `📁 ${storedHandle.name}`;
-                        el.style.color = '#4caf50';
-                    } else {
-                        el.textContent = `📁 ${storedHandle.name} ⚠ needs permission`;
-                        el.style.color = '#ffa726';
-                    }
-                } catch {
-                    el.textContent = '📁 Local file (stale handle)';
-                    el.style.color = '#f88';
-                }
-            } else {
-                el.textContent = '📁 Local file';
-                el.style.color = '#4caf50';
-            }
-        } else if (stored && stored !== row.dataset.default) {
-            el.textContent = '🔗 Custom URL';
-            el.style.color = '#42a5f5';
         } else {
-            el.textContent = 'Default';
-            el.style.color = '#666';
+            const stored = localStorage.getItem(lsKey);
+            if (stored === '__local__') {
+                isLocal = true;
+                const storedHandle = await _idbGet(lsKey + '-handle');
+                if (storedHandle) {
+                    try {
+                        const perm = await storedHandle.queryPermission({ mode: 'read' });
+                        if (perm === 'granted') {
+                            el.textContent = `📁 ${storedHandle.name}`;
+                            el.style.color = '#4caf50';
+                        } else {
+                            el.textContent = `📁 ${storedHandle.name} ⚠ needs permission`;
+                            el.style.color = '#ffa726';
+                        }
+                    } catch {
+                        el.textContent = '📁 Local file (stale handle)';
+                        el.style.color = '#f88';
+                    }
+                } else {
+                    el.textContent = '📁 Local file';
+                    el.style.color = '#4caf50';
+                }
+            } else if (stored && stored !== row.dataset.default) {
+                el.textContent = '🔗 Custom URL';
+                el.style.color = '#42a5f5';
+            } else {
+                el.textContent = 'Default';
+                el.style.color = '#666';
+            }
         }
+        dlBtn.disabled = isLocal;
+        dlBtn.title = isLocal ? 'Already using a local copy' : 'Fetch from URL and save as local copy';
     }
 
     // Opening the modal IS a user gesture — we can call requestPermission here.
@@ -2436,11 +3572,11 @@ loadMap = function (mapName) {
         for (const row of srcRows) {
             const lsKey  = row.dataset.key;
             const stored = localStorage.getItem(lsKey);
-            row.querySelector('.src-url-input').value =
-                (!stored || stored === '__local__') ? row.dataset.default : stored;
-            row.querySelector('.src-file-input').value = '';
-            // Auto-request permission for any stored handle that needs it
+            const urlInput = row.querySelector('.src-url-input');
             if (stored === '__local__') {
+                const savedName = localStorage.getItem(lsKey + '-name');
+                urlInput.value = savedName || '[local file]';
+                // Auto-request permission for any stored FSA handle
                 const handle = await _idbGet(lsKey + '-handle');
                 if (handle) {
                     try {
@@ -2448,7 +3584,10 @@ loadMap = function (mapName) {
                         if (perm === 'prompt') await handle.requestPermission({ mode: 'read' });
                     } catch { /* ignore */ }
                 }
+            } else {
+                urlInput.value = stored || row.dataset.default;
             }
+            row.querySelector('.src-file-input').value = '';
             srcStatus(row);
         }
         modal.classList.add('open');
@@ -2492,6 +3631,59 @@ loadMap = function (mapName) {
             srcStatus(row);
         });
 
+        row.querySelector('.src-download-btn').addEventListener('click', async () => {
+            const btn = row.querySelector('.src-download-btn');
+            const url = row.querySelector('.src-url-input').value.trim() || row.dataset.default;
+            const fname = url.split('/').pop().split('?')[0] || 'data';
+            const ext   = fname.includes('.') ? fname.split('.').pop().toLowerCase() : '';
+            const origText = btn.textContent;
+            btn.textContent = '…';
+            btn.disabled = true;
+            try {
+                const r = await fetch(url);
+                if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                const text = await r.text();
+
+                if (window.showSaveFilePicker) {
+                    // FSA path: let user choose save location, write file, store handle
+                    let handle;
+                    try {
+                        const typeMap = { csv: 'text/csv', json: 'application/json' };
+                        handle = await showSaveFilePicker({
+                            suggestedName: fname,
+                            types: [{ description: fname, accept: { [typeMap[ext] ?? 'text/plain']: ['.' + (ext || 'txt')] } }],
+                        });
+                    } catch (e) {
+                        if (e.name === 'AbortError') return; // user cancelled
+                        throw e;
+                    }
+                    const writable = await handle.createWritable();
+                    await writable.write(text);
+                    await writable.close();
+                    pendingHandles.set(lsKey, handle);
+                    pendingFiles.delete(lsKey);
+                    row.querySelector('.src-url-input').value = handle.name;
+                    srcStatus(row);
+                } else {
+                    // Fallback: trigger browser download so user can save to disk,
+                    // then have them Browse… to point back to it.
+                    const blob = new Blob([text], { type: 'text/plain' });
+                    const a = Object.assign(document.createElement('a'),
+                        { href: URL.createObjectURL(blob), download: fname });
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                    alert(`Your browser doesn't support choosing a save location directly.\n\n` +
+                          `"${fname}" has been sent to your Downloads folder.\n\n` +
+                          `Use Browse… to select it and switch to local mode.`);
+                }
+            } catch (e) {
+                alert('Download failed: ' + e.message);
+            } finally {
+                btn.textContent = origText;
+                btn.disabled = false;
+            }
+        });
+
         row.querySelector('.src-reset-btn').addEventListener('click', () => {
             pendingHandles.delete(lsKey);
             pendingFiles.delete(lsKey);
@@ -2518,6 +3710,7 @@ loadMap = function (mapName) {
             row.querySelector('.src-file-input').value = '';
             localStorage.removeItem(row.dataset.key);
             localStorage.removeItem(row.dataset.key + '-data');
+            localStorage.removeItem(row.dataset.key + '-name');
             await _idbDel(row.dataset.key);
             await _idbDel(row.dataset.key + '-handle');
             srcStatus(row);
@@ -2535,6 +3728,7 @@ loadMap = function (mapName) {
                     await _idbSet(lsKey + '-handle', handle);
                     await _idbDel(lsKey);              // no content blob needed
                     localStorage.setItem(lsKey, '__local__');
+                    localStorage.setItem(lsKey + '-name', handle.name);
                     localStorage.removeItem(lsKey + '-data');
                 } else if (file) {
                     // Non-FSA fallback: store content snapshot
@@ -2542,6 +3736,7 @@ loadMap = function (mapName) {
                     await _idbSet(lsKey, text);
                     await _idbDel(lsKey + '-handle');  // clear any old handle
                     localStorage.setItem(lsKey, '__local__');
+                    localStorage.setItem(lsKey + '-name', file.name);
                     localStorage.removeItem(lsKey + '-data');
                 } else {
                     const val = row.querySelector('.src-url-input').value.trim();
@@ -2562,6 +3757,1035 @@ loadMap = function (mapName) {
         }
     });
 }
+
+// ── Edit mode ─────────────────────────────────────────────────────────────────
+{
+    const SOURCE_LABELS = {
+        'ddon-src-spawns':    'Spawns',
+        'ddon-src-gathering': 'Gathering',
+        'ddon-src-shop':      'Shop',
+    };
+
+    const SOURCE_DATA_LOADED = {
+        'ddon-src-spawns':    () => !!_rawEnemyData,
+        'ddon-src-gathering': () => !!_rawGatheringRows,
+        'ddon-src-shop':      () => !!_rawShopData,
+    };
+
+    function updateSaveFooter() {
+        const footer = document.getElementById('edit-panel-footer');
+        if (!footer) return;
+        footer.innerHTML = '';
+        const localKeys = Object.keys(SOURCE_LABELS)
+            .filter(k => SOURCE_DATA_LOADED[k]());
+        if (!localKeys.length) return;
+
+        // Per-source chips
+        const chips = document.createElement('div');
+        chips.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;flex:1;align-items:center';
+        for (const key of localKeys) {
+            const isDirty = _dirtySet.has(key);
+            const chip = document.createElement('button');
+            chip.className = 'edit-save-chip' + (isDirty ? ' dirty' : '');
+            chip.dataset.saveKey = key;
+            const isLocal = localStorage.getItem(key) === '__local__';
+            chip.title = isDirty
+                ? (isLocal ? `Save ${SOURCE_LABELS[key]} to file` : `Save ${SOURCE_LABELS[key]} — will ask where to save`)
+                : `${SOURCE_LABELS[key]} — no changes`;
+            chip.textContent = (isDirty ? '● ' : '○ ') + SOURCE_LABELS[key];
+            chip.disabled = !isDirty;
+            chips.appendChild(chip);
+        }
+        footer.appendChild(chips);
+
+        // Save All button — only if more than one source is dirty
+        const dirtyLocal = localKeys.filter(k => _dirtySet.has(k));
+        if (dirtyLocal.length > 1) {
+            const all = document.createElement('button');
+            all.id = 'edit-save-btn';
+            all.className = 'edit-save-all';
+            all.textContent = '💾 Save All';
+            footer.appendChild(all);
+        }
+    }
+
+    function markDirty(sourceKey) {
+        _editDirty = true;
+        if (sourceKey) _dirtySet.add(sourceKey);
+        updateSaveFooter();
+    }
+    _markDirty = markDirty;
+    _renderEditPanel = renderEditPanel;
+
+    // ── Drag-to-reorder helper ────────────────────────────────────────────────
+    // Makes tr[data-idx] rows within tableEl draggable and calls onReorder(items)
+    // after each successful reorder (items array is mutated in place first).
+    function attachDragReorder(tableEl, items, onReorder) {
+        if (!tableEl) return;
+        let dragSrcIdx = null;
+        tableEl.querySelectorAll('tr[data-idx]').forEach(tr => {
+            tr.draggable = true;
+            tr.style.cursor = 'grab';
+            tr.addEventListener('dragstart', (e) => {
+                dragSrcIdx = parseInt(tr.dataset.idx);
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => tr.style.opacity = '0.4', 0);
+            });
+            tr.addEventListener('dragend', () => {
+                tr.style.opacity = '';
+                tableEl.querySelectorAll('tr[data-idx]').forEach(r => r.classList.remove('drag-over'));
+                dragSrcIdx = null;
+            });
+            tr.addEventListener('dragover', (e) => {
+                if (dragSrcIdx == null) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                tableEl.querySelectorAll('tr[data-idx]').forEach(r => r.classList.remove('drag-over'));
+                tr.classList.add('drag-over');
+            });
+            tr.addEventListener('dragleave', () => tr.classList.remove('drag-over'));
+            tr.addEventListener('drop', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                tr.classList.remove('drag-over');
+                const dstIdx = parseInt(tr.dataset.idx);
+                if (dragSrcIdx == null || dragSrcIdx === dstIdx) return;
+                const [moved] = items.splice(dragSrcIdx, 1);
+                items.splice(dstIdx, 0, moved);
+                dragSrcIdx = null;
+                onReorder(items);
+            });
+        });
+    }
+    _attachDragReorder = attachDragReorder;
+    _renderEditPanel   = renderEditPanel;
+
+    // ── Document-level drag-drop for Items panel → gather popup ──────────────
+    // We listen at document level to avoid any interference from Leaflet's popup
+    // DOM structure (pane z-index, disableClickPropagation, etc.).
+    function clearGatherDropHighlight() {
+        document.querySelectorAll('.ge-items-view').forEach(s => {
+            s.style.outline = '';
+            s.style.outlineOffset = '';
+        });
+    }
+    function clearSpawnDropHighlight() {
+        document.querySelectorAll('.se-spawn-view').forEach(s => {
+            s.style.outline = '';
+            s.style.outlineOffset = '';
+        });
+    }
+    function clearShopDropHighlight() {
+        document.querySelectorAll('.npc-shop-view').forEach(s => {
+            s.style.outline = '';
+            s.style.outlineOffset = '';
+        });
+    }
+    document.addEventListener('dragover', (e) => {
+        const isItem      = _dragItemId != null && (_gatherPopupDropFn || _shopPopupDropFn);
+        const isItemShop  = _dragItemId != null && !!_shopPopupDropFn;
+        const isEnemy     = _dragEmCode != null && !!_spawnPopupDropFn;
+        if (!isItem && !isEnemy) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = e.target.closest('.leaflet-popup') ? 'copy' : 'none';
+        if (_dragItemId != null && !!_gatherPopupDropFn) {
+            clearGatherDropHighlight();
+            const view = e.target.closest('.ge-items-view');
+            if (view) {
+                view.style.outline = '2px solid rgba(200,200,200,0.9)';
+                view.style.outlineOffset = '2px';
+            }
+        }
+        if (isItemShop) {
+            clearShopDropHighlight();
+            const view = e.target.closest('.npc-shop-view');
+            if (view) {
+                view.style.outline = '2px solid rgba(200,200,200,0.9)';
+                view.style.outlineOffset = '2px';
+            }
+        }
+        if (isEnemy) {
+            clearSpawnDropHighlight();
+            const view = e.target.closest('.se-spawn-view');
+            if (view) {
+                view.style.outline = '2px solid rgba(200,200,200,0.9)';
+                view.style.outlineOffset = '2px';
+            }
+        }
+    });
+    document.addEventListener('drop', (e) => {
+        clearGatherDropHighlight();
+        clearShopDropHighlight();
+        clearSpawnDropHighlight();
+        if (_dragItemId != null && _gatherPopupDropFn && e.target.closest('.leaflet-popup')) {
+            e.preventDefault();
+            _gatherPopupDropFn(_dragItemId);
+        } else if (_dragItemId != null && _shopPopupDropFn && e.target.closest('.leaflet-popup')) {
+            e.preventDefault();
+            _shopPopupDropFn(_dragItemId);
+        } else if (_dragEmCode != null && _spawnPopupDropFn && e.target.closest('.leaflet-popup')) {
+            e.preventDefault();
+            _spawnPopupDropFn(_dragEmCode);
+        }
+    });
+    document.addEventListener('dragend', () => { clearGatherDropHighlight(); clearShopDropHighlight(); clearSpawnDropHighlight(); });
+
+    // ── Panel list rendering ──────────────────────────────────────────────────
+    function renderEnemyList() {
+        const query = document.getElementById('edit-search').value.trim().toLowerCase();
+        const list  = document.getElementById('edit-list');
+
+        // Group all known enemies by display name
+        const groups = new Map(); // name → emCode[]
+        for (const [emCode, entry] of Object.entries(emNames)) {
+            const name = entry.name ?? emCode;
+            if (query && !name.toLowerCase().includes(query) && !emCode.toLowerCase().includes(query)) continue;
+            if (!groups.has(name)) groups.set(name, []);
+            groups.get(name).push(emCode);
+        }
+
+        if (!groups.size) {
+            list.innerHTML = '<div class="edit-empty">No enemies match.</div>';
+            return;
+        }
+
+        const sorted   = [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+        const autoOpen = !!query; // expand all groups when searching
+
+        const dragAttr = `draggable="true" style="cursor:grab" title="Drag onto a spawn node to add"`;
+        list.innerHTML = sorted.map(([name, codes]) => {
+            codes.sort();
+            if (codes.length === 1) {
+                return `<div class="edit-list-item" data-em="${codes[0]}" ${dragAttr}>` +
+                    `<span class="eli-name">${name}</span>` +
+                    `<span class="eli-meta">${codes[0]}</span>` +
+                    `</div>`;
+            }
+            const sub = codes.map(code =>
+                `<div class="edit-list-item em-subitem" data-em="${code}" ${dragAttr}>` +
+                `<span class="eli-name">${code}</span>` +
+                `</div>`
+            ).join('');
+            return `<div class="em-group${autoOpen ? ' em-expanded' : ''}">` +
+                `<div class="edit-list-item em-group-header">` +
+                `<span class="em-arrow">▶</span>` +
+                `<span class="eli-name">${name}</span>` +
+                `<span class="eli-count">${codes.length}</span>` +
+                `</div>` +
+                `<div class="em-sublist">${sub}</div>` +
+                `</div>`;
+        }).join('');
+
+        list.querySelectorAll('.em-group-header').forEach(header => {
+            header.addEventListener('click', () => {
+                header.closest('.em-group').classList.toggle('em-expanded');
+            });
+        });
+        list.querySelectorAll('.edit-list-item[data-em][draggable]').forEach(el => {
+            el.addEventListener('dragstart', (e) => {
+                _dragEmCode = el.dataset.em;
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('text/plain', _dragEmCode);
+                document.body.classList.add('enemy-dragging');
+            });
+            el.addEventListener('dragend', () => {
+                _dragEmCode = null;
+                document.body.classList.remove('enemy-dragging');
+            });
+        });
+    }
+
+    function renderItemList() {
+        const query = document.getElementById('edit-search').value.trim().toLowerCase();
+        const list  = document.getElementById('edit-list');
+        const entries = Object.entries(itemNames)
+            .filter(([id, e]) => !query || e.name.toLowerCase().includes(query) || id.includes(query))
+            .sort((a, b) => a[1].name.localeCompare(b[1].name));
+        if (!entries.length) {
+            list.innerHTML = '<div class="edit-empty">No items match.</div>';
+            return;
+        }
+        const shown = entries.slice(0, 150);
+        const more  = entries.length - shown.length;
+        list.innerHTML = shown.map(([id, e]) => {
+            const iconNo   = e.iconNo;
+            const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
+            const icon     = iconFile && _iconIdSet.has(iconNo)
+                ? `<img src="images/icons/small/${iconFile}" width="20" height="20" style="vertical-align:middle;margin-right:5px;image-rendering:pixelated">`
+                : `<span style="display:inline-block;width:20px;margin-right:5px"></span>`;
+            return `<div class="edit-list-item" data-id="${id}" draggable="true" style="align-items:center;cursor:grab" title="Drag onto a gathering node to add">` +
+                   `<span style="margin-right:2px">${icon}</span>` +
+                   `<span class="eli-name">${e.name}</span>` +
+                   `<span class="eli-meta">#${id}</span>` +
+                   `</div>`;
+        }).join('') + (more ? `<div class="edit-empty">${more} more — refine search</div>` : '');
+        list.querySelectorAll('.edit-list-item[draggable]').forEach(el => {
+            el.addEventListener('dragstart', (e) => {
+                _dragItemId = parseInt(el.dataset.id);
+                e.dataTransfer.effectAllowed = 'copy';
+                e.dataTransfer.setData('text/plain', String(_dragItemId));
+                document.body.classList.add('item-dragging');
+            });
+            el.addEventListener('dragend', () => {
+                _dragItemId = null;
+                document.body.classList.remove('item-dragging');
+            });
+        });
+    }
+
+    function renderDropTablesList() {
+        const q    = document.getElementById('edit-search').value.trim().toLowerCase();
+        const list = document.getElementById('edit-list');
+        const tables = [..._dropsTablesMap.values()].filter(dt =>
+            !q || dt.name?.toLowerCase().includes(q) || String(dt.id).includes(q)
+        ).sort((a, b) => a.id - b.id);
+        const newBtn = `<div class="dt-list-new" id="dt-list-new-btn">＋ New Drop Table</div>`;
+        list.innerHTML = newBtn + (tables.length
+            ? tables.map(dt =>
+                `<div class="dt-list-item" data-dt-id="${dt.id}">` +
+                `<span class="dt-list-item-name">${dt.name || '(unnamed)'}</span>` +
+                `<span class="dt-list-item-meta">id:${dt.id} · ${dt.items?.length ?? 0} items</span>` +
+                `</div>`
+              ).join('')
+            : `<div class="edit-empty">No drop tables${q ? ' match.' : '.'}</div>`);
+        list.querySelector('#dt-list-new-btn')?.addEventListener('click', () => {
+            const newDt = createDropTable();
+            renderDropTablesList();
+            openDropTableEditor(newDt.id);
+        });
+        list.querySelectorAll('.dt-list-item').forEach(el => {
+            el.addEventListener('click', () => openDropTableEditor(parseInt(el.dataset.dtId)));
+        });
+    }
+
+    function renderEditPanel() {
+        const activeTab = document.querySelector('.edit-tab.active')?.dataset.tab ?? 'enemies';
+        if (activeTab === 'enemies') renderEnemyList();
+        else if (activeTab === 'items') renderItemList();
+        else if (activeTab === 'drops') renderDropTablesList();
+    }
+
+    // ── Edit mode toggle ──────────────────────────────────────────────────────
+    function setEditMode(on) {
+        _editMode = on;
+        document.getElementById('edit-mode-btn').classList.toggle('active', on);
+        document.getElementById('edit-mode-btn').title = on ? 'Exit edit mode' : 'Enter edit mode';
+        document.getElementById('edit-panel').classList.toggle('open', on);
+        if (on) renderEditPanel();
+        // Reopen any currently open popup so it rebuilds with the new edit mode.
+        // Defer until after the layout settles — the edit panel opening/closing
+        // shifts the map container size, causing Leaflet to compute NaN maxHeight
+        // if the popup is reopened synchronously.
+        const openPopup = leafletMap._popup;
+        if (openPopup) {
+            const src = openPopup._source;
+            leafletMap.closePopup();
+            if (src?.openPopup) {
+                setTimeout(() => {
+                    leafletMap.invalidateSize();
+                    src.openPopup();
+                }, 50);
+            }
+        }
+    }
+
+    // ── Panel wiring ──────────────────────────────────────────────────────────
+    document.getElementById('edit-mode-btn').addEventListener('click',
+        () => setEditMode(!_editMode));
+    document.getElementById('edit-panel-close').addEventListener('click',
+        () => setEditMode(false));
+
+    document.querySelectorAll('.edit-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.edit-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById('edit-search').value = '';
+            renderEditPanel();
+        });
+    });
+    document.getElementById('edit-search').addEventListener('input', renderEditPanel);
+
+    // Re-render list when map changes
+    const _origLoadMapForEdit = loadMap;
+    loadMap = function(mapName) {
+        _origLoadMapForEdit(mapName);
+        if (_editMode) setTimeout(renderEditPanel, 100); // wait for _currentMapInfo to update
+    };
+
+    // ── Save to file ──────────────────────────────────────────────────────────
+    async function serializeGatheringCsv() {
+        if (!_rawGatheringRows || !_rawGatheringHeaders) return null;
+        const headers   = _rawGatheringHeaders.replace(/^#/, '').split(',');
+        const iStage    = headers.indexOf('StageId'),  iGroup = headers.indexOf('GroupId');
+        const iPos      = headers.indexOf('PosId'),    iItem  = headers.indexOf('ItemId');
+        const iNum      = headers.indexOf('ItemNum'),  iMax   = headers.indexOf('MaxItemNum');
+        const iQual     = headers.indexOf('Quality'),  iHid   = headers.indexOf('IsHidden');
+        const iChance   = headers.indexOf('DropChance');
+        const lines = [_rawGatheringHeaders];
+        for (const row of _rawGatheringRows) {
+            const cols = new Array(headers.length).fill('');
+            cols[iStage] = row.stageId;   cols[iGroup] = row.groupId;
+            cols[iPos]   = row.posId;     cols[iItem]  = row.itemId;
+            cols[iNum]   = row.itemNum;   cols[iMax]   = row.maxItemNum;
+            cols[iQual]  = row.quality;   cols[iHid]   = row.isHidden ? 'true' : 'false';
+            cols[iChance]= row.dropChance;
+            lines.push(cols.join(','));
+        }
+        return lines.join('\n');
+    }
+
+    const SUGGESTED_NAMES = {
+        'ddon-src-spawns':    { name: 'EnemySpawn.json', types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] },
+        'ddon-src-gathering': { name: 'GatherItem.csv',  types: [{ description: 'CSV',  accept: { 'text/csv': ['.csv'] } }] },
+        'ddon-src-shop':      { name: 'Shop.json',       types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] },
+    };
+
+    async function writeToFile(lsKey, content) {
+        let handle = await _idbGet(lsKey + '-handle');
+        if (!handle && typeof showSaveFilePicker === 'function') {
+            // First save from remote — ask the user where to put the file
+            const opts = SUGGESTED_NAMES[lsKey];
+            try {
+                handle = await showSaveFilePicker({ suggestedName: opts?.name, types: opts?.types });
+                await _idbSet(lsKey + '-handle', handle);
+                localStorage.setItem(lsKey, '__local__');
+            } catch (err) {
+                if (err.name === 'AbortError') throw err; // user cancelled — do not save
+                // FSA failed (security context etc.) — fall through to download
+            }
+        }
+        if (handle) {
+            const perm = await handle.queryPermission({ mode: 'readwrite' });
+            const granted = perm === 'granted' ||
+                await handle.requestPermission({ mode: 'readwrite' }) === 'granted';
+            if (!granted) throw new Error('Write permission denied');
+            const writable = await handle.createWritable();
+            await writable.write(content);
+            await writable.close();
+        } else {
+            // FSA not available — trigger a browser download so the user gets an actual file
+            const opts = SUGGESTED_NAMES[lsKey];
+            const mimeType = opts?.types?.[0]?.accept
+                ? Object.keys(opts.types[0].accept)[0]
+                : 'application/octet-stream';
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = opts?.name ?? 'download';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            // Also cache in IDB so edits survive a reload
+            await _idbSet(lsKey, content);
+            localStorage.setItem(lsKey, '__local__');
+        }
+    }
+
+    async function saveSource(key) {
+        if (key === 'ddon-src-spawns' && _rawEnemyData) {
+            await writeToFile('ddon-src-spawns', JSON.stringify(_rawEnemyData));
+        } else if (key === 'ddon-src-gathering' && _rawGatheringRows) {
+            const csv = await serializeGatheringCsv();
+            if (csv) await writeToFile('ddon-src-gathering', csv);
+        } else if (key === 'ddon-src-shop' && _rawShopData) {
+            await writeToFile('ddon-src-shop', JSON.stringify(_rawShopData));
+        }
+        _dirtySet.delete(key);
+        if (!_dirtySet.size) _editDirty = false;
+    }
+
+    document.getElementById('edit-panel-footer').addEventListener('click', async (e) => {
+        const chip = e.target.closest('[data-save-key]');
+        const saveAll = e.target.closest('.edit-save-all');
+        const keys = chip ? [chip.dataset.saveKey]
+                   : saveAll ? [..._dirtySet].filter(k => localStorage.getItem(k) === '__local__')
+                   : null;
+        if (!keys?.length) return;
+
+        // Mark saving state on clicked element
+        const clicked = chip || saveAll;
+        const origText = clicked.textContent;
+        clicked.disabled = true;
+        clicked.textContent = '⏳ ' + (chip ? SOURCE_LABELS[chip.dataset.saveKey] : 'Saving…');
+
+        try {
+            for (const key of keys) await saveSource(key);
+            updateSaveFooter();
+        } catch (e) {
+            updateSaveFooter();
+            alert('Save failed: ' + e.message);
+        }
+    });
+
+    // Populate the footer with source chips once data is loaded
+    // (data promises resolve async, so we hook in after the page settles)
+    Promise.allSettled([_enemySpawnPromise, _gatherItemsPromise, _shopPromise])
+        .then(() => updateSaveFooter());
+}
+
+// ── Named param picker modal ──────────────────────────────────────────────────
+function openNamedParamPicker(popupSection, baseEmName) {
+    const modal = document.getElementById('named-param-modal');
+    if (!modal) return;
+
+    const searchInput  = modal.querySelector('#np-search');
+    const list         = modal.querySelector('#np-list');
+    const preview      = modal.querySelector('#np-preview');
+    const toggleBtn    = modal.querySelector('#np-stat-toggle');
+
+    // Current value in the popup section
+    const hiddenInput  = popupSection?.querySelector('[data-edit="namedId"]');
+    const currentId    = parseInt(hiddenInput?.value) || 0;
+
+    // Build the combined enemy name HTML for a param, highlighting the param part
+    function combinedNameHtml(p) {
+        const trimName = p?.name?.trim();
+        if (!trimName || !p || p.id === 0) return null;
+        const em = baseEmName ?? '…';
+        const hi = `<span class="np-name-hi">${trimName}</span>`;
+        if (p.type === 'NAMED_TYPE_PREFIX')  return `${hi} ${em}`;
+        if (p.type === 'NAMED_TYPE_SUFFIX')  return `${em} ${hi}`;
+        if (p.type === 'NAMED_TYPE_REPLACE') return hi;
+        return null; // NONE — no name change
+    }
+
+    function pct(v) { return v != null ? `${v}%` : '—'; }
+    function renderPreview(p) {
+        if (!p || p.id === 0) { preview.innerHTML = '<div class="np-preview-empty">Select a param to preview stats</div>'; return; }
+        const typeName = p.type.replace('NAMED_TYPE_', '');
+        const combined = combinedNameHtml(p);
+        const row = (label, val) => {
+            const v = pct(val);
+            const n = parseFloat(v);
+            const cls = n > 100 ? 'np-high' : n < 100 ? 'np-low' : '';
+            return `<tr><td>${label}</td><td${cls ? ` class="${cls}"` : ''}>${v}</td></tr>`;
+        };
+        const sec = (title, ...rows) =>
+            `<tr class="np-stat-sec"><td colspan="2">${title}</td></tr>` + rows.join('');
+        preview.innerHTML =
+            (combined ? `<div class="np-preview-combined">${combined}</div>` : '') +
+            `<div class="np-preview-type">${typeName} · ID ${p.id}</div>` +
+            `<table class="np-stat-table">` +
+            sec('HP',
+                row('HP Rate',  p.hp),
+                row('HP Sub',   p.hpSub)) +
+            sec('Attack',
+                row('Base Phys',  p.atkP),
+                row('Base Magic', p.atkM),
+                row('Wep Phys',   p.atkWepP),
+                row('Wep Magic',  p.atkWepM)) +
+            sec('Defence',
+                row('Base Phys',  p.defP),
+                row('Base Magic', p.defM),
+                row('Wep Phys',   p.defWepP),
+                row('Wep Magic',  p.defWepM),
+                row('Guard Base', p.guardBase),
+                row('Guard Wep',  p.guardWep)) +
+            sec('Other',
+                row('Ailment Dmg', p.ailment),
+                row('Experience',  p.exp),
+                row('Power',       p.power)) +
+            sec('Endurance',
+                row('Blow Main',    p.blowMain),
+                row('Blow Sub',     p.blowSub),
+                row('Down Main',    p.downMain),
+                row('OCD',          p.ocd),
+                row('Shake Main',   p.shakeMain),
+                row('Shrink Main',  p.shrinkMain),
+                row('Shrink Sub',   p.shrinkSub)) +
+            `</table>`;
+    }
+
+    function itemHtml(p, active) {
+        const trimName   = p.name?.trim();
+        const combined   = combinedNameHtml(p);
+        const typeSuffix = p.type === 'NAMED_TYPE_PREFIX' ? 'Pfx'
+            : p.type === 'NAMED_TYPE_REPLACE'             ? 'Rep'
+            : p.type === 'NAMED_TYPE_SUFFIX'              ? 'Sfx'
+            : '';
+        const nameHtml = combined ?? (trimName
+            ? `<span class="np-name-hi">${trimName}</span>`
+            : `<span style="color:#555">(unnamed)</span>`);
+        return `<div class="np-item${active ? ' np-active' : ''}" data-id="${p.id}">` +
+            `<span class="np-item-name">${nameHtml}</span>` +
+            `<span class="np-item-meta">${typeSuffix ? `<span class="np-type-badge">${typeSuffix}</span> ` : ''}#${p.id}</span>` +
+            `</div>`;
+    }
+
+    function renderList(query) {
+        const q           = query.trim().toLowerCase();
+        const showStatOnly = toggleBtn.classList.contains('active');
+
+        if (!q && showStatOnly) {
+            // No search + stat-only on: render two labelled sections, no slice
+            const named    = namedParamList.filter(p =>  p.name?.trim().length > 0);
+            const statOnly = namedParamList.filter(p => !p.name?.trim().length);
+            const noneEntry = { id: 0, name: '(None)', type: 'NAMED_TYPE_NONE' };
+            const divider = (label, count) =>
+                `<div class="np-section-divider">${label} <span class="np-section-count">${count}</span></div>`;
+            list.innerHTML =
+                itemHtml(noneEntry, currentId === 0) +
+                divider('Named', named.length) +
+                named.map(p => itemHtml(p, p.id === currentId)).join('') +
+                divider('Stat-only (unnamed)', statOnly.length) +
+                statOnly.map(p => itemHtml(p, p.id === currentId)).join('');
+        } else {
+            const base = namedParamList.filter(p => {
+                const hasName = p.name?.trim().length > 0;
+                if (!showStatOnly && !hasName) return false;
+                if (!q) return true;
+                const nameMatch    = p.name?.toLowerCase().includes(q);
+                const idMatch      = String(p.id).includes(q);
+                const combined     = combinedNameHtml(p)?.replace(/<[^>]*>/g, '') ?? '';
+                const combinedMatch = combined.toLowerCase().includes(q);
+                return nameMatch || idMatch || combinedMatch;
+            }).slice(0, 200);
+            const results = (!q || '0'.includes(q) || 'none'.includes(q))
+                ? [{ id: 0, name: '(None)', type: 'NAMED_TYPE_NONE' }, ...base]
+                : base;
+            if (!results.length) {
+                list.innerHTML = '<div class="np-empty">No params match.</div>';
+                return;
+            }
+            list.innerHTML = results.map(p => itemHtml(p, p.id === currentId)).join('');
+        }
+        list.querySelectorAll('.np-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const p = namedParamsById.get(parseInt(item.dataset.id));
+                renderPreview(p);
+            });
+            item.addEventListener('click', () => {
+                const id = parseInt(item.dataset.id);
+                const p  = namedParamsById.get(id);
+                if (hiddenInput) {
+                    hiddenInput.value = id;
+                    const btn = popupSection.querySelector('.se-named-picker-btn');
+                    if (btn) { btn.textContent = namedParamLabel(p); btn.dataset.namedId = id; }
+                    // Live-update the enemy name shown at the top of the popup
+                    const nameSpan = popupSection.closest('.leaflet-popup-content')?.querySelector('.se-enemy-name');
+                    if (nameSpan) {
+                        const npName = p?.name?.trim();
+                        const combined = (!npName || p.type === 'NAMED_TYPE_NONE') ? baseEmName
+                            : p.type === 'NAMED_TYPE_REPLACE' ? npName
+                            : p.type === 'NAMED_TYPE_PREFIX'  ? (baseEmName ? `${npName} ${baseEmName}` : npName)
+                            : p.type === 'NAMED_TYPE_SUFFIX'  ? (baseEmName ? `${baseEmName} ${npName}` : npName)
+                            : baseEmName;
+                        if (combined) {
+                            // Preserve the " LvN" suffix already in the span text
+                            const lvMatch = nameSpan.textContent.match(/ Lv\d+$/);
+                            nameSpan.textContent = combined + (lvMatch?.[0] ?? '');
+                        }
+                    }
+                    // Update companion named-stats panel
+                    const anchorEl = popupSection.closest('.leaflet-popup');
+                    showNamedStatsPanel(id, anchorEl, baseEmName);
+                }
+                modal.classList.remove('open');
+            });
+        });
+    }
+
+    // Replace signal controller each open to avoid duplicate listeners
+    if (modal._abortCtrl) modal._abortCtrl.abort();
+    modal._abortCtrl = new AbortController();
+    const sig = modal._abortCtrl.signal;
+    searchInput.addEventListener('input', () => renderList(searchInput.value), { signal: sig });
+    toggleBtn.addEventListener('click', () => {
+        const on = toggleBtn.classList.toggle('active');
+        toggleBtn.textContent = on ? 'Stat-only: On' : 'Stat-only: Off';
+        renderList(searchInput.value);
+    }, { signal: sig });
+
+    searchInput.value = '';
+    toggleBtn.classList.remove('active');
+    toggleBtn.textContent = 'Stat-only: Off';
+    renderPreview(namedParamsById.get(currentId) ?? null);
+    renderList('');
+
+    modal._popupSection = popupSection;
+    modal.classList.add('open');
+    setTimeout(() => searchInput.focus(), 50);
+}
+
+// ── Drop Table helpers ────────────────────────────────────────────────────────
+function createDropTable() {
+    const newId = (_rawEnemyData?.dropsTables?.length
+        ? Math.max(..._rawEnemyData.dropsTables.map(t => t.id)) + 1 : 1);
+    const dt = { id: newId, name: 'New Drop Table', mdlType: 0, items: [] };
+    _dropsTablesMap.set(newId, dt);
+    if (_rawEnemyData) {
+        if (!_rawEnemyData.dropsTables) _rawEnemyData.dropsTables = [];
+        _rawEnemyData.dropsTables.push(dt);
+    }
+    if (_markDirty) _markDirty('ddon-src-spawns');
+    return dt;
+}
+
+function _dtItemRow(row, idx) {
+    const itemId   = row[0] ?? 0;
+    const nameHint = itemNames[String(itemId)]?.name ?? '';
+    const iconNo   = itemNames[String(itemId)]?.iconNo;
+    const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
+    const iconCell = iconFile && _iconIdSet.has(iconNo)
+        ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;image-rendering:pixelated">`
+        : `<span style="display:inline-block;width:28px"></span>`;
+    const href     = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+    const nameCell = nameHint
+        ? `<a href="${href}" target="_blank" class="dt-item-name-hint" data-name-for="${idx}" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${nameHint}</a>`
+        : `<span class="dt-item-name-hint" data-name-for="${idx}"></span>`;
+    return `<tr data-idx="${idx}">` +
+        `<td><span class="dt-grab-handle" title="Drag to reorder">⠿</span></td>` +
+        `<td style="text-align:center">${iconCell}</td>` +
+        `<td><input type="number" data-col="0" value="${itemId}" style="width:58px" readonly tabindex="-1"></td>` +
+        `<td>${nameCell}</td>` +
+        `<td><input type="number" data-col="1" value="${row[1] ?? 1}" style="width:38px" min="1"></td>` +
+        `<td><input type="number" data-col="2" value="${row[2] ?? 1}" style="width:38px" min="1"></td>` +
+        `<td><input type="number" data-col="3" value="${row[3] ?? 0}" style="width:44px" min="0"></td>` +
+        `<td style="text-align:center"><input type="checkbox" data-col="4"${row[4] ? ' checked' : ''}></td>` +
+        `<td><input type="number" data-col="5" value="${((row[5] ?? 0) * 100).toFixed(1)}" style="width:58px" step="0.1" min="0" max="100"></td>` +
+        `<td><button class="dt-del-row" data-row="${idx}">✕</button></td>` +
+        `</tr>`;
+}
+
+function _buildDropChipsHtml(dt) {
+    const items = dt?.items ?? [];
+    if (!items.length) return '';
+    return items.map(row => {
+        const itemId   = row[0] ?? 0;
+        const minQty   = row[1] ?? 1;
+        const maxQty   = row[2] ?? 1;
+        const dropRate = row[5] ?? 0;
+        const iconNo   = itemNames[String(itemId)]?.iconNo;
+        const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6,'0')}.png` : null;
+        const name     = itemNames[String(itemId)]?.name ?? `#${itemId}`;
+        const qty      = maxQty > minQty ? `×${minQty}–${maxQty}` : `×${minQty}`;
+        const pct      = dropRate > 0 ? ` ${(dropRate * 100).toFixed(0)}%` : '';
+        const imgEl    = iconFile && _iconIdSet.has(iconNo)
+            ? `<img src="images/icons/small/${iconFile}" width="20" height="20" style="image-rendering:pixelated;vertical-align:middle" title="${name}">`
+            : `<span style="display:inline-block;width:20px;height:20px;background:#ddd;border-radius:2px;font-size:8px;text-align:center;line-height:20px;vertical-align:middle" title="${name}">${itemId}</span>`;
+        return `<span style="display:inline-flex;align-items:center;gap:2px;white-space:nowrap">` +
+            imgEl +
+            `<span style="font-size:9px;color:#666">${qty}${pct}</span>` +
+            `</span>`;
+    }).join('');
+}
+
+function _updateDropsChips(popupSection, dt) {
+    if (!popupSection) return;
+    let chipsDiv = popupSection.querySelector('.se-drops-chips');
+    const html = _buildDropChipsHtml(dt);
+    if (html) {
+        if (!chipsDiv) {
+            // The chips div lives in a grp() row-wrapper sibling of the row1 row-wrapper.
+            // grp() wraps each row in: <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px">
+            // .se-drops-row1 is inside that row-wrapper, so parentElement is the row-wrapper.
+            const row1Inner = popupSection.querySelector('.se-drops-row1');
+            const rowWrapper = row1Inner?.parentElement;
+            if (rowWrapper) {
+                const newRowWrapper = document.createElement('div');
+                newRowWrapper.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;margin-bottom:2px';
+                chipsDiv = document.createElement('div');
+                chipsDiv.className = 'se-drops-chips';
+                chipsDiv.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px 6px';
+                newRowWrapper.appendChild(chipsDiv);
+                rowWrapper.after(newRowWrapper);
+            }
+        }
+        if (chipsDiv) chipsDiv.innerHTML = html;
+    } else if (chipsDiv) {
+        // Remove the row-wrapper too if it was dynamically inserted
+        const parent = chipsDiv.parentElement;
+        if (parent && !parent.classList.contains('se-drops-row1')) parent.remove();
+        else chipsDiv.remove();
+    }
+}
+
+function openDropTablePicker(popupSection) {
+    const modal   = document.getElementById('dt-picker-modal');
+    const search  = document.getElementById('dt-picker-search');
+    const list    = document.getElementById('dt-picker-list');
+    const preview = document.getElementById('dt-picker-preview');
+    if (!modal) return;
+    const hiddenInput = popupSection?.querySelector('[data-edit="dropsTableId"]');
+    const currentId   = parseInt(hiddenInput?.value ?? -1);
+
+    function renderPreview(dt) {
+        if (!dt) { preview.innerHTML = '<div class="dt-preview-empty">Hover a table to preview</div>'; return; }
+        if (!dt.items?.length) {
+            preview.innerHTML = `<div class="dt-preview-title">${dt.name || '(unnamed)'}</div>` +
+                `<div class="dt-preview-meta">id:${dt.id} · mdlType:${dt.mdlType ?? 0}</div>` +
+                `<div class="dt-preview-empty">No items</div>`;
+            return;
+        }
+        const rows = dt.items.map(row => {
+            const itemId  = row[0] ?? 0;
+            const name    = itemNames[String(itemId)]?.name ?? `#${itemId}`;
+            const minQty  = row[1] ?? 1;
+            const maxQty  = row[2] ?? 1;
+            const chance  = row[5] ?? 0;
+            const qty     = maxQty > minQty ? `×${minQty}–${maxQty}` : `×${minQty}`;
+            const pct     = chance > 0 ? `${(chance * 100).toFixed(0)}%` : '—';
+            return `<div class="dt-preview-item">` +
+                `<span class="dt-preview-item-name" title="${name}">${name}</span>` +
+                `<span class="dt-preview-item-qty">${qty}</span>` +
+                `<span class="dt-preview-item-pct">${pct}</span>` +
+                `</div>`;
+        }).join('');
+        preview.innerHTML =
+            `<div class="dt-preview-title">${dt.name || '(unnamed)'}</div>` +
+            `<div class="dt-preview-meta">id:${dt.id} · ${dt.items.length} item${dt.items.length !== 1 ? 's' : ''} · mdlType:${dt.mdlType ?? 0}</div>` +
+            rows;
+    }
+
+    function renderList(q) {
+        q = q.trim().toLowerCase();
+        const noneHtml = `<div class="dt-picker-item${currentId < 0 ? ' dt-active' : ''}" data-id="-1">` +
+            `<span class="dt-picker-item-name" style="color:#999">None (no drops)</span></div>`;
+        const rows = [..._dropsTablesMap.values()]
+            .filter(dt => !q || dt.name?.toLowerCase().includes(q) || String(dt.id).includes(q))
+            .sort((a, b) => a.id - b.id)
+            .map(dt =>
+                `<div class="dt-picker-item${dt.id === currentId ? ' dt-active' : ''}" data-id="${dt.id}">` +
+                `<span class="dt-picker-item-name">${dt.name || '(unnamed)'}</span>` +
+                `<span class="dt-picker-item-meta">id:${dt.id} · ${dt.items?.length ?? 0} items</span>` +
+                `</div>`
+            );
+        list.innerHTML = noneHtml + (rows.length ? rows.join('') : '<div class="np-empty">No tables match.</div>');
+        list.querySelectorAll('.dt-picker-item').forEach(item => {
+            item.addEventListener('mouseenter', () => {
+                const id = parseInt(item.dataset.id);
+                renderPreview(id >= 0 ? _dropsTablesMap.get(id) : null);
+            });
+            item.addEventListener('click', () => {
+                const id = parseInt(item.dataset.id);
+                if (hiddenInput) {
+                    hiddenInput.value = id;
+                    const dt = id >= 0 ? _dropsTablesMap.get(id) : null;
+                    const label = dt ? dt.name : 'None';
+                    const idBadge = id >= 0 ? ` (id:${id}, ${dt?.items?.length ?? 0} items)` : '';
+                    const labelEl = popupSection?.querySelector('.se-drops-label');
+                    if (labelEl) { labelEl.textContent = label; labelEl.title = label + idBadge; }
+                    // Show/hide Edit button
+                    const editBtn = popupSection?.querySelector('.se-drops-edit-btn');
+                    if (editBtn) { editBtn.dataset.dt = id; editBtn.style.display = id >= 0 ? '' : 'none'; }
+                    else if (id >= 0) {
+                        const changeBtn = popupSection?.querySelector('.se-drops-picker-btn');
+                        if (changeBtn) {
+                            const newEdit = document.createElement('button');
+                            newEdit.className = 'popup-edit-btn se-drops-edit-btn';
+                            newEdit.dataset.dt = id;
+                            newEdit.style.cssText = 'font-size:10px;padding:1px 6px';
+                            newEdit.textContent = 'Edit';
+                            changeBtn.after(newEdit);
+                        }
+                    }
+                    // Update chips area
+                    _updateDropsChips(popupSection, dt);
+                }
+                modal.classList.remove('open');
+            });
+        });
+    }
+
+    if (modal._abortCtrl) modal._abortCtrl.abort();
+    modal._abortCtrl = new AbortController();
+    const sig = modal._abortCtrl.signal;
+    search.addEventListener('input', () => renderList(search.value), { signal: sig });
+    document.getElementById('dt-picker-none').addEventListener('click', () => {
+        if (hiddenInput) { hiddenInput.value = -1; }
+        const labelEl = popupSection?.querySelector('.se-drops-label');
+        if (labelEl) { labelEl.textContent = 'None'; labelEl.title = 'None'; }
+        const editBtn = popupSection?.querySelector('.se-drops-edit-btn');
+        if (editBtn) editBtn.style.display = 'none';
+        _updateDropsChips(popupSection, null);
+        modal.classList.remove('open');
+    }, { signal: sig });
+    document.getElementById('dt-picker-new').addEventListener('click', () => {
+        modal.classList.remove('open');
+        const newDt = createDropTable();
+        if (_renderEditPanel) _renderEditPanel();
+        openDropTableEditor(newDt.id);
+    }, { signal: sig });
+    document.getElementById('dt-picker-cancel').addEventListener('click',
+        () => modal.classList.remove('open'), { signal: sig });
+
+    search.value = '';
+    renderList('');
+    renderPreview(currentId >= 0 ? _dropsTablesMap.get(currentId) : null);
+    modal._popupSection = popupSection;
+    modal.classList.add('open');
+    setTimeout(() => search.focus(), 50);
+}
+
+function openDropTableEditor(tableId) {
+    const modal  = document.getElementById('dt-editor-modal');
+    const metaEl = document.getElementById('dt-editor-meta');
+    const tbody  = document.getElementById('dt-editor-tbody');
+    const title  = document.getElementById('dt-editor-title');
+    if (!modal) return;
+
+    const dt = _dropsTablesMap.get(tableId);
+    if (!dt) return;
+
+    title.textContent = `Edit Drop Table — id:${dt.id}`;
+    metaEl.innerHTML =
+        `<label>Name<input id="dt-ed-name" type="text" value="${dt.name ?? ''}" style="width:200px"></label>` +
+        `<label>mdlType<input id="dt-ed-mdltype" type="number" value="${dt.mdlType ?? 0}" style="width:60px" min="0"></label>`;
+
+    function rebuildRows() {
+        tbody.innerHTML = dt.items.length
+            ? dt.items.map((row, i) => _dtItemRow(row, i)).join('')
+            : `<tr><td colspan="10" class="dt-drop-hint">Search for items above, or click + Add Blank</td></tr>`;
+        // Live item name lookup
+        tbody.querySelectorAll('input[data-col="0"]').forEach((inp, i) => {
+            inp.addEventListener('input', () => {
+                const hint = tbody.querySelector(`[data-name-for="${i}"]`);
+                if (hint) hint.textContent = itemNames[inp.value]?.name ?? '';
+            });
+        });
+        // Delete row
+        tbody.querySelectorAll('.dt-del-row').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.dataset.row);
+                dt.items.splice(idx, 1);
+                rebuildRows();
+            });
+        });
+        // Row reorder by drag
+        if (_attachDragReorder) _attachDragReorder(tbody, dt.items, rebuildRows);
+    }
+    rebuildRows();
+
+    function readAndSave() {
+        const name    = document.getElementById('dt-ed-name')?.value.trim() || 'Unnamed';
+        const mdlType = parseInt(document.getElementById('dt-ed-mdltype')?.value) || 0;
+        const newItems = Array.from(tbody.querySelectorAll('tr[data-idx]')).map(row => {
+            const cols = row.querySelectorAll('[data-col]');
+            const item = [0, 1, 1, 0, false, 0];
+            cols.forEach(f => {
+                const col = parseInt(f.dataset.col);
+                if (col === 4) item[col] = f.checked;
+                else if (col === 5) item[col] = parseFloat(f.value) / 100 || 0;
+                else item[col] = parseInt(f.value) || 0;
+            });
+            return item;
+        });
+        dt.name    = name;
+        dt.mdlType = mdlType;
+        dt.items   = newItems;
+        if (_markDirty) _markDirty('ddon-src-spawns');
+        if (_renderEditPanel) _renderEditPanel();
+        if (_rebuildOpenPopup) _rebuildOpenPopup();
+        modal.classList.remove('open');
+    }
+    _dtEditorReadAndSave = readAndSave;
+
+    if (modal._abortCtrl) modal._abortCtrl.abort();
+    modal._abortCtrl = new AbortController();
+    const sig = modal._abortCtrl.signal;
+
+    // Item search — find and click to add
+    const searchInput   = document.getElementById('dt-item-search-input');
+    const searchResults = document.getElementById('dt-item-search-results');
+    if (searchInput)  searchInput.value = '';
+    if (searchResults) searchResults.innerHTML = '';
+    function renderItemSearch(q) {
+        if (!searchResults) return;
+        if (!q) { searchResults.innerHTML = ''; return; }
+        const matches = Object.entries(itemNames)
+            .filter(([id, e]) => e.name.toLowerCase().includes(q.toLowerCase()) || id.includes(q))
+            .slice(0, 10);
+        searchResults.innerHTML = matches.length
+            ? matches.map(([id, e]) => {
+                const iconNo   = e.iconNo;
+                const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6,'0')}.png` : null;
+                const icon     = iconFile && _iconIdSet.has(iconNo)
+                    ? `<img src="images/icons/small/${iconFile}" width="16" height="16" style="image-rendering:pixelated;flex-shrink:0">`
+                    : `<span style="width:16px;flex-shrink:0"></span>`;
+                return `<div class="dt-item-result" data-id="${id}">${icon}<span class="dt-item-result-name">${e.name}</span><span class="dt-item-result-id">#${id}</span></div>`;
+              }).join('')
+            : `<div style="color:#555;font-size:0.75rem;padding:4px 6px">No matches</div>`;
+        searchResults.querySelectorAll('.dt-item-result[data-id]').forEach(el => {
+            el.addEventListener('click', () => {
+                dt.items.push([parseInt(el.dataset.id), 1, 1, 0, false, 1.0]);
+                rebuildRows();
+                searchInput.value = '';
+                searchResults.innerHTML = '';
+                searchInput.focus();
+            });
+        });
+    }
+    searchInput?.addEventListener('input', () => renderItemSearch(searchInput.value.trim()), { signal: sig });
+
+    // Drag from Items panel → append new row
+    tbody.addEventListener('dragover', (e) => {
+        if (_dragItemId == null) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        tbody.classList.add('dt-item-drop-hover');
+    }, { signal: sig });
+    tbody.addEventListener('dragleave', (e) => {
+        if (!tbody.contains(e.relatedTarget)) tbody.classList.remove('dt-item-drop-hover');
+    }, { signal: sig });
+    tbody.addEventListener('drop', (e) => {
+        if (_dragItemId == null) return;
+        e.preventDefault();
+        tbody.classList.remove('dt-item-drop-hover');
+        dt.items.push([_dragItemId, 1, 1, 0, false, 1.0]);
+        rebuildRows();
+    }, { signal: sig });
+
+    document.getElementById('dt-editor-save').addEventListener('click', readAndSave, { signal: sig });
+    document.getElementById('dt-editor-add-row').addEventListener('click', () => {
+        dt.items.push([0, 1, 1, 0, false, 1.0]);
+        rebuildRows();
+    }, { signal: sig });
+    document.getElementById('dt-editor-delete').addEventListener('click', () => {
+        if (!confirm(`Delete drop table "${dt.name}" (id:${dt.id})?\nAny spawns using this table will lose their drops.`)) return;
+        _dropsTablesMap.delete(dt.id);
+        if (_rawEnemyData?.dropsTables) {
+            const idx = _rawEnemyData.dropsTables.findIndex(t => t.id === dt.id);
+            if (idx >= 0) _rawEnemyData.dropsTables.splice(idx, 1);
+        }
+        if (_markDirty) _markDirty('ddon-src-spawns');
+        if (_renderEditPanel) _renderEditPanel();
+        modal.classList.remove('open');
+    }, { signal: sig });
+    // close button is wired statically below — no signal needed
+
+    modal.classList.add('open');
+}
+
+// Static close + backdrop handlers for drop table modals
+const _dtPickerModal = document.getElementById('dt-picker-modal');
+const _dtEditorModal = document.getElementById('dt-editor-modal');
+if (_dtPickerModal) {
+    let _bdDown = false;
+    _dtPickerModal.addEventListener('mousedown', e => { _bdDown = e.target === _dtPickerModal; });
+    _dtPickerModal.addEventListener('click', e => { if (_bdDown && e.target === _dtPickerModal) _dtPickerModal.classList.remove('open'); _bdDown = false; });
+}
+if (_dtEditorModal) {
+    let _bdDown = false;
+    _dtEditorModal.addEventListener('mousedown', e => { _bdDown = e.target === _dtEditorModal; });
+    _dtEditorModal.addEventListener('click', e => {
+        if (_bdDown && e.target === _dtEditorModal) { if (_dtEditorReadAndSave) _dtEditorReadAndSave(); else _dtEditorModal.classList.remove('open'); }
+        _bdDown = false;
+    });
+}
+document.getElementById('dt-picker-close')?.addEventListener('click',
+    () => document.getElementById('dt-picker-modal').classList.remove('open'));
+document.getElementById('dt-editor-close')?.addEventListener('click',
+    () => { if (_dtEditorReadAndSave) _dtEditorReadAndSave(); else document.getElementById('dt-editor-modal').classList.remove('open'); });
+
+// ── Unsaved-changes guard ─────────────────────────────────────────────────────
+window.addEventListener('beforeunload', e => {
+    if (_dirtySet.size > 0) {
+        e.preventDefault();
+        e.returnValue = ''; // required for Chrome to show the dialog
+    }
+});
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 if (!location.hash || location.hash === '#') {
