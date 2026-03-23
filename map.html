@@ -154,11 +154,17 @@
             margin-bottom: 6px;
         }
 
+        #layers-panel .layer-list {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 8px;
+        }
+
         .layer-toggle {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 3px 0;
+            gap: 6px;
+            padding: 2px 0;
             cursor: pointer;
         }
 
@@ -243,7 +249,7 @@
         #coord-display {
             position: absolute;
             bottom: 8px;
-            right: 8px;
+            left: 8px;
             z-index: 1000;
             background: rgba(22, 33, 62, 0.88);
             padding: 4px 10px;
@@ -254,8 +260,120 @@
             color: #e0e0e0;
             pointer-events: none;
             min-width: 280px;
-            text-align: right;
+            text-align: left;
             border: 1px solid #0f3460;
+        }
+
+        /* ── Stage groups panel ── */
+        #stage-groups-panel {
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            z-index: 1000;
+            background: rgba(15, 20, 40, 0.93);
+            border: 1px solid #0f3460;
+            border-radius: 6px;
+            font-size: 0.74rem;
+            color: #ccd;
+            min-width: 380px;
+            max-width: 520px;
+            display: none;
+        }
+        #stage-groups-panel .sgp-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #0f3460;
+            user-select: none;
+        }
+        #stage-groups-panel .sgp-header:hover { background: rgba(15,52,96,0.4); }
+        #stage-groups-panel .sgp-title { font-weight: 600; color: #aac; font-size: 0.75rem; }
+        #stage-groups-panel .sgp-toggle { color: #778; font-size: 0.7rem; }
+        #stage-groups-panel .sgp-body {
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 4px 0;
+            transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+
+        #stage-groups-panel .sgp-row {
+            display: grid;
+            grid-template-columns: 46px 1fr 80px 80px;
+            gap: 2px 6px;
+            padding: 3px 10px;
+            border-bottom: 1px solid rgba(15,52,96,0.35);
+            align-items: start;
+        }
+        #stage-groups-panel .sgp-row:last-child { border-bottom: none; }
+        #stage-groups-panel .sgp-group { color: #778; font-variant-numeric: tabular-nums; }
+        #stage-groups-panel .sgp-name  { color: #adc; font-style: italic; }
+        #stage-groups-panel .sgp-quest { color: #c97a00; font-variant-numeric: tabular-nums; }
+        #stage-groups-panel .sgp-flag  { color: #7a8aba; font-variant-numeric: tabular-nums; }
+        #stage-groups-panel .sgp-npc-list {
+            grid-column: 1 / -1;
+            padding: 1px 10px 3px 46px;
+            display: flex; flex-wrap: wrap; gap: 4px;
+        }
+        #stage-groups-panel .sgp-npc {
+            background: rgba(15,52,96,0.5); border-radius: 3px;
+            padding: 1px 6px; font-size: 0.68rem; color: #9bd;
+            white-space: nowrap;
+        }
+        #stage-groups-panel .sgp-npc-id { color: #556; font-size: 0.65rem; }
+        #stage-groups-panel .sgp-col-head {
+            color: #556; font-size: 0.68rem; padding: 2px 10px 3px; display: grid;
+            grid-template-columns: 46px 1fr 80px 80px; gap: 2px 6px;
+            overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 30px; opacity: 1;
+            border-bottom: 1px solid #0f3460;
+        }
+
+        /* ── World flags section (inside stage-groups-panel) ── */
+        #stage-groups-panel .wf-header { border-top: 1px solid #1a2a50; }
+        #stage-groups-panel .wf-col-head {
+            color: #556; font-size: 0.68rem; padding: 2px 10px 3px; display: grid;
+            grid-template-columns: 42px 52px 52px 90px 72px 1fr; gap: 2px 6px;
+            border-bottom: 1px solid #0f3460;
+            overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease;
+            max-height: 30px; opacity: 1;
+        }
+        #stage-groups-panel .wf-body {
+            max-height: calc(100vh - 220px);
+            overflow-y: auto; overflow-x: hidden;
+            padding: 4px 0;
+            transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.3s ease;
+            opacity: 1;
+        }
+        #stage-groups-panel .wf-row {
+            display: grid;
+            grid-template-columns: 42px 52px 52px 90px 72px 1fr;
+            gap: 2px 6px;
+            padding: 3px 10px;
+            border-bottom: 1px solid rgba(15,52,96,0.35);
+            align-items: start;
+            font-size: 0.72rem;
+        }
+        #stage-groups-panel .wf-row.wf-deprecated { opacity: 0.45; }
+        #stage-groups-panel .wf-season-chip {
+            display: inline-block; border-radius: 3px;
+            padding: 1px 4px; font-size: 0.65rem; font-weight: 700;
+            color: #fff; letter-spacing: 0.03em; white-space: nowrap;
+        }
+        #stage-groups-panel .wf-flag    { color: #c9a84c; font-variant-numeric: tabular-nums; }
+        #stage-groups-panel .wf-erase   { color: #7a8aba; font-variant-numeric: tabular-nums; }
+        #stage-groups-panel .wf-name    { color: #7a8aba; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: default; }
+        #stage-groups-panel .wf-questno { color: #a07840; font-variant-numeric: tabular-nums; font-size: 0.68rem; }
+        #stage-groups-panel .wf-comment { color: #9bc; font-style: italic;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #stage-groups-panel .wf-permanent { font-size: 0.7rem; margin-left: 2px; }
+        #stage-groups-panel .wf-hidden {
+            max-height: 0 !important; padding: 0 !important;
+            opacity: 0 !important; overflow: hidden;
+            transition: max-height 0.35s ease, padding 0.35s ease, opacity 0.3s ease;
         }
 
         /* ── Pd piece boundary labels ── */
@@ -408,42 +526,49 @@
                 <input type="checkbox" id="layer-enemies" checked>
                 Enemy Spawns
             </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-gather">
-                Gathering Nodes
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-npc-shops">
-                Shops
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-break-targets">
-                Destroyable Objects
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-connections" checked>
-                Connections
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-landmarks" checked>
-                Landmarks
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-stage-labels" checked>
-                Area Names
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-radii">
-                Aggro/Link Radius
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-territory">
-                Territory Bounds
-            </label>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-grid">
-                Grid
-            </label>
+            <div id="subgroup-bar" style="display:none;flex-wrap:wrap;gap:3px;margin:2px 0 4px 20px;align-items:center"></div>
+            <div class="layer-list">
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-gather">
+                    Gathering Nodes
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-npc-shops">
+                    Shops
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-special-shops">
+                    Appraisals
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-break-targets">
+                    Destroyable Objects
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-connections" checked>
+                    Connections
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-landmarks" checked>
+                    Landmarks
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-stage-labels" checked>
+                    Area Names
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-radii">
+                    Aggro/Link Radius
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-territory">
+                    Territory Bounds
+                </label>
+                <label class="layer-toggle">
+                    <input type="checkbox" id="layer-grid">
+                    Grid
+                </label>
+            </div>
             <div id="exits-panel" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #0f3460;">
                 <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:4px;">Exits</div>
                 <div id="exits-list"></div>
@@ -472,6 +597,7 @@
         <div id="tile-layer-selector"></div>
         <div id="map"></div>
         <div id="coord-display"></div>
+        <div id="stage-groups-panel"></div>
     </div>
 </div>
 <script type="module" src="map.js"></script>
@@ -572,7 +698,7 @@
     </div>
     <p style="font-size:0.75rem;color:#888;margin-bottom:16px;line-height:1.6;">
         Override the URLs used to load live game data. Enter any <code style="color:#aaa">https://</code> URL or browse a local file.<br>
-        Local files are stored in your browser and persist across reloads.
+        Local files are saved on your file system and the path is remembered across reloads.
     </p>
 
     <div class="src-row"
@@ -605,6 +731,19 @@
          data-key="ddon-src-shop"
          data-default="https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/Shop.json">
         <div class="src-row-label">Shop Data (JSON) <span class="src-status"></span></div>
+        <div class="src-row-inputs">
+            <input type="text" class="src-url-input">
+            <button class="src-btn src-download-btn" title="Fetch from URL and save as local copy">⬇ Local</button>
+            <button class="src-btn src-file-btn">Browse…</button>
+            <button class="src-btn src-reset-btn" title="Reset to default">↩</button>
+            <input type="file" class="src-file-input" accept=".json" style="display:none">
+        </div>
+    </div>
+
+    <div class="src-row"
+         data-key="ddon-src-special-shop"
+         data-default="https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/SpecialShops.json">
+        <div class="src-row-label">Appraisal Data (JSON) <span class="src-status"></span></div>
         <div class="src-row-inputs">
             <input type="text" class="src-url-input">
             <button class="src-btn src-download-btn" title="Fetch from URL and save as local copy">⬇ Local</button>
@@ -1108,6 +1247,111 @@
        _updateLayout; !important overrides it whenever the edit section is present. */
     .leaflet-popup-content:has(.se-spawn-view) { width: auto !important; min-width: 320px; }
     .se-spawn-view { min-width: 320px; }
+
+    /* ── Special Shop split-panel popup ───────────────────────────────── */
+    .leaflet-popup-content:has(.ssp-split-panel) { width: auto !important; }
+    .ssp-popup-header {
+        display: flex; align-items: center; flex-wrap: wrap; gap: 2px;
+        padding-bottom: 6px; margin-bottom: 6px;
+        border-bottom: 1px solid #ddd;
+    }
+    .ssp-badge {
+        display: inline-block; padding: 1px 7px; border-radius: 3px;
+        background: #c084fc; color: #111; font-weight: bold; font-size: 11px;
+    }
+    .ssp-split-panel {
+        display: flex; gap: 0; min-width: 580px;
+    }
+    .ssp-list-panel {
+        width: 220px; flex-shrink: 0; display: flex; flex-direction: column;
+        border-right: 1px solid #ddd; max-height: 400px;
+    }
+    .ssp-search-wrap {
+        padding: 4px; border-bottom: 1px solid #ddd; flex-shrink: 0;
+    }
+    .ssp-search-input {
+        width: 100%; box-sizing: border-box; font-size: 11px; padding: 3px 6px;
+        border-radius: 3px; border: 1px solid #bbb;
+        background: #fff; color: #333;
+    }
+    .ssp-search-input:focus { outline: none; border-color: #9050cc; }
+    .ssp-list-scroll { overflow-y: auto; flex: 1; }
+    .ssp-cat-block { }
+    .ssp-list-cat-header {
+        display: flex; align-items: center; gap: 4px;
+        font-size: 11px; font-weight: bold; color: #333;
+        background: #f0f0f0;
+        padding: 3px 5px; cursor: pointer; user-select: none;
+        border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 1;
+    }
+    .ssp-list-cat-header:hover { background: #e6e0f0; }
+    .ssp-cat-toggle { font-size: 9px; color: #888; flex-shrink: 0; }
+    .ssp-ap-row {
+        display: flex; align-items: center; gap: 3px;
+        padding: 4px 5px; cursor: pointer; font-size: 11px;
+        border-bottom: 1px solid rgba(0,0,0,0.06);
+        border-left: 3px solid transparent;
+        transition: background 0.1s;
+    }
+    .ssp-ap-row:hover    { background: rgba(144,80,204,0.07); }
+    .ssp-ap-row.selected { background: rgba(144,80,204,0.12); border-left-color: #9050cc; }
+    .ssp-row-cost   { display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0; }
+    .ssp-row-arrow  { color: #bbb; flex-shrink: 0; margin: 0 2px; font-size: 10px; }
+    .ssp-row-reward { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ssp-lottery-badge {
+        display: inline-block; padding: 0 5px; border-radius: 3px;
+        background: rgba(144,80,204,0.12); color: #7030b0;
+        font-size: 10px; font-weight: bold; white-space: nowrap;
+    }
+    .ssp-detail-panel {
+        flex: 1; min-width: 0; overflow-y: auto; max-height: 400px;
+        padding: 0 6px 4px 10px;
+    }
+    .ssp-detail-label {
+        font-size: 12px; font-weight: bold; color: #333; margin-bottom: 8px;
+    }
+    .ssp-section-title {
+        display: block; font-size: 10px; font-weight: bold; color: #999;
+        text-transform: uppercase; letter-spacing: 0.06em;
+        margin-bottom: 4px;
+    }
+    .ssp-pool-item {
+        padding: 5px 0; border-top: 1px solid rgba(0,0,0,0.07);
+    }
+    .ssp-pool-item:first-child { border-top: none; }
+    /* Crest badges */
+    .ssp-crest-badge {
+        display: inline-block; font-size: 10px; padding: 1px 6px;
+        border-radius: 3px; margin-top: 2px; margin-right: 2px;
+        background: #f0f0f0; color: #666;
+    }
+    .ssp-crest-imbued  { background: #f0e8ff; color: #7030b0; }
+    .ssp-crest-lottery { background: #fef9e7; color: #b45309; }
+    details.ssp-crest-expand { cursor: pointer; }
+    details.ssp-crest-expand summary { list-style: none; cursor: pointer; }
+    details.ssp-crest-expand summary::-webkit-details-marker { display: none; }
+    .ssp-more-hint { text-decoration: underline dotted; }
+    .ssp-crest-rest {
+        display: flex; flex-wrap: wrap; gap: 3px;
+        margin-top: 5px; padding-top: 5px;
+        border-top: 1px solid rgba(180,83,9,0.2);
+    }
+    .ssp-crest-pill {
+        display: inline-block; padding: 2px 7px; border-radius: 10px;
+        background: #fff3dc; border: 1px solid #f0d090;
+        font-size: 10px; color: #b45309; white-space: nowrap;
+    }
+    .ssp-crest-pill a { color: inherit; text-decoration: none; }
+    .ssp-crest-pill a:hover { text-decoration: underline; }
+    .ssp-crest-dragon  { background: #fff4ec; color: #c2410c; }
+    .ssp-crest-bbm     { background: #e8faf8; color: #0d9488; }
+    /* Drop zones (edit mode) */
+    .ssp-drop-zone {
+        min-height: 24px; border: 1px dashed #ccc; border-radius: 3px;
+        font-size: 10px; color: #aaa; text-align: center;
+        padding: 4px; margin: 3px 0;
+        transition: background 0.1s, border-color 0.1s;
+    }
     .se-grp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
 
     /* ── Drop table picker & editor modals ────────────────────────────── */
