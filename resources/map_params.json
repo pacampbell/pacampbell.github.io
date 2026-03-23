@@ -430,9 +430,9 @@
     },
     "img_width": 7168,
     "img_height": 9216,
-    "center_x": 3584.0,
-    "center_y": 8704.0,
-    "scale": 0.008862,
+    "center_x": 3583,
+    "center_y": 8708,
+    "scale": 0.008971,
     "img_file": "field005_m00_l0.png",
     "img_exists": true,
     "layers": [
@@ -442,6 +442,7 @@
         "img_exists": true
       }
     ],
+    "scale_z": 0.009001,
     "stage_labels": [
       {
         "name": "Firefall Mountain Eroded Rock",
