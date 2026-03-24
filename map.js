@@ -1389,6 +1389,15 @@ function buildGroupDetails(g) {
                 const prefix = e.infection ? infectionPrefix[e.infection] : null;
                 return prefix ? `${prefix} ${name}` : name;
             };
+            // Returns a small styled "(OriginalName)" suffix when namedId is REPLACE type
+            const replaceOriginSuffix = (e) => {
+                if (!e?.namedId) return '';
+                const np = namedParamsById.get(e.namedId);
+                if (np?.type !== 'NAMED_TYPE_REPLACE') return '';
+                const base = e.emCode ? (emNames[e.emCode]?.name ?? null) : null;
+                if (!base) return '';
+                return ` <span style="font-size:10px;color:#aaa;font-style:italic">(${base})</span>`;
+            };
             let namePart = '';
             if (entries.length > 1) {
                 // Show all variants: "Killer Bee Lv3☀ / Skeleton Lv3🌙"
@@ -1397,14 +1406,14 @@ function buildGroupDetails(g) {
                     .map(e => {
                         const n = resolveDisplayName(e);
                         const t = spawnTimeLabel(e.spawnTime);
-                        return n ? `${n} Lv${e.lv}${t ? [...t][0] : ''}` : null;
+                        return n ? `${n} Lv${e.lv}${t ? [...t][0] : ''}${replaceOriginSuffix(e)}` : null;
                     })
                     .filter(Boolean);
                 if (parts.length) namePart = parts.join(' / ') + ' — ';
             } else if (entries.length === 1 && hasEnemy) {
                 const e0 = entries[0];
                 const n  = resolveDisplayName(e0) ?? (spawn.EmName ? (emNames[spawn.EmName]?.name ?? null) : null);
-                if (n) namePart = `${n}${e0.lv ? ` Lv${e0.lv}` : ''} — `;
+                if (n) namePart = `${n}${e0.lv ? ` Lv${e0.lv}` : ''}${replaceOriginSuffix(e0)} — `;
             } else if (!spawnCache && hasEnemy && spawn.EmName) {
                 const n = emNames[spawn.EmName]?.name ?? null;
                 if (n) namePart = `${n} — `;
@@ -4323,23 +4332,29 @@ function buildFloorSelector(info) {
         const btn = document.createElement('button');
         btn.textContent = `Floor ${layer}`;
         if (layer === currentLayer) btn.classList.add('active');
-        btn.addEventListener('click', () => {
-            currentLayer = layer;
-            swapMapImage(info, img_file);
-            el.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.textContent === `Floor ${layer}`));
-            // Re-filter markers for the new floor (only matters on multi-floor maps)
-            if (info.floor_obbs) {
-                loadConnections(currentMapName(), info);
-                loadEnemySpawns(info, currentStageName());
-                loadGatherPoints(info, currentStageName());
-                loadNpcShops(info, currentStageName());
-                loadSpecialShops(info, currentStageName());
-                loadBreakTargets(info, currentStageName());
-            }
-            updateLayersInHash();
-        });
+        btn.addEventListener('click', () => _switchToFloor(layer, info));
         el.appendChild(btn);
     }
+}
+
+function _switchToFloor(layer, info = _currentMapInfo) {
+    if (!info || layer === currentLayer) return;
+    const layers = (info.layers || []).filter(l => l.img_exists);
+    const target = layers.find(l => l.layer === layer);
+    if (!target) return;
+    currentLayer = layer;
+    swapMapImage(info, target.img_file);
+    const el = document.getElementById('floor-selector');
+    el.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.textContent === `Floor ${layer}`));
+    if (info.floor_obbs) {
+        loadConnections(currentMapName(), info);
+        loadEnemySpawns(info, currentStageName());
+        loadGatherPoints(info, currentStageName());
+        loadNpcShops(info, currentStageName());
+        loadSpecialShops(info, currentStageName());
+        loadBreakTargets(info, currentStageName());
+    }
+    updateLayersInHash();
 }
 
 function swapMapImage(info, imgFile) {
@@ -4703,6 +4718,11 @@ function _resolveSpotLatLng(item) {
 }
 
 function _navigateToSpot(target) {
+    // Switch floor if the target lives on a different floor
+    if (_currentFloorObbs && target.worldPos) {
+        const targetFloor = getEnemyFloor(target.worldPos.x, target.worldPos.y, target.worldPos.z, _currentFloorObbs);
+        if (targetFloor !== null && targetFloor !== currentLayer) _switchToFloor(targetFloor);
+    }
     if (target.type === 'enemy' && target.groupId) {
         if (_spotOpenedGroup && _spotOpenedGroup !== target.groupId) collapseGroup(_spotOpenedGroup);
         _spotOpenedGroup = target.groupId;
@@ -4827,6 +4847,7 @@ function buildSpotIndex(info) {
                                 type: 'enemy', name: displayName,
                                 searchText: `${baseName} ${lvLabel}`.toLowerCase(),
                                 latlng: posLatlng, groupId, emCode, spawnKey,
+                                worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
                                 previewLines: [
                                     `<b>${displayName}</b>`,
                                     `Code: ${emCode}`,
@@ -4840,6 +4861,7 @@ function buildSpotIndex(info) {
                             type: 'enemy', name: s.EmName,
                             searchText: s.EmName.toLowerCase(),
                             latlng: posLatlng, groupId, emCode: null, spawnKey: null,
+                            worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
                             previewLines: [`<b>${s.EmName}</b>`, `Group ${groupId}`],
                             stageId,
                         });
@@ -4861,6 +4883,7 @@ function buildSpotIndex(info) {
                     searchText: label.toLowerCase(),
                     latlng:     worldToPixel(node.x, node.z, info),
                     nodeKey:    `${stageNo}:${node.groupId}:${node.posId}`,
+                    worldPos:   { x: node.x, y: node.y, z: node.z },
                     previewLines: [
                         `<b>${label}</b>`,
                         `X: ${node.x.toFixed(0)}  Z: ${node.z.toFixed(0)}`,
@@ -4896,6 +4919,7 @@ function buildSpotIndex(info) {
                                 name: itemName,
                                 searchText: `${itemName} ${itemId}`.toLowerCase(),
                                 itemId, latlng: posLatlng, groupId, emCode: e.emCode, spawnKey,
+                                worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
                                 previewLines: [`<b>${itemName}</b>`, `Dropped by: ${emName}`, `${qty}${pct}`],
                                 stageId,
                             });
@@ -4922,6 +4946,7 @@ function buildSpotIndex(info) {
                         searchText: `${itemName} ${it.itemId}`.toLowerCase(),
                         itemId: it.itemId, latlng,
                         nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
+                        worldPos: { x: node.x, y: node.y, z: node.z },
                         previewLines: [`<b>${itemName}</b>`, `From: ${nodeLabel}`, `${qty}${pct}`],
                         stageId,
                     });
@@ -4945,6 +4970,7 @@ function buildSpotIndex(info) {
                         name: itemName,
                         searchText: `${itemName} ${it.ItemId}`.toLowerCase(),
                         itemId: it.ItemId, latlng, shopKey: `${stageNo}:${npc.NpcId}`,
+                        worldPos: { x: npc.Position.x, y: npc.Position.y, z: npc.Position.z },
                         previewLines: [`<b>${itemName}</b>`, `Sold by: ${npcName}`,
                                        it.Price != null ? `${it.Price.toLocaleString()} gold` : ''].filter(Boolean),
                         stageId,
@@ -5057,7 +5083,13 @@ function _runSpotSearch() {
 
         row.addEventListener('mouseenter', () => {
             _clearSpotHighlights();
-            for (const item of items) _addSpotHighlight(_resolveSpotLatLng(item));
+            for (const item of items) {
+                if (_currentFloorObbs && item.worldPos) {
+                    const f = getEnemyFloor(item.worldPos.x, item.worldPos.y, item.worldPos.z, _currentFloorObbs);
+                    if (f !== null && f !== currentLayer) continue;
+                }
+                _addSpotHighlight(_resolveSpotLatLng(item));
+            }
         });
         row.addEventListener('mouseleave', _clearSpotHighlights);
 
