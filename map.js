@@ -4680,12 +4680,22 @@ function _resolveSpotLatLng(item) {
     const g = item.groupId ? _groupStore.get(item.groupId) : null;
     if (!g) return item.latlng;
     if (!g.isExpanded) return g.labelMarker.getLatLng();
-    // Group is expanded — find the marker for this emCode
-    if (item.emCode && _enemySpawnCache) {
+    // Group is expanded — prefer exact spawnKey match, fall back to first emCode match
+    if (_enemySpawnCache) {
         for (const markers of Object.values(g.sgMarkers)) {
             for (const m of markers) {
-                const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
-                if (entries.some(e => e.emCode === item.emCode)) return m.getLatLng();
+                if (item.spawnKey && m._spawnKey === item.spawnKey) {
+                    const entries = _enemySpawnCache.get(m._spawnKey) ?? [];
+                    if (!item.emCode || entries.some(e => e.emCode === item.emCode)) return m.getLatLng();
+                }
+            }
+        }
+        if (item.emCode) {
+            for (const markers of Object.values(g.sgMarkers)) {
+                for (const m of markers) {
+                    const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
+                    if (entries.some(e => e.emCode === item.emCode)) return m.getLatLng();
+                }
             }
         }
     }
@@ -4700,15 +4710,22 @@ function _navigateToSpot(target) {
         const g = _groupStore.get(target.groupId);
         let targetMarker = null;
         if (g) {
-            // Find the marker whose EnemySpawn.json entries include the target emCode
-            if (target.emCode && _enemySpawnCache) {
-                outer: for (const markers of Object.values(g.sgMarkers)) {
+            // Prefer exact spawnKey match, fall back to first marker with matching emCode
+            outer: for (const markers of Object.values(g.sgMarkers)) {
+                for (const m of markers) {
+                    if (target.spawnKey && m._spawnKey === target.spawnKey) {
+                        const entries = m._spawnKey ? (_enemySpawnCache?.get(m._spawnKey) ?? []) : [];
+                        if (!target.emCode || entries.some(e => e.emCode === target.emCode)) {
+                            targetMarker = m; break outer;
+                        }
+                    }
+                }
+            }
+            if (!targetMarker && target.emCode && _enemySpawnCache) {
+                outer2: for (const markers of Object.values(g.sgMarkers)) {
                     for (const m of markers) {
                         const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
-                        if (entries.some(e => e.emCode === target.emCode)) {
-                            targetMarker = m;
-                            break outer;
-                        }
+                        if (entries.some(e => e.emCode === target.emCode)) { targetMarker = m; break outer2; }
                     }
                 }
             }
@@ -4730,11 +4747,23 @@ function _navigateToSpot(target) {
         expandGroup(target.groupId);
         const g = _groupStore.get(target.groupId);
         let targetMarker = null;
-        if (g && target.emCode && _enemySpawnCache) {
+        if (g) {
             outer: for (const markers of Object.values(g.sgMarkers)) {
                 for (const m of markers) {
-                    const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
-                    if (entries.some(e => e.emCode === target.emCode)) { targetMarker = m; break outer; }
+                    if (target.spawnKey && m._spawnKey === target.spawnKey) {
+                        const entries = m._spawnKey ? (_enemySpawnCache?.get(m._spawnKey) ?? []) : [];
+                        if (!target.emCode || entries.some(e => e.emCode === target.emCode)) {
+                            targetMarker = m; break outer;
+                        }
+                    }
+                }
+            }
+            if (!targetMarker && target.emCode && _enemySpawnCache) {
+                outer2: for (const markers of Object.values(g.sgMarkers)) {
+                    for (const m of markers) {
+                        const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
+                        if (entries.some(e => e.emCode === target.emCode)) { targetMarker = m; break outer2; }
+                    }
                 }
             }
         }
@@ -4770,57 +4799,51 @@ function buildSpotIndex(info) {
         const serverStageId = stageIds[stageNo];
         const cache = _enemySpawnCache;  // may be null if promise not yet resolved
 
-        // ── Enemies: one entry per emCode per group ─────────────────────────
+        // ── Enemies: one entry per emCode per spawn position ────────────────
         const groups = enemyPositions[stageNo];
         if (groups) {
             for (const [groupId, groupData] of Object.entries(groups)) {
                 const spawns = groupData.spawns ?? groupData;  // back-compat: array may be direct
                 if (!Array.isArray(spawns) || !spawns.length) continue;
-                // Collect per-emCode level sets from EnemySpawn.json cache
-                const byEmCode = new Map(); // emCode → Set<level>
                 for (let i = 0; i < spawns.length; i++) {
                     const s = spawns[i];
-                    if (cache && serverStageId != null) {
-                        const key = `${serverStageId},${groupId},${s.posIdx ?? i}`;
-                        for (const e of (cache.get(key) ?? [])) {
+                    const posLatlng = worldToPixel(s.Position.x, s.Position.z, info);
+                    const spawnKey  = serverStageId != null ? `${serverStageId},${groupId},${s.posIdx ?? i}` : null;
+                    if (cache && spawnKey) {
+                        const byEmCode = new Map(); // emCode → Set<level>
+                        for (const e of (cache.get(spawnKey) ?? [])) {
                             if (!e.emCode) continue;
                             if (!byEmCode.has(e.emCode)) byEmCode.set(e.emCode, new Set());
                             if (e.lv != null) byEmCode.get(e.emCode).add(e.lv);
                         }
+                        for (const [emCode, lvSet] of byEmCode) {
+                            const baseName = emNames[emCode]?.name;
+                            if (!baseName) continue;
+                            const lvs = [...lvSet].sort((a, b) => a - b);
+                            const lo = lvs[0], hi = lvs[lvs.length - 1];
+                            const lvLabel = lvs.length ? (lo === hi ? `Lv${lo}` : `Lv${lo}-${hi}`) : '';
+                            const displayName = lvLabel ? `${baseName} ${lvLabel}` : baseName;
+                            _spotIndex.push({
+                                type: 'enemy', name: displayName,
+                                searchText: `${baseName} ${lvLabel}`.toLowerCase(),
+                                latlng: posLatlng, groupId, emCode, spawnKey,
+                                previewLines: [
+                                    `<b>${displayName}</b>`,
+                                    `Code: ${emCode}`,
+                                    `Group ${groupId}`,
+                                ],
+                                stageId,
+                            });
+                        }
                     } else if (s.EmName) {
-                        if (!byEmCode.has(s.EmName)) byEmCode.set(s.EmName, new Set());
+                        _spotIndex.push({
+                            type: 'enemy', name: s.EmName,
+                            searchText: s.EmName.toLowerCase(),
+                            latlng: posLatlng, groupId, emCode: null, spawnKey: null,
+                            previewLines: [`<b>${s.EmName}</b>`, `Group ${groupId}`],
+                            stageId,
+                        });
                     }
-                }
-                if (!byEmCode.size) continue;
-                const cx = spawns.reduce((a, s) => a + s.Position.x, 0) / spawns.length;
-                const cz = spawns.reduce((a, s) => a + s.Position.z, 0) / spawns.length;
-                const centroidLatLng = worldToPixel(cx, cz, info);
-                const gStore = _groupStore.get(groupId);
-                for (const [emCode, lvSet] of byEmCode) {
-                    const latlng = centroidLatLng;
-                    const baseName = emNames[emCode]?.name;
-                    if (!baseName) continue;
-                    const lvs = [...lvSet].sort((a, b) => a - b);
-                    let lvLabel = '';
-                    if (lvs.length > 0) {
-                        const lo = lvs[0], hi = lvs[lvs.length - 1];
-                        lvLabel = lo === hi ? `Lv${lo}` : `Lv${lo}-${hi}`;
-                    }
-                    const displayName = lvLabel ? `${baseName} ${lvLabel}` : baseName;
-                    _spotIndex.push({
-                        type:       'enemy',
-                        name:       displayName,
-                        searchText: `${baseName} ${lvLabel}`.toLowerCase(),
-                        latlng,
-                        groupId,
-                        emCode,
-                        previewLines: [
-                            `<b>${displayName}</b>`,
-                            `Code: ${emCode}`,
-                            `Group ${groupId} · ${spawns.length} spawner${spawns.length !== 1 ? 's' : ''}`,
-                        ],
-                        stageId,
-                    });
                 }
             }
         }
@@ -4852,31 +4875,18 @@ function buildSpotIndex(info) {
             for (const [groupId, groupData] of Object.entries(groups ?? {})) {
                 const spawns = groupData.spawns ?? groupData;
                 if (!Array.isArray(spawns) || !spawns.length) continue;
-                const gStore = _groupStore.get(groupId);
-                // Collect unique (itemId, emCode) pairs for this group
-                const seen = new Set();
                 for (let i = 0; i < spawns.length; i++) {
                     const s = spawns[i];
-                    const key = `${serverStageId},${groupId},${s.posIdx ?? i}`;
-                    for (const e of (cache.get(key) ?? [])) {
+                    const spawnKey = `${serverStageId},${groupId},${s.posIdx ?? i}`;
+                    const posLatlng = worldToPixel(s.Position.x, s.Position.z, info);
+                    const seen = new Set(); // dedup (itemId, emCode) within this position
+                    for (const e of (cache.get(spawnKey) ?? [])) {
                         if (!e.emCode || !e.drops?.length) continue;
                         for (const row of e.drops) {
                             const itemId = row[0];
                             const dedup = `${itemId}\0${e.emCode}`;
                             if (seen.has(dedup)) continue;
                             seen.add(dedup);
-                            // Find the specific marker latlng for this emCode
-                            let latlng = worldToPixel(
-                                spawns.reduce((a, s) => a + s.Position.x, 0) / spawns.length,
-                                spawns.reduce((a, s) => a + s.Position.z, 0) / spawns.length, info);
-                            if (gStore) {
-                                outer: for (const markers of Object.values(gStore.sgMarkers)) {
-                                    for (const m of markers) {
-                                        const ents = m._spawnKey ? (cache.get(m._spawnKey) ?? []) : [];
-                                        if (ents.some(en => en.emCode === e.emCode)) { latlng = m._naturalLatLng; break outer; }
-                                    }
-                                }
-                            }
                             const itemName = itemNames[String(itemId)]?.name ?? `Item #${itemId}`;
                             const emName   = emNames[e.emCode]?.name ?? e.emCode;
                             const qty = row[2] > row[1] ? `×${row[1]}–${row[2]}` : `×${row[1] ?? 1}`;
@@ -4885,7 +4895,7 @@ function buildSpotIndex(info) {
                                 type: 'item', source: 'enemy',
                                 name: itemName,
                                 searchText: `${itemName} ${itemId}`.toLowerCase(),
-                                itemId, latlng, groupId, emCode: e.emCode,
+                                itemId, latlng: posLatlng, groupId, emCode: e.emCode, spawnKey,
                                 previewLines: [`<b>${itemName}</b>`, `Dropped by: ${emName}`, `${qty}${pct}`],
                                 stageId,
                             });
