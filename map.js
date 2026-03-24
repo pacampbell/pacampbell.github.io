@@ -688,8 +688,17 @@ function buildSidebar(filter = '') {
     }
 }
 
-document.getElementById('map-search').addEventListener('input', e => {
+const _mapSearchInput = document.getElementById('map-search');
+const _mapSearchClear = document.getElementById('map-search-clear');
+_mapSearchInput.addEventListener('input', e => {
+    _mapSearchClear.style.display = e.target.value ? 'block' : 'none';
     buildSidebar(e.target.value);
+});
+_mapSearchClear.addEventListener('click', () => {
+    _mapSearchInput.value = '';
+    _mapSearchClear.style.display = 'none';
+    _mapSearchInput.focus();
+    buildSidebar('');
 });
 
 // ── URL hash navigation ────────────────────────────────────────────────────────
@@ -5044,6 +5053,7 @@ function _runSpotSearch() {
 
         const row = document.createElement('div');
         row.className = 'spot-result-row';
+        row.title = first.name;
 
         if (multi) {
             // ◀ name  1/N ▶
