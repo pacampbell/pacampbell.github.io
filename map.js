@@ -219,6 +219,8 @@ let gridLayer        = L.layerGroup();   // off by default
 let territoryLayer   = L.layerGroup();   // off by default; territory rects when groups expand
 let stageLabelsLayer = L.layerGroup().addTo(leafletMap);  // area name text labels
 let gatherLayer       = L.layerGroup();   // off by default
+const _gatherMarkerByKey = new Map();    // "${stageNo}:${groupId}:${posId}" → L.marker
+const _shopMarkerByNpcId = new Map();    // "${stageNo}:${npcId}" → L.marker
 let npcShopLayer        = L.layerGroup();   // off by default
 let specialShopLayer    = L.layerGroup();   // off by default
 let breakTargetLayer  = L.layerGroup();   // off by default
@@ -2795,6 +2797,7 @@ const GATHER_LABELS = {
 
 function loadGatherPoints(info, stid = null) {
     gatherLayer.clearLayers();
+    _gatherMarkerByKey.clear();
     if (!info.stages?.length) return;
 
     const floorObbs     = info.floor_obbs ?? null;
@@ -2902,6 +2905,7 @@ function loadGatherPoints(info, stid = null) {
             .bindPopup(buildGatherPopup(_gatherItemsCache))
             .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -8] })
             .addTo(gatherLayer);
+            _gatherMarkerByKey.set(`${stageNo}:${node.groupId}:${node.posId}`, marker);
 
             // Drop target: drag items from the Items panel onto a gather node marker.
             // Guard against multiple 'add' events (layer toggled off/on repeatedly).
@@ -3152,9 +3156,9 @@ function loadBreakTargets(info, stid = null) {
 
             const icon = L.divIcon({
                 className: '',
-                html: `<div style="width:11px;height:11px;background:#e65c00;border:2px solid rgba(255,255,255,0.8);box-shadow:0 0 4px rgba(0,0,0,0.8);transform:rotate(45deg)"></div>`,
-                iconSize:    [11, 11],
-                iconAnchor:  [5, 5],
+                html: `<div style="color:#ffb300;font-size:20px;line-height:1;text-shadow:0 0 4px #000,0 0 4px #000;margin:-2px 0 0 -2px">◈</div>`,
+                iconSize:    [18, 18],
+                iconAnchor:  [8, 11],
                 popupAnchor: [0, -10],
             });
 
@@ -3168,6 +3172,7 @@ function loadBreakTargets(info, stid = null) {
 
 function loadNpcShops(info, stid = null) {
     npcShopLayer.clearLayers();
+    _shopMarkerByNpcId.clear();
     if (!info.stages?.length) return;
 
     const floorObbs     = info.floor_obbs ?? null;
@@ -3266,6 +3271,7 @@ function loadNpcShops(info, stid = null) {
             .bindPopup(buildShopPopup(_shopCache), { minWidth: 340 })
             .bindTooltip(`${npcName} — ${funcLabel}`, { direction: 'top', offset: [0, -10] })
             .addTo(npcShopLayer);
+            _shopMarkerByNpcId.set(`${stageNo}:${npc.NpcId}`, marker);
 
             let _shopClickHandler = null;
             marker.on('popupclose', () => {
@@ -4642,7 +4648,468 @@ function loadMap(mapName) {
         _updateExpandCollapseBtn();
         reapplySpread();
     }
+
+    _spotOpenedGroup = null;
+    buildSpotIndex(info);
+    if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
 }
+
+// ── Spot search panel ─────────────────────────────────────────────────────────
+
+let _spotIndex        = [];    // searchable entries for the current map
+let _spotHighlights   = [];    // active pulsing ring markers
+let _spotOpenedGroup  = null;  // groupId of the enemy group last opened by spot search
+const _spotHlLayer  = L.layerGroup().addTo(leafletMap);
+
+function _clearSpotHighlights() {
+    for (const m of _spotHighlights) _spotHlLayer.removeLayer(m);
+    _spotHighlights = [];
+}
+
+function _addSpotHighlight(latlng) {
+    // className='spot-hl-outer' keeps Leaflet's translate3d intact; inner div carries the scale animation
+    const icon = L.divIcon({ className: 'spot-hl-outer', html: '<div class="spot-hl"></div>', iconSize: [22, 22], iconAnchor: [11, 11] });
+    _spotHighlights.push(L.marker(latlng, { icon, interactive: false }).addTo(_spotHlLayer));
+}
+
+// Resolve the best highlight/flyTo position for a spot index entry at the moment it's needed.
+// For enemies: chip position when collapsed, live marker position when expanded.
+// sgMarkers is only populated after the group's first expand (buildGroupDetails), so this
+// must be called at interaction time, not at index-build time.
+function _resolveSpotLatLng(item) {
+    const g = item.groupId ? _groupStore.get(item.groupId) : null;
+    if (!g) return item.latlng;
+    if (!g.isExpanded) return g.labelMarker.getLatLng();
+    // Group is expanded — find the marker for this emCode
+    if (item.emCode && _enemySpawnCache) {
+        for (const markers of Object.values(g.sgMarkers)) {
+            for (const m of markers) {
+                const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
+                if (entries.some(e => e.emCode === item.emCode)) return m.getLatLng();
+            }
+        }
+    }
+    return item.latlng;
+}
+
+function _navigateToSpot(target) {
+    if (target.type === 'enemy' && target.groupId) {
+        if (_spotOpenedGroup && _spotOpenedGroup !== target.groupId) collapseGroup(_spotOpenedGroup);
+        _spotOpenedGroup = target.groupId;
+        expandGroup(target.groupId);
+        const g = _groupStore.get(target.groupId);
+        let targetMarker = null;
+        if (g) {
+            // Find the marker whose EnemySpawn.json entries include the target emCode
+            if (target.emCode && _enemySpawnCache) {
+                outer: for (const markers of Object.values(g.sgMarkers)) {
+                    for (const m of markers) {
+                        const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
+                        if (entries.some(e => e.emCode === target.emCode)) {
+                            targetMarker = m;
+                            break outer;
+                        }
+                    }
+                }
+            }
+            if (!targetMarker) {
+                const firstMarkers = Object.values(g.sgMarkers)[0];
+                targetMarker = firstMarkers?.[0] ?? null;
+            }
+        }
+        // Fly to and highlight the specific marker position, not just the group centroid
+        const focusLatLng = targetMarker?.getLatLng() ?? target.latlng;
+        leafletMap.flyTo(focusLatLng, Math.max(leafletMap.getZoom(), 2), { duration: 0.4 });
+        _clearSpotHighlights();
+        _addSpotHighlight(focusLatLng);
+        if (targetMarker) setTimeout(() => targetMarker.openPopup(), 450);
+    } else if (target.type === 'item' && target.source === 'enemy' && target.groupId) {
+        // Item — enemy drop: reuse full enemy navigation
+        if (_spotOpenedGroup && _spotOpenedGroup !== target.groupId) collapseGroup(_spotOpenedGroup);
+        _spotOpenedGroup = target.groupId;
+        expandGroup(target.groupId);
+        const g = _groupStore.get(target.groupId);
+        let targetMarker = null;
+        if (g && target.emCode && _enemySpawnCache) {
+            outer: for (const markers of Object.values(g.sgMarkers)) {
+                for (const m of markers) {
+                    const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
+                    if (entries.some(e => e.emCode === target.emCode)) { targetMarker = m; break outer; }
+                }
+            }
+        }
+        const focusLatLng = targetMarker?.getLatLng() ?? target.latlng;
+        leafletMap.flyTo(focusLatLng, Math.max(leafletMap.getZoom(), 2), { duration: 0.4 });
+        _clearSpotHighlights();
+        _addSpotHighlight(focusLatLng);
+        if (targetMarker) setTimeout(() => targetMarker.openPopup(), 450);
+    } else {
+        // Gather, shop item, or generic fallback
+        leafletMap.flyTo(target.latlng, Math.max(leafletMap.getZoom(), 2), { duration: 0.4 });
+        _clearSpotHighlights();
+        _addSpotHighlight(target.latlng);
+        if ((target.type === 'gather' || target.source === 'gather') && target.nodeKey) {
+            const m = _gatherMarkerByKey.get(target.nodeKey);
+            if (m) setTimeout(() => m.openPopup(), 450);
+        } else if (target.source === 'shop' && target.shopKey != null) {
+            const m = _shopMarkerByNpcId.get(target.shopKey);
+            if (m) setTimeout(() => m.openPopup(), 450);
+        }
+    }
+}
+
+function buildSpotIndex(info) {
+    _spotIndex = [];
+    if (!info.stages?.length) return;
+
+    const stid = currentStageName();
+    const stagesToLoad = (stid && info.stages.includes(stid)) ? [stid] : info.stages;
+
+    for (const stageId of stagesToLoad) {
+        const stageNo = String(parseInt(stageId.slice(2), 10));
+        const serverStageId = stageIds[stageNo];
+        const cache = _enemySpawnCache;  // may be null if promise not yet resolved
+
+        // ── Enemies: one entry per emCode per group ─────────────────────────
+        const groups = enemyPositions[stageNo];
+        if (groups) {
+            for (const [groupId, groupData] of Object.entries(groups)) {
+                const spawns = groupData.spawns ?? groupData;  // back-compat: array may be direct
+                if (!Array.isArray(spawns) || !spawns.length) continue;
+                // Collect per-emCode level sets from EnemySpawn.json cache
+                const byEmCode = new Map(); // emCode → Set<level>
+                for (let i = 0; i < spawns.length; i++) {
+                    const s = spawns[i];
+                    if (cache && serverStageId != null) {
+                        const key = `${serverStageId},${groupId},${s.posIdx ?? i}`;
+                        for (const e of (cache.get(key) ?? [])) {
+                            if (!e.emCode) continue;
+                            if (!byEmCode.has(e.emCode)) byEmCode.set(e.emCode, new Set());
+                            if (e.lv != null) byEmCode.get(e.emCode).add(e.lv);
+                        }
+                    } else if (s.EmName) {
+                        if (!byEmCode.has(s.EmName)) byEmCode.set(s.EmName, new Set());
+                    }
+                }
+                if (!byEmCode.size) continue;
+                const cx = spawns.reduce((a, s) => a + s.Position.x, 0) / spawns.length;
+                const cz = spawns.reduce((a, s) => a + s.Position.z, 0) / spawns.length;
+                const centroidLatLng = worldToPixel(cx, cz, info);
+                const gStore = _groupStore.get(groupId);
+                for (const [emCode, lvSet] of byEmCode) {
+                    const latlng = centroidLatLng;
+                    const baseName = emNames[emCode]?.name;
+                    if (!baseName) continue;
+                    const lvs = [...lvSet].sort((a, b) => a - b);
+                    let lvLabel = '';
+                    if (lvs.length > 0) {
+                        const lo = lvs[0], hi = lvs[lvs.length - 1];
+                        lvLabel = lo === hi ? `Lv${lo}` : `Lv${lo}-${hi}`;
+                    }
+                    const displayName = lvLabel ? `${baseName} ${lvLabel}` : baseName;
+                    _spotIndex.push({
+                        type:       'enemy',
+                        name:       displayName,
+                        searchText: `${baseName} ${lvLabel}`.toLowerCase(),
+                        latlng,
+                        groupId,
+                        emCode,
+                        previewLines: [
+                            `<b>${displayName}</b>`,
+                            `Code: ${emCode}`,
+                            `Group ${groupId} · ${spawns.length} spawner${spawns.length !== 1 ? 's' : ''}`,
+                        ],
+                        stageId,
+                    });
+                }
+            }
+        }
+
+        // ── Gathering: one entry per node ───────────────────────────────────
+        const nodes = gatherPoints[stageNo];
+        if (nodes) {
+            for (const node of nodes) {
+                const label = GATHER_LABELS[node.type]
+                    ?? node.type.replace(/^(OM_GATHER_|CHEST_)/, '').replace(/_/g, ' ');
+                _spotIndex.push({
+                    type:       'gather',
+                    name:       label,
+                    gatherType: node.type,
+                    searchText: label.toLowerCase(),
+                    latlng:     worldToPixel(node.x, node.z, info),
+                    nodeKey:    `${stageNo}:${node.groupId}:${node.posId}`,
+                    previewLines: [
+                        `<b>${label}</b>`,
+                        `X: ${node.x.toFixed(0)}  Z: ${node.z.toFixed(0)}`,
+                    ],
+                    stageId,
+                });
+            }
+        }
+
+        // ── Items: enemy drops ───────────────────────────────────────────────
+        if (cache && serverStageId != null) {
+            for (const [groupId, groupData] of Object.entries(groups ?? {})) {
+                const spawns = groupData.spawns ?? groupData;
+                if (!Array.isArray(spawns) || !spawns.length) continue;
+                const gStore = _groupStore.get(groupId);
+                // Collect unique (itemId, emCode) pairs for this group
+                const seen = new Set();
+                for (let i = 0; i < spawns.length; i++) {
+                    const s = spawns[i];
+                    const key = `${serverStageId},${groupId},${s.posIdx ?? i}`;
+                    for (const e of (cache.get(key) ?? [])) {
+                        if (!e.emCode || !e.drops?.length) continue;
+                        for (const row of e.drops) {
+                            const itemId = row[0];
+                            const dedup = `${itemId}\0${e.emCode}`;
+                            if (seen.has(dedup)) continue;
+                            seen.add(dedup);
+                            // Find the specific marker latlng for this emCode
+                            let latlng = worldToPixel(
+                                spawns.reduce((a, s) => a + s.Position.x, 0) / spawns.length,
+                                spawns.reduce((a, s) => a + s.Position.z, 0) / spawns.length, info);
+                            if (gStore) {
+                                outer: for (const markers of Object.values(gStore.sgMarkers)) {
+                                    for (const m of markers) {
+                                        const ents = m._spawnKey ? (cache.get(m._spawnKey) ?? []) : [];
+                                        if (ents.some(en => en.emCode === e.emCode)) { latlng = m._naturalLatLng; break outer; }
+                                    }
+                                }
+                            }
+                            const itemName = itemNames[String(itemId)]?.name ?? `Item #${itemId}`;
+                            const emName   = emNames[e.emCode]?.name ?? e.emCode;
+                            const qty = row[2] > row[1] ? `×${row[1]}–${row[2]}` : `×${row[1] ?? 1}`;
+                            const pct = row[5] > 0 && row[5] < 1 ? ` (${Math.round(row[5] * 100)}%)` : '';
+                            _spotIndex.push({
+                                type: 'item', source: 'enemy',
+                                name: itemName,
+                                searchText: `${itemName} ${itemId}`.toLowerCase(),
+                                itemId, latlng, groupId, emCode: e.emCode,
+                                previewLines: [`<b>${itemName}</b>`, `Dropped by: ${emName}`, `${qty}${pct}`],
+                                stageId,
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── Items: gathering nodes ───────────────────────────────────────────
+        if (_gatherItemsCache && serverStageId != null) {
+            for (const node of (gatherPoints[stageNo] ?? [])) {
+                const csvKey  = `${serverStageId},${node.groupId},${node.posId}`;
+                const nodeItems = _gatherItemsCache.get(csvKey) ?? [];
+                const latlng  = worldToPixel(node.x, node.z, info);
+                const nodeLabel = GATHER_LABELS[node.type] ?? node.type.replace(/^(OM_GATHER_|CHEST_)/, '').replace(/_/g, ' ');
+                for (const it of nodeItems) {
+                    const itemName = itemNames[String(it.itemId)]?.name ?? `Item #${it.itemId}`;
+                    const qty = it.maxItemNum > it.itemNum ? `×${it.itemNum}–${it.maxItemNum}` : `×${it.itemNum}`;
+                    const pct = it.dropChance < 1 ? ` (${Math.round(it.dropChance * 100)}%)` : '';
+                    _spotIndex.push({
+                        type: 'item', source: 'gather',
+                        name: itemName,
+                        searchText: `${itemName} ${it.itemId}`.toLowerCase(),
+                        itemId: it.itemId, latlng,
+                        nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
+                        previewLines: [`<b>${itemName}</b>`, `From: ${nodeLabel}`, `${qty}${pct}`],
+                        stageId,
+                    });
+                }
+            }
+        }
+
+        // ── Items: shop NPCs ─────────────────────────────────────────────────
+        if (_shopCache) {
+            for (const npc of (npcShops[stageNo] ?? [])) {
+                if (npc.ShopId == null) continue;
+                const shop = _shopCache.get(npc.ShopId);
+                if (!shop?.items?.length) continue;
+                const latlng  = worldToPixel(npc.Position.x, npc.Position.z, info);
+                const npcName = npcNames[String(npc.NpcId)] ?? `NPC #${npc.NpcId}`;
+                for (const it of shop.items) {
+                    if (it.ItemId == null) continue;
+                    const itemName = itemNames[String(it.ItemId)]?.name ?? `Item #${it.ItemId}`;
+                    _spotIndex.push({
+                        type: 'item', source: 'shop',
+                        name: itemName,
+                        searchText: `${itemName} ${it.ItemId}`.toLowerCase(),
+                        itemId: it.ItemId, latlng, shopKey: `${stageNo}:${npc.NpcId}`,
+                        previewLines: [`<b>${itemName}</b>`, `Sold by: ${npcName}`,
+                                       it.Price != null ? `${it.Price.toLocaleString()} gold` : ''].filter(Boolean),
+                        stageId,
+                    });
+                }
+            }
+        }
+    }
+}
+
+// Rebuild spot index as async data caches load (enemy spawns, gather items, shop data)
+function _rebuildSpotIndex() {
+    if (_currentMapInfo) {
+        buildSpotIndex(_currentMapInfo);
+        if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
+    }
+}
+_enemySpawnPromise  .then(_rebuildSpotIndex).catch(() => {});
+_gatherItemsPromise .then(_rebuildSpotIndex).catch(() => {});
+_shopPromise        .then(_rebuildSpotIndex).catch(() => {});
+
+function _runSpotSearch() {
+    const query     = (document.getElementById('spot-search-input')?.value ?? '').trim().toLowerCase();
+    const filter    = document.querySelector('.spot-tab.active')?.dataset.filter ?? 'enemy';
+    const resultsEl = document.getElementById('spot-results');
+    if (!resultsEl) return;
+
+    _clearSpotHighlights();
+
+    const matches = _spotIndex.filter(e => {
+        if (filter === 'enemy'  && e.type !== 'enemy')  return false;
+        if (filter === 'gather' && e.type !== 'gather') return false;
+        if (filter === 'item'   && e.type !== 'item')   return false;
+        return !query || e.searchText.includes(query);
+    });
+
+    if (!matches.length) {
+        resultsEl.innerHTML = `<div class="spot-empty">No matches for <em>${query}</em>.</div>`;
+        return;
+    }
+
+    // Group by name+type (items also group by source so enemy/gather/shop stay separate)
+    const grouped = new Map();
+    for (const m of matches) {
+        const key = m.type === 'item' ? `item:${m.source}\0${m.name}` : `${m.type}\0${m.name}`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(m);
+    }
+
+    const frag = document.createDocumentFragment();
+    const summary = document.createElement('div');
+    summary.className = 'spot-summary';
+    summary.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${grouped.size} unique`;
+    frag.appendChild(summary);
+
+    for (const items of grouped.values()) {
+        const first = items[0];
+        const multi = items.length > 1;
+
+        const dotHtml = first.type === 'gather'
+            ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GATHER_COLORS[first.gatherType] ?? '#aaa'};flex-shrink:0"></span>`
+            : first.type === 'item' && first.source === 'gather'
+            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#8c8">🌿</span>`
+            : first.type === 'item' && first.source === 'shop'
+            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#fc8">🏪</span>`
+            : `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`;
+
+        const previewHtml = multi
+            ? [...first.previewLines, `<span style="color:#667">×${items.length} locations</span>`].join('<br>')
+            : first.previewLines.join('<br>');
+
+        const row = document.createElement('div');
+        row.className = 'spot-result-row';
+
+        if (multi) {
+            // ◀ name  1/N ▶
+            let idx = -1;  // -1 = not yet visited; first row click goes to 0, subsequent advance
+            const updatePos = (posEl) => { posEl.textContent = `${idx + 1}/${items.length}`; };
+            row.innerHTML =
+                `${dotHtml}<span class="spot-result-name">${first.name}</span>`
+                + `<div class="spot-nav" style="display:flex;align-items:center;gap:2px;flex-shrink:0">`
+                + `<button class="spot-nav-btn spot-prev" title="Previous">◀</button>`
+                + `<span class="spot-nav-pos" style="font-size:0.68rem;color:#667;min-width:28px;text-align:center">1/${items.length}</span>`
+                + `<button class="spot-nav-btn spot-next" title="Next">▶</button>`
+                + `</div>`
+                + `<div class="spot-preview">${previewHtml}</div>`;
+
+            const posEl  = row.querySelector('.spot-nav-pos');
+            const prev   = row.querySelector('.spot-prev');
+            const next   = row.querySelector('.spot-next');
+
+            const goTo = (i) => {
+                idx = (i + items.length) % items.length;
+                updatePos(posEl);
+                _navigateToSpot(items[idx]);
+            };
+
+            prev.addEventListener('click', e => { e.stopPropagation(); goTo(idx <= 0 ? items.length - 1 : idx - 1); });
+            next.addEventListener('click', e => { e.stopPropagation(); goTo(idx + 1); });
+            // Row click: first click goes to 0, subsequent clicks advance to next (wraps)
+            row.addEventListener('click', e => {
+                if (e.target.closest('.spot-nav')) return;  // ignore clicks on the nav buttons
+                goTo(idx < 0 ? 0 : idx + 1);
+            });
+        } else {
+            row.innerHTML = `${dotHtml}<span class="spot-result-name">${first.name}</span>`
+                + `<div class="spot-preview">${previewHtml}</div>`;
+            row.addEventListener('click', () => _navigateToSpot(first));
+        }
+
+        row.addEventListener('mouseenter', () => {
+            _clearSpotHighlights();
+            for (const item of items) _addSpotHighlight(_resolveSpotLatLng(item));
+        });
+        row.addEventListener('mouseleave', _clearSpotHighlights);
+
+        frag.appendChild(row);
+    }
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(frag);
+}
+
+// Panel wiring — called once on startup
+(function initSpotPanel() {
+    const panel  = document.getElementById('spot-panel');
+    const toggle = document.getElementById('spot-panel-toggle');
+    const close  = document.getElementById('spot-panel-close');
+    const input  = document.getElementById('spot-search-input');
+    const clearBtn = document.getElementById('spot-search-clear');
+    if (!panel || !toggle || !close || !input) return;
+
+    const openPanel = () => {
+        panel.classList.add('open');
+        toggle.style.display = 'none';
+        input.focus();
+        _runSpotSearch();
+    };
+    const closePanel = () => {
+        panel.classList.remove('open');
+        toggle.style.display = '';
+        _clearSpotHighlights();
+    };
+
+    toggle.addEventListener('click', openPanel);
+    close.addEventListener('click', closePanel);
+    input.addEventListener('input', () => {
+        if (clearBtn) clearBtn.style.display = input.value ? 'block' : 'none';
+        _runSpotSearch();
+    });
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            input.value = '';
+            clearBtn.style.display = 'none';
+            input.focus();
+            _runSpotSearch();
+        });
+    }
+
+    document.querySelectorAll('.spot-tab').forEach(btn =>
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.spot-tab').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _runSpotSearch();
+        })
+    );
+
+    document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey && _loadedMapName) {
+            e.preventDefault();
+            panel.classList.contains('open') ? (input.focus(), input.select()) : openPanel();
+        }
+        if (e.key === 'Escape' && panel.classList.contains('open')) closePanel();
+    });
+})();
 
 // ── Coordinate readout ────────────────────────────────────────────────────────
 // Shows pixel and world coordinates under the cursor, useful for calibration.

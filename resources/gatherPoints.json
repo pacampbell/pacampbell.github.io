@@ -6100,6 +6100,24 @@
       "itemListId": 1147
     },
     {
+      "type": "OM_GATHER_MUSHROOM",
+      "groupId": 211,
+      "posId": 1,
+      "x": 2225.0,
+      "y": 139.5,
+      "z": 3307.4,
+      "itemListId": 1146
+    },
+    {
+      "type": "OM_GATHER_MUSHROOM",
+      "groupId": 211,
+      "posId": 2,
+      "x": 1587.6,
+      "y": 130.5,
+      "z": 3125.0,
+      "itemListId": 1146
+    },
+    {
       "type": "OM_GATHER_SHELL",
       "groupId": 211,
       "posId": 3,
@@ -15528,6 +15546,15 @@
   ],
   "133": [
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 0,
+      "x": -4674.6,
+      "y": 22200.5,
+      "z": -311302.3,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_TREE_LV1",
       "groupId": 214,
       "posId": 0,
@@ -15544,6 +15571,15 @@
       "y": 24000.0,
       "z": -311433.4,
       "itemListId": 1784
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 1,
+      "x": 18622.7,
+      "y": 24000.0,
+      "z": -310296.3,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_MUSHROOM",
@@ -15590,6 +15626,24 @@
       "itemListId": 1784
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 2,
+      "x": 19373.9,
+      "y": 25001.5,
+      "z": -308786.9,
+      "itemListId": 1742
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 3,
+      "x": 11631.2,
+      "y": 23945.5,
+      "z": -308339.9,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_MUSHROOM",
       "groupId": 229,
       "posId": 3,
@@ -15615,6 +15669,15 @@
       "y": 24000.0,
       "z": -309078.2,
       "itemListId": 1784
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 4,
+      "x": 20209.5,
+      "y": 24000.7,
+      "z": -300179.4,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_MUSHROOM",
@@ -15650,6 +15713,24 @@
       "z": -290291.2
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 5,
+      "x": 1078.1,
+      "y": 25146.7,
+      "z": -290648.9,
+      "itemListId": 1742
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 6,
+      "x": 17128.1,
+      "y": 24000.8,
+      "z": -294652.0,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_GRASS",
       "groupId": 242,
       "posId": 0,
@@ -15674,6 +15755,15 @@
       "x": 19560.1,
       "y": 24002.0,
       "z": -299411.0
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 7,
+      "x": 26892.2,
+      "y": 23114.8,
+      "z": -290212.6,
+      "itemListId": 1742
     },
     {
       "type": "CHEST_BROWN",
@@ -15796,6 +15886,15 @@
       "z": -286236.8
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 8,
+      "x": 25098.9,
+      "y": 24001.5,
+      "z": -280741.5,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_GRASS",
       "groupId": 241,
       "posId": 1,
@@ -15820,6 +15919,15 @@
       "x": 20372.7,
       "y": 24001.5,
       "z": -281648.1
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 9,
+      "x": 35931.6,
+      "y": 22327.2,
+      "z": -281422.4,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_TREE_LV1",
@@ -15856,6 +15964,24 @@
       "y": 21457.3,
       "z": -281524.8,
       "itemListId": 1784
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 10,
+      "x": 41569.0,
+      "y": 21469.7,
+      "z": -285303.0,
+      "itemListId": 1742
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 11,
+      "x": 49437.1,
+      "y": 18028.9,
+      "z": -285267.7,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_GRASS",
@@ -15939,6 +16065,15 @@
       "itemListId": 1746
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 12,
+      "x": 60427.6,
+      "y": 16421.1,
+      "z": -284689.3,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_MUSHROOM",
       "groupId": 238,
       "posId": 3,
@@ -15973,6 +16108,15 @@
       "y": 15685.1,
       "z": -283859.2,
       "itemListId": 1748
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 13,
+      "x": 26012.9,
+      "y": 22327.2,
+      "z": -272333.8,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_GRASS",
@@ -16347,6 +16491,15 @@
       "z": -263164.0
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 14,
+      "x": 47220.2,
+      "y": 21798.1,
+      "z": -264776.5,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_TREE_LV1",
       "groupId": 212,
       "posId": 0,
@@ -16381,6 +16534,24 @@
       "y": 14651.2,
       "z": -261080.3,
       "itemListId": 1784
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 15,
+      "x": 58909.2,
+      "y": 16572.8,
+      "z": -266655.6,
+      "itemListId": 1742
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 16,
+      "x": 54095.6,
+      "y": 14614.3,
+      "z": -261405.0,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_WATER",
@@ -16453,6 +16624,15 @@
       "y": 19743.5,
       "z": -260034.5,
       "itemListId": 1784
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 17,
+      "x": 62549.8,
+      "y": 19630.6,
+      "z": -260760.7,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_CRST_LV1",
@@ -16572,6 +16752,24 @@
       "itemListId": 1747
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 18,
+      "x": 82336.2,
+      "y": 17907.5,
+      "z": -265022.3,
+      "itemListId": 1742
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 19,
+      "x": 83548.9,
+      "y": 20271.7,
+      "z": -262581.9,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_GRASS",
       "groupId": 236,
       "posId": 5,
@@ -16579,6 +16777,24 @@
       "y": 16861.2,
       "z": -267593.8,
       "itemListId": 1746
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 20,
+      "x": 54665.1,
+      "y": 20690.5,
+      "z": -257886.9,
+      "itemListId": 1742
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 21,
+      "x": 57454.0,
+      "y": 18050.9,
+      "z": -259195.2,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_MUSHROOM",
@@ -16597,6 +16813,15 @@
       "y": 19962.5,
       "z": -259227.8,
       "itemListId": 1784
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 22,
+      "x": 63462.2,
+      "y": 20719.4,
+      "z": -250010.8,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_CRST_LV1",
@@ -16644,6 +16869,24 @@
       "itemListId": 1746
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 23,
+      "x": 77360.8,
+      "y": 27700.7,
+      "z": -256063.3,
+      "itemListId": 1742
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 24,
+      "x": 78379.9,
+      "y": 24566.4,
+      "z": -256517.2,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_CRST_LV1",
       "groupId": 236,
       "posId": 6,
@@ -16662,6 +16905,15 @@
       "itemListId": 1747
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 25,
+      "x": 46990.4,
+      "y": 21334.7,
+      "z": -242798.2,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_CRST_LV1",
       "groupId": 231,
       "posId": 0,
@@ -16678,6 +16930,15 @@
       "y": 21653.2,
       "z": -242505.3,
       "itemListId": 1748
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 26,
+      "x": 64021.2,
+      "y": 21509.0,
+      "z": -244403.0,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_GRASS",
@@ -16752,6 +17013,15 @@
       "itemListId": 1746
     },
     {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 27,
+      "x": 21240.7,
+      "y": 30908.4,
+      "z": -230534.9,
+      "itemListId": 1742
+    },
+    {
       "type": "OM_GATHER_GRASS",
       "groupId": 223,
       "posId": 0,
@@ -16777,6 +17047,15 @@
       "y": 29847.7,
       "z": -231912.3,
       "itemListId": 1748
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 28,
+      "x": 41525.2,
+      "y": 18133.1,
+      "z": -239900.3,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_GRASS",
@@ -16840,6 +17119,15 @@
       "y": 20150.4,
       "z": -236327.7,
       "itemListId": 1784
+    },
+    {
+      "type": "OM_GATHER_ONE_OFF",
+      "groupId": 220,
+      "posId": 29,
+      "x": 70542.0,
+      "y": 19206.7,
+      "z": -235418.8,
+      "itemListId": 1742
     },
     {
       "type": "OM_GATHER_CRST_LV1",
@@ -18432,6 +18720,53 @@
       "z": -2654.3
     }
   ],
+  "357": [
+    {
+      "type": "OM_GATHER_BOX",
+      "groupId": 201,
+      "posId": 0,
+      "x": -2629.3,
+      "y": -100.0,
+      "z": -254.9,
+      "itemListId": 811
+    },
+    {
+      "type": "OM_GATHER_BOX",
+      "groupId": 201,
+      "posId": 1,
+      "x": -2091.2,
+      "y": -100.0,
+      "z": -2720.7,
+      "itemListId": 812
+    },
+    {
+      "type": "OM_GATHER_BOX",
+      "groupId": 201,
+      "posId": 2,
+      "x": -2449.5,
+      "y": -100.0,
+      "z": -1621.6,
+      "itemListId": 811
+    },
+    {
+      "type": "OM_GATHER_BOX",
+      "groupId": 201,
+      "posId": 3,
+      "x": 2235.8,
+      "y": 0.0,
+      "z": -2242.5,
+      "itemListId": 812
+    },
+    {
+      "type": "OM_GATHER_BOX",
+      "groupId": 201,
+      "posId": 4,
+      "x": 2318.6,
+      "y": 0.0,
+      "z": -3958.5,
+      "itemListId": 811
+    }
+  ],
   "358": [
     {
       "type": "OM_GATHER_ALCHEMY",
@@ -19884,12 +20219,93 @@
   ],
   "411": [
     {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 200,
+      "posId": 0,
+      "x": -3478.9,
+      "y": -1543.0,
+      "z": 26744.8,
+      "itemListId": 662
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 200,
+      "posId": 1,
+      "x": 3659.6,
+      "y": 1252.0,
+      "z": 14345.9,
+      "itemListId": 662
+    },
+    {
       "type": "CHEST_ROUND",
       "groupId": 201,
       "posId": 0,
       "x": -17912.7,
       "y": 1238.5,
       "z": 24821.8
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 201,
+      "posId": 1,
+      "x": -5633.7,
+      "y": 1758.4,
+      "z": 15037.7,
+      "itemListId": 662
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 201,
+      "posId": 4,
+      "x": -4247.3,
+      "y": 1760.6,
+      "z": 12258.2,
+      "itemListId": 887
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 201,
+      "posId": 5,
+      "x": -11376.8,
+      "y": -1252.3,
+      "z": 29077.1,
+      "itemListId": 664
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 202,
+      "posId": 3,
+      "x": 10846.6,
+      "y": -3062.2,
+      "z": 17167.7,
+      "itemListId": 662
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 202,
+      "posId": 4,
+      "x": 7814.6,
+      "y": -605.6,
+      "z": 21680.6,
+      "itemListId": 664
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 202,
+      "posId": 6,
+      "x": 10545.4,
+      "y": 173.6,
+      "z": 6963.2,
+      "itemListId": 887
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 202,
+      "posId": 7,
+      "x": 7441.2,
+      "y": -605.6,
+      "z": 17956.8,
+      "itemListId": 665
     },
     {
       "type": "CHEST_ROUND",
@@ -29937,6 +30353,24 @@
       "itemListId": 1053
     },
     {
+      "type": "OM_GATHER_MUSHROOM",
+      "groupId": 203,
+      "posId": 0,
+      "x": 5266.2,
+      "y": 500.0,
+      "z": -31799.9,
+      "itemListId": 1047
+    },
+    {
+      "type": "OM_GATHER_MUSHROOM",
+      "groupId": 203,
+      "posId": 1,
+      "x": 4739.5,
+      "y": 500.0,
+      "z": -31904.4,
+      "itemListId": 1047
+    },
+    {
       "type": "OM_GATHER_CRST_LV1",
       "groupId": 204,
       "posId": 0,
@@ -32110,6 +32544,24 @@
   ],
   "873": [
     {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 208,
+      "posId": 0,
+      "x": -4913.5,
+      "y": -5191.9,
+      "z": -81953.8,
+      "itemListId": 1452
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 208,
+      "posId": 1,
+      "x": -4427.3,
+      "y": -5193.1,
+      "z": -81756.7,
+      "itemListId": 1452
+    },
+    {
       "type": "OM_GATHER_ANTIQUE",
       "groupId": 210,
       "posId": 0,
@@ -32152,6 +32604,24 @@
       "x": -4797.8,
       "y": -5193.4,
       "z": -81536.6
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 207,
+      "posId": 0,
+      "x": 1167.9,
+      "y": -4992.3,
+      "z": -95713.8,
+      "itemListId": 1451
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 207,
+      "posId": 1,
+      "x": 1179.5,
+      "y": -4994.4,
+      "z": -94985.6,
+      "itemListId": 1451
     },
     {
       "type": "OM_GATHER_ANTIQUE",
@@ -32199,11 +32669,38 @@
     },
     {
       "type": "OM_GATHER_ANTIQUE",
+      "groupId": 206,
+      "posId": 0,
+      "x": -7137.0,
+      "y": -6319.8,
+      "z": -108260.4,
+      "itemListId": 1450
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 206,
+      "posId": 1,
+      "x": -7134.5,
+      "y": -6322.6,
+      "z": -108519.9,
+      "itemListId": 1450
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
       "groupId": 210,
       "posId": 2,
       "x": -7080.9,
       "y": -6322.9,
       "z": -108654.8,
+      "itemListId": 1450
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 211,
+      "posId": 2,
+      "x": -7088.0,
+      "y": -6329.2,
+      "z": -108111.9,
       "itemListId": 1450
     },
     {
@@ -32231,6 +32728,24 @@
       "x": -6479.2,
       "y": -6303.3,
       "z": -108392.7
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 205,
+      "posId": 0,
+      "x": -254.2,
+      "y": -7590.3,
+      "z": -113092.2,
+      "itemListId": 1449
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 205,
+      "posId": 1,
+      "x": 247.7,
+      "y": -7590.3,
+      "z": -113108.7,
+      "itemListId": 1449
     },
     {
       "type": "OM_GATHER_ANTIQUE",
@@ -32419,6 +32934,15 @@
       "x": -2947.9,
       "y": 4200.0,
       "z": -28183.7
+    },
+    {
+      "type": "OM_GATHER_TWINKLE",
+      "groupId": 207,
+      "posId": 0,
+      "x": 2704.7,
+      "y": 4887.2,
+      "z": -44486.6,
+      "itemListId": 1458
     },
     {
       "type": "CHEST_IRON",
@@ -33258,6 +33782,24 @@
   ],
   "960": [
     {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 208,
+      "posId": 0,
+      "x": -218.1,
+      "y": 1.0,
+      "z": -84233.9,
+      "itemListId": 1448
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 208,
+      "posId": 1,
+      "x": 186.3,
+      "y": 0.6,
+      "z": -84244.6,
+      "itemListId": 1448
+    },
+    {
       "type": "OM_GATHER_ANTIQUE",
       "groupId": 210,
       "posId": 0,
@@ -33300,6 +33842,24 @@
       "x": -18.7,
       "y": 38.0,
       "z": -84324.3
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 207,
+      "posId": 0,
+      "x": 375.9,
+      "y": -18.0,
+      "z": -109738.5,
+      "itemListId": 1447
+    },
+    {
+      "type": "OM_GATHER_ALCHEMY",
+      "groupId": 207,
+      "posId": 1,
+      "x": -333.5,
+      "y": 12.4,
+      "z": -109655.6,
+      "itemListId": 1447
     },
     {
       "type": "OM_GATHER_ANTIQUE",
@@ -33347,11 +33907,38 @@
     },
     {
       "type": "OM_GATHER_ANTIQUE",
+      "groupId": 206,
+      "posId": 0,
+      "x": 7005.2,
+      "y": -1009.1,
+      "z": -119938.8,
+      "itemListId": 1446
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 206,
+      "posId": 1,
+      "x": 6821.1,
+      "y": -1021.2,
+      "z": -120448.6,
+      "itemListId": 1446
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
       "groupId": 210,
       "posId": 2,
       "x": 6850.5,
       "y": -1019.4,
       "z": -119890.0,
+      "itemListId": 1446
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 211,
+      "posId": 2,
+      "x": 6708.0,
+      "y": -1024.0,
+      "z": -120397.2,
       "itemListId": 1446
     },
     {
@@ -33379,6 +33966,24 @@
       "x": 7212.8,
       "y": -984.0,
       "z": -120302.3
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 205,
+      "posId": 0,
+      "x": -4088.2,
+      "y": -842.1,
+      "z": -142971.3,
+      "itemListId": 1445
+    },
+    {
+      "type": "OM_GATHER_ANTIQUE",
+      "groupId": 205,
+      "posId": 1,
+      "x": -3903.4,
+      "y": -817.4,
+      "z": -142370.2,
+      "itemListId": 1445
     },
     {
       "type": "OM_GATHER_ANTIQUE",
@@ -47932,6 +48537,51 @@
       "x": -555.9,
       "y": 317.0,
       "z": -74548.1
+    },
+    {
+      "type": "CHEST_IRON",
+      "groupId": 200,
+      "posId": 0,
+      "x": 1146.4,
+      "y": -1209.8,
+      "z": -50998.3,
+      "itemListId": 1995
+    },
+    {
+      "type": "CHEST_IRON",
+      "groupId": 200,
+      "posId": 1,
+      "x": -759.5,
+      "y": -1409.6,
+      "z": -55955.3,
+      "itemListId": 1996
+    },
+    {
+      "type": "CHEST_IRON",
+      "groupId": 201,
+      "posId": 0,
+      "x": 0.3,
+      "y": -1009.6,
+      "z": -62147.4,
+      "itemListId": 1995
+    },
+    {
+      "type": "CHEST_IRON",
+      "groupId": 201,
+      "posId": 1,
+      "x": -4763.2,
+      "y": 504.6,
+      "z": -73214.6,
+      "itemListId": 1996
+    },
+    {
+      "type": "CHEST_IRON",
+      "groupId": 201,
+      "posId": 2,
+      "x": 3479.3,
+      "y": 504.6,
+      "z": -73175.0,
+      "itemListId": 1997
     }
   ],
   "2023": [
@@ -55515,6 +56165,15 @@
       "y": 1752.5,
       "z": 15820.7,
       "itemListId": 2125
+    },
+    {
+      "type": "OM_GATHER_TWINKLE",
+      "groupId": 247,
+      "posId": 0,
+      "x": 0.0,
+      "y": 63.1,
+      "z": -306.3,
+      "itemListId": 2130
     }
   ],
   "3600": [

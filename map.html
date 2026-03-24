@@ -174,6 +174,7 @@
         #map-container {
             flex: 1;
             position: relative;
+            overflow: hidden;
         }
 
         #map {
@@ -510,6 +511,167 @@
         #map-list::-webkit-scrollbar { width: 6px; }
         #map-list::-webkit-scrollbar-track { background: transparent; }
         #map-list::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+
+        /* ── Spot search panel ── */
+        #spot-panel-toggle {
+            position: absolute;
+            right: 10px;
+            top: 40px;
+            z-index: 1100;
+            background: #16213e;
+            border: 1px solid #0f3460;
+            color: #bbb;
+            border-radius: 4px;
+            width: 28px; height: 28px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        #spot-panel-toggle:hover { background: #0f3460; }
+        #spot-panel {
+            position: absolute;
+            right: 0; top: 0; bottom: 0;
+            width: 265px;
+            background: #16213e;
+            border-left: 1px solid #0f3460;
+            z-index: 1050;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.2s ease;
+            overflow: hidden;
+            color: #e0e0e0;
+        }
+        #spot-panel.open { transform: translateX(0); }
+        #spot-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 7px 10px;
+            background: #0f2040;
+            border-bottom: 1px solid #0f3460;
+            font-size: 0.73rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #7a8aba;
+            flex-shrink: 0;
+        }
+        #spot-panel-close {
+            background: none; border: none; color: #556; cursor: pointer;
+            font-size: 0.9rem; line-height: 1; padding: 2px 4px;
+        }
+        #spot-panel-close:hover { color: #bbb; }
+        #spot-search-wrap {
+            position: relative;
+            margin: 7px 8px 4px;
+            flex-shrink: 0;
+        }
+        #spot-search-input {
+            padding: 5px 24px 5px 8px;
+            background: #0d1b35;
+            border: 1px solid #1a4a7a;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 0.82rem;
+            width: 100%;
+            box-sizing: border-box;
+            outline: none;
+        }
+        #spot-search-input:focus { border-color: #3a7aba; }
+        #spot-search-clear {
+            position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #556; cursor: pointer;
+            font-size: 0.8rem; line-height: 1; padding: 2px 4px;
+            display: none;
+        }
+        #spot-search-clear:hover { color: #bbb; }
+        #spot-filter-tabs {
+            display: flex; gap: 4px;
+            padding: 0 8px 6px;
+            flex-shrink: 0;
+        }
+        .spot-tab {
+            flex: 1; padding: 3px 0;
+            background: #0d1b35;
+            border: 1px solid #1a4a7a;
+            border-radius: 3px;
+            color: #778; font-size: 0.72rem;
+            cursor: pointer;
+        }
+        .spot-tab.active { background: #1a4a7a; color: #cde; }
+        .spot-tab:hover:not(.active) { background: #112040; color: #99b; }
+        #spot-results {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 4px 4px;
+        }
+        #spot-results::-webkit-scrollbar { width: 5px; }
+        #spot-results::-webkit-scrollbar-track { background: transparent; }
+        #spot-results::-webkit-scrollbar-thumb { background: #0f3460; border-radius: 3px; }
+        .spot-empty {
+            padding: 10px 8px;
+            color: #556; font-size: 0.78rem; text-align: center;
+        }
+        .spot-summary {
+            padding: 4px 8px 2px;
+            color: #556; font-size: 0.7rem;
+            border-bottom: 1px solid #0d1b35;
+        }
+        .spot-result-row {
+            position: relative;
+            display: flex; align-items: center; gap: 6px;
+            padding: 5px 8px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.78rem;
+            border-bottom: 1px solid #0d1b35;
+        }
+        .spot-result-row:hover { background: #1a3060; }
+        .spot-result-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #ccd; }
+        .spot-result-count { color: #667; font-size: 0.7rem; flex-shrink: 0; }
+        .spot-nav-btn {
+            background: #0d1b35; border: 1px solid #1a4a7a; color: #778;
+            border-radius: 3px; padding: 1px 5px; cursor: pointer; font-size: 0.68rem; line-height: 1.4;
+        }
+        .spot-nav-btn:hover { background: #1a4a7a; color: #cde; }
+        /* Preview card — pops out to the left on hover */
+        .spot-preview {
+            display: none;
+            position: absolute;
+            right: calc(100% + 4px);
+            top: 0;
+            background: #1a2a50;
+            border: 1px solid #0f3460;
+            border-radius: 4px;
+            padding: 6px 10px;
+            font-size: 0.74rem;
+            line-height: 1.6;
+            white-space: nowrap;
+            z-index: 1200;
+            pointer-events: none;
+            box-shadow: -2px 2px 8px rgba(0,0,0,0.6);
+            color: #aab;
+        }
+        .spot-result-row:hover .spot-preview { display: block; }
+        .spot-preview b { color: #dde; }
+        /* Highlight ring on map */
+        /* Outer div is used by Leaflet for translate3d positioning — must stay untouched */
+        .spot-hl-outer { background: none !important; border: none !important; }
+        /* Inner div carries the animation so transform: scale() doesn't fight Leaflet's translate3d */
+        .spot-hl {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 3px solid #ffe600;
+            box-shadow: 0 0 0 3px rgba(255,230,0,0.25), 0 0 12px 5px rgba(255,200,0,0.55);
+            animation: spot-pulse 0.85s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes spot-pulse {
+            0%, 100% { transform: scale(1);   opacity: 1; }
+            50%       { transform: scale(1.6); opacity: 0.35; }
+        }
     </style>
 </head>
 <body>
@@ -598,6 +760,23 @@
         <div id="map"></div>
         <div id="coord-display"></div>
         <div id="stage-groups-panel"></div>
+        <button id="spot-panel-toggle" title="Spot search (Ctrl+F)">🔍</button>
+        <div id="spot-panel">
+            <div id="spot-panel-header">
+                <span>Spot Search</span>
+                <button id="spot-panel-close" title="Close (Esc)">✕</button>
+            </div>
+            <div id="spot-search-wrap">
+                <input type="text" id="spot-search-input" placeholder="Enemy, item or gathering type…" autocomplete="off" spellcheck="false">
+                <button id="spot-search-clear" title="Clear search">✕</button>
+            </div>
+            <div id="spot-filter-tabs">
+                <button class="spot-tab active" data-filter="enemy">Enemies</button>
+                <button class="spot-tab" data-filter="gather">Gathering</button>
+                <button class="spot-tab" data-filter="item">Items</button>
+            </div>
+            <div id="spot-results"><div class="spot-empty">Type to search enemies or gathering points on this map.</div></div>
+        </div>
     </div>
 </div>
 <script type="module" src="map.js"></script>

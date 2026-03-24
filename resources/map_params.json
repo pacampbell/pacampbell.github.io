@@ -296,9 +296,9 @@
     },
     "img_width": 1024,
     "img_height": 1536,
-    "center_x": 492.0,
-    "center_y": 1037.0,
-    "scale": 0.008862,
+    "center_x": 491.3494,
+    "center_y": 1035.7706,
+    "scale": 0.00903919,
     "img_file": "field003_m00_l0.png",
     "img_exists": true,
     "layers": [
@@ -308,6 +308,7 @@
         "img_exists": true
       }
     ],
+    "scale_z": 0.00896766,
     "stage_labels": [
       {
         "name": "Wing Wind Plateau",
@@ -351,9 +352,9 @@
     },
     "img_width": 5120,
     "img_height": 5632,
-    "center_x": 2655.0,
-    "center_y": 3513.0,
-    "scale": 0.008862,
+    "center_x": 2655.0182,
+    "center_y": 3511.0718,
+    "scale": 0.00897601,
     "img_file": "field004_m00_l0.png",
     "img_exists": true,
     "layers": [
@@ -363,6 +364,7 @@
         "img_exists": true
       }
     ],
+    "scale_z": 0.00895099,
     "stage_labels": [
       {
         "name": "Deserted Village of Nabhadh",
