@@ -5928,14 +5928,14 @@ loadMap = function (mapName) {
 
     async function saveSource(key) {
         if (key === 'ddon-src-spawns' && _rawEnemyData) {
-            await writeToFile('ddon-src-spawns', JSON.stringify(_rawEnemyData));
+            await writeToFile('ddon-src-spawns', JSON.stringify(_rawEnemyData, null, 2));
         } else if (key === 'ddon-src-gathering' && _rawGatheringRows) {
             const csv = await serializeGatheringCsv();
             if (csv) await writeToFile('ddon-src-gathering', csv);
         } else if (key === 'ddon-src-shop' && _rawShopData) {
-            await writeToFile('ddon-src-shop', JSON.stringify(_rawShopData));
+            await writeToFile('ddon-src-shop', JSON.stringify(_rawShopData, null, 2));
         } else if (key === 'ddon-src-special-shop' && _rawSpecialShopData) {
-            await writeToFile('ddon-src-special-shop', JSON.stringify(_rawSpecialShopData));
+            await writeToFile('ddon-src-special-shop', JSON.stringify(_rawSpecialShopData, null, 2));
         }
         _dirtySet.delete(key);
         if (!_dirtySet.size) _editDirty = false;
