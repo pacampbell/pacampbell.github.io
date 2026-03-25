@@ -1,0 +1,2 @@
+python -m http.server 8000
+python main.py "C:\Users\Paul\Git\ddon-reference\data"

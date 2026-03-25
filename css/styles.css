@@ -222,6 +222,12 @@ table.quest-info td {
     border-bottom: 1px solid #212021;
 }
 
+.maps-link {
+    font-weight: bold;
+    font-size: 14pt;
+    border-bottom: 1px solid #212021;
+}
+
 /* Navigation styling */
 .nav-container {
     width: 100%;
