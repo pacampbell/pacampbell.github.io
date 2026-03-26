@@ -5112,12 +5112,16 @@ function _runSpotSearch() {
         const first = items[0];
         const multi = items.length > 1;
 
+        const isBossResult = first.type === 'enemy' && _enemySpawnCache && items.some(it =>
+            it.spawnKey && (_enemySpawnCache.get(it.spawnKey) ?? []).some(e => e.isBossGauge || e.isAreaBoss || e.raidBossId > 0));
         const dotHtml = first.type === 'gather'
             ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GATHER_COLORS[first.gatherType] ?? '#aaa'};flex-shrink:0"></span>`
             : first.type === 'item' && first.source === 'gather'
             ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#8c8">🌿</span>`
             : first.type === 'item' && first.source === 'shop'
             ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#fc8">🏪</span>`
+            : isBossResult
+            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#f44">☠</span>`
             : `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`;
 
         const previewHtml = multi
