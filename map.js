@@ -2896,28 +2896,28 @@ function loadGatherPoints(info, stid = null) {
                     const displayItems = _editMode ? items : items.filter(it => !it.isHidden);
                     if (displayItems.length) {
                         itemsHtml =
-                            '<div class="ge-items-view" style="margin-top:6px">' +
-                            '<table style="font-size:15px;border-collapse:collapse;line-height:2">' +
+                            '<div class="ge-items-view" style="margin-top:6px;display:flex;flex-direction:column;gap:4px">' +
                             displayItems.map(it => {
                                 const entry    = itemNames[String(it.itemId)];
                                 const name     = entry?.name ?? `Item #${it.itemId}`;
                                 const iconNo   = entry?.iconNo;
                                 const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
                                 const icon     = iconFile && _iconIdSet.has(iconNo)
-                                    ? `<img src="images/icons/small/${iconFile}" width="32" height="32" style="vertical-align:middle;margin-right:7px;image-rendering:pixelated">`
-                                    : `<span style="display:inline-block;width:32px;margin-right:7px"></span>`;
+                                    ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;image-rendering:pixelated;flex-shrink:0">`
+                                    : `<span style="display:inline-block;width:28px;flex-shrink:0"></span>`;
                                 const href     = `https://reference.dd-on.com/build/i${String(it.itemId).padStart(8, '0')}.html`;
-                                const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
-                                const qty      = it.maxItemNum > it.itemNum
-                                    ? ` ×${it.itemNum}–${it.maxItemNum}`
-                                    : ` ×${it.itemNum}`;
-                                const pct      = it.dropChance > 0
-                                    ? ` <span style="color:#777">(${(it.dropChance * 100).toFixed(0)}%)</span>` : '';
-                                const hiddenStyle = it.isHidden ? ' opacity:0.35;font-style:italic' : '';
+                                const nameLink = `<a href="${href}" target="_blank" style="color:#222;text-decoration:none;font-size:12px;line-height:1.3;word-break:break-word" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
+                                const qty      = it.maxItemNum > it.itemNum ? `×${it.itemNum}–${it.maxItemNum}` : `×${it.itemNum}`;
+                                const pct      = it.dropChance > 0 ? ` · ${(it.dropChance * 100).toFixed(0)}%` : '';
+                                const meta     = `<span style="font-size:12px;color:#777">${qty}${pct}</span>`;
+                                const hiddenStyle = it.isHidden ? 'opacity:0.35;font-style:italic;' : '';
                                 const hiddenTitle = it.isHidden ? ' title="Hidden"' : '';
-                                return `<tr style="${hiddenStyle}"${hiddenTitle}><td style="color:#222;padding-right:10px;white-space:nowrap">${icon}${nameLink}</td><td style="color:#555;white-space:nowrap">${qty}${pct}</td></tr>`;
+                                return `<div style="${hiddenStyle}display:flex;align-items:flex-start;gap:7px"${hiddenTitle}>`
+                                    + icon
+                                    + `<div style="display:flex;flex-direction:column;gap:1px;min-width:0">${nameLink}${meta}</div>`
+                                    + `</div>`;
                             }).join('') +
-                            '</table></div>';
+                            '</div>';
                     } else if (_editMode && !items.length) {
                         // Empty drop zone placeholder shown only in edit mode when no items at all
                         itemsHtml = '<div class="ge-items-view ge-items-empty" style="min-height:44px;display:flex;align-items:center;justify-content:center;margin-top:8px;border-radius:4px"><span style="color:#888;font-size:11px;font-style:italic;pointer-events:none">Drop items here to add</span></div>';
