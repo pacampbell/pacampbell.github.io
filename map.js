@@ -935,18 +935,32 @@ leafletMap.on('mousedown', (e) => {
 
 // ── Group chip / expand-collapse helpers ──────────────────────────────────────
 
-function makeChipIcon(groupId, _color, count, expanded, yOffset = 10, isKeyBearerGroup = false) {
+function makeChipIcon(groupId, _color, count, expanded, yOffset = 10, isKeyBearerGroup = false, isBossGroup = false) {
     // Use a brighter variant of the same hue for chip text (dark chip background needs L~0.78).
     const chipColor = `oklch(0.78 0.13 ${(parseInt(groupId, 10) * 137) % 360})`;
     const keyBadge  = isKeyBearerGroup ? '<span style="font-size:16px;margin-right:3px;color:#ffd700;" title="Key bearer group">🗝</span>' : '';
+    const bossBadge = isBossGroup      ? '<span style="font-size:13px;margin-right:3px;color:#ff4444;" title="Contains boss enemy">☠</span>' : '';
     return L.divIcon({
         className: '',
-        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor}">${keyBadge}<span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>G${groupId} <span class="chip-count">${count}</span></div>`,
+        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor}">${bossBadge}${keyBadge}<span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>G${groupId} <span class="chip-count">${count}</span></div>`,
         iconSize:   null,
         // When expanded: anchor at bottom of chip so the chip floats above the marker position.
         // When collapsed: anchor near top (yOffset) so chip hangs below the centroid.
         iconAnchor: expanded ? [0, 22] : [0, yOffset],
     });
+}
+
+// Returns true if any spawn position in the group has a boss-type enemy in the cache.
+function _groupHasBoss(g) {
+    if (!_enemySpawnCache) return false;
+    for (const { spawn, idx, stageNo } of g.items) {
+        const sid = stageIds[stageNo];
+        if (sid == null) continue;
+        const key = `${sid},${g.groupId},${spawn.posIdx ?? idx}`;
+        const entries = _enemySpawnCache.get(key) ?? [];
+        if (entries.some(e => e.isBossGauge || e.isAreaBoss || (e.raidBossId > 0))) return true;
+    }
+    return false;
 }
 
 // Build the details layer (hull + territory + spawn dots) for a group entry.
@@ -1021,6 +1035,15 @@ function buildGroupDetails(g) {
             spawnInfo?.isManualSet
                 ? `<br><span style="font-size:11px;color:#b0c4ff" title="Spawns dormant (mIsWaitting=true). Activated by boss SummonSet FSM action.">&#128564; Dormant until summoned</span>`
                 : '';
+        const buildBossLine = (spawnInfo) => {
+            if (!spawnInfo) return '';
+            const parts = [];
+            if (spawnInfo.isBossGauge) parts.push('Boss Gauge');
+            if (spawnInfo.isBossBGM)   parts.push('Boss BGM');
+            if (spawnInfo.isAreaBoss)  parts.push('Area Boss');
+            if (spawnInfo.raidBossId > 0) parts.push(`Raid Boss ID: ${spawnInfo.raidBossId}`);
+            return parts.length ? `<br><span style="font-size:11px;color:#ff6666">☠ ${parts.join(' · ')}</span>` : '';
+        };
 
         // Build popup HTML optionally enriched with server EnemySpawn data
         const serverStageId = stageIds[stageNo];
@@ -1376,7 +1399,7 @@ function buildGroupDetails(g) {
                     `<button class="popup-edit-btn danger" data-edit-action="remove-spawn" data-raw="${rawIdx}">🗑 Remove</button>` +
                     `</div></div>`;
             })() : '';
-            return `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${triggerLine}${cycleHtml}${emLine}${keyLine}${buildManualSetLine(spawnInfo)}${radiiLine}${orbsLine}${_editMode ? '' : buildDropsHtml(spawnInfo)}${editSection}`;
+            return `${badge}<br>${groupLabel}, Index: <b>${idx}</b>${subLine}${triggerLine}${cycleHtml}${emLine}${keyLine}${buildBossLine(spawnInfo)}${buildManualSetLine(spawnInfo)}${radiiLine}${orbsLine}${_editMode ? '' : buildDropsHtml(spawnInfo)}${editSection}`;
         };
 
         const buildTooltip = (spawnCache) => {
@@ -1428,9 +1451,10 @@ function buildGroupDetails(g) {
                 if (n) namePart = `${n} — `;
             }
             const e0 = entries[0] ?? null;
-            const orbBadge = (e0?.isBloodOrbEnemy && e0?.bloodOrbs ? ' 🩸' : '') + (e0?.isHighOrbEnemy && e0?.highOrbs ? ' ⭐' : '');
+            const orbBadge  = (e0?.isBloodOrbEnemy && e0?.bloodOrbs ? ' 🩸' : '') + (e0?.isHighOrbEnemy && e0?.highOrbs ? ' ⭐' : '');
             const manualBadge = e0?.isManualSet ? ' 😴' : '';
-            return `${namePart}${g.groupId}.${idx} [SS:${sg}]${orbBadge}${manualBadge}${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
+            const bossBadge = (e0?.isBossGauge || e0?.isAreaBoss || e0?.raidBossId > 0) ? ' <span style="color:#ff4444" title="Boss enemy">☠</span>' : '';
+            return `${namePart}${g.groupId}.${idx} [SS:${sg}]${orbBadge}${manualBadge}${bossBadge}${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
         };
 
         const marker = L.circleMarker(latlng, {
@@ -1952,7 +1976,7 @@ function _expandGroupCore(g) {
     let topPx = g.pts[0][0], topPy = g.pts[0][1];
     for (const [px, py] of g.pts) { if (py > topPy) { topPy = py; topPx = px; } }
     g.labelMarker.setLatLng(xy(topPx, topPy + 10));
-    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, true, g.yOffset, g.isKeyBearerGroup));
+    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, true, g.yOffset, g.isKeyBearerGroup, _groupHasBoss(g)));
     for (const [sgKey, markers] of Object.entries(g.sgMarkers)) {
         if (!_sgMarkers[sgKey]) _sgMarkers[sgKey] = [];
         _sgMarkers[sgKey].push(...markers);
@@ -1965,7 +1989,7 @@ function _collapseGroupCore(g) {
     if (g.territoryRect) territoryLayer.removeLayer(g.territoryRect);
     g.isExpanded = false;
     g.labelMarker.setLatLng(xy(g.centroid.px, g.centroid.py));
-    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, false, g.yOffset, g.isKeyBearerGroup));
+    g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, false, g.yOffset, g.isKeyBearerGroup, _groupHasBoss(g)));
     for (const sgKey of Object.keys(g.sgMarkers)) delete _sgMarkers[sgKey];
     if (_activeRadiiMarker && g.items.some(it => it.spawn === _activeRadiiMarker._spawn))
         clearSpawnRadii();
@@ -2356,7 +2380,7 @@ function loadEnemySpawns(info, stid = null) {
         const slotIdx   = bucket.indexOf(groupId);
         const yOffset   = 10 + slotIdx * 20;  // pixels below anchor
 
-        const chipIcon    = makeChipIcon(groupId, color, items.length, false, yOffset, keyBearerGroup);
+        const chipIcon    = makeChipIcon(groupId, color, items.length, false, yOffset, keyBearerGroup, false); // boss flag updated after cache loads
         const labelMarker = L.marker(xy(cx, cy), { icon: chipIcon, zIndexOffset: 100 });
 
         const g = { groupId, color, territory, isKeyBearerGroup: keyBearerGroup, splitId, areaSpawn, priority, items, pts,
@@ -4606,7 +4630,9 @@ function loadMap(mapName) {
     // Prefer the stid from the URL hash (e.g. "st0200"); fall back to the map name.
     const stid = currentStageName();
     const baseName = stid ? stageLabel(info, stid) : (info.name_en ? splitPascalCase(info.name_en) : mapName);
-    const title = baseName + ` (${stid ?? mapName})`;
+    const sidNum   = stid ? info.stage_ids?.[stid] : null;
+    const sidStr   = sidNum != null ? ` - sid${String(sidNum).padStart(4, '0')}` : '';
+    const title = baseName + ` (${stid ?? mapName}${sidStr})`;
     document.getElementById('map-title').textContent = title;
     document.title = `${title} — DDON Maps`;
 
@@ -4997,7 +5023,15 @@ function _rebuildSpotIndex() {
         if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
     }
 }
-_enemySpawnPromise  .then(_rebuildSpotIndex).catch(() => {});
+_enemySpawnPromise  .then(() => {
+    _rebuildSpotIndex();
+    // Refresh all chip icons now that boss data is available
+    for (const g of _groupStore.values()) {
+        if (_groupHasBoss(g)) {
+            g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, g.isExpanded, g.yOffset, g.isKeyBearerGroup, true));
+        }
+    }
+}).catch(() => {});
 _gatherItemsPromise .then(_rebuildSpotIndex).catch(() => {});
 _shopPromise        .then(_rebuildSpotIndex).catch(() => {});
 
