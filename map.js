@@ -938,11 +938,15 @@ leafletMap.on('mousedown', (e) => {
 function makeChipIcon(groupId, _color, count, expanded, yOffset = 10, isKeyBearerGroup = false, isBossGroup = false) {
     // Use a brighter variant of the same hue for chip text (dark chip background needs L~0.78).
     const chipColor = `oklch(0.78 0.13 ${(parseInt(groupId, 10) * 137) % 360})`;
-    const keyBadge  = isKeyBearerGroup ? '<span style="font-size:16px;margin-right:3px;color:#ffd700;" title="Key bearer group">🗝</span>' : '';
-    const bossBadge = isBossGroup      ? '<span style="font-size:13px;margin-right:3px;color:#ff4444;" title="Contains boss enemy">☠</span>' : '';
+    // Boss: red glow. Key bearer: gold glow + icon on the left. Both: layered glows.
+    const glows = [];
+    if (isBossGroup)      glows.push('0 0 7px 2px rgba(255,60,60,0.85)');
+    if (isKeyBearerGroup) glows.push('0 0 7px 2px rgba(255,210,0,0.85)');
+    const shadowStyle = glows.length ? `box-shadow:0 0 4px rgba(0,0,0,0.7),${glows.join(',')};` : '';
+    const titleAttr = [isBossGroup ? 'Contains boss enemy' : '', isKeyBearerGroup ? 'Key bearer group' : ''].filter(Boolean).join(' · ');
     return L.divIcon({
         className: '',
-        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor}">${bossBadge}${keyBadge}<span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>G${groupId} <span class="chip-count">${count}</span></div>`,
+        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor};${shadowStyle}"${titleAttr ? ` title="${titleAttr}"` : ''}><span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>G${groupId} <span class="chip-count">${count}</span></div>`,
         iconSize:   null,
         // When expanded: anchor at bottom of chip so the chip floats above the marker position.
         // When collapsed: anchor near top (yOffset) so chip hangs below the centroid.
@@ -1952,6 +1956,18 @@ function buildGroupDetails(g) {
         if (!g.sgMarkers[sgKey]) g.sgMarkers[sgKey] = [];
         g.sgMarkers[sgKey].push(marker);
 
+        // Style boss markers distinctly once cache is available
+        const applyBossStyle = (cache) => {
+            if (!spawnKey) return;
+            const ents = cache.get(spawnKey) ?? [];
+            if (ents.some(e => e.isBossGauge || e.isAreaBoss || e.raidBossId > 0)) {
+                marker.setStyle({ color: '#ff3333', fillColor: '#cc0000', weight: 3, radius: 8 });
+                marker._origStyle = { ...marker._origStyle, color: '#ff3333', fillColor: '#cc0000', weight: 3, radius: 8 };
+            }
+        };
+        if (_enemySpawnCache) applyBossStyle(_enemySpawnCache);
+        else _enemySpawnPromise.then(applyBossStyle).catch(() => {});
+
         marker
             .on('mouseover', function() { _highlightSG(this._sgKey); })
             .on('mouseout',  _unhighlightSG)
@@ -2380,13 +2396,15 @@ function loadEnemySpawns(info, stid = null) {
         const slotIdx   = bucket.indexOf(groupId);
         const yOffset   = 10 + slotIdx * 20;  // pixels below anchor
 
-        const chipIcon    = makeChipIcon(groupId, color, items.length, false, yOffset, keyBearerGroup, false); // boss flag updated after cache loads
-        const labelMarker = L.marker(xy(cx, cy), { icon: chipIcon, zIndexOffset: 100 });
-
         const g = { groupId, color, territory, isKeyBearerGroup: keyBearerGroup, splitId, areaSpawn, priority, items, pts,
                     centroid: { px: cx, py: cy }, yOffset,
-                    labelMarker, detailsLayer: null, isExpanded: false, sgMarkers: {} };
+                    labelMarker: null, detailsLayer: null, isExpanded: false, sgMarkers: {} };
         _groupStore.set(groupId, g);
+
+        // Check cache immediately (may already be loaded on map re-navigation); defer only if not yet available.
+        const chipIcon    = makeChipIcon(groupId, color, items.length, false, yOffset, keyBearerGroup, _groupHasBoss(g));
+        const labelMarker = L.marker(xy(cx, cy), { icon: chipIcon, zIndexOffset: 100 });
+        g.labelMarker = labelMarker;
 
         labelMarker.on('click', (e) => { L.DomEvent.stopPropagation(e); toggleGroup(groupId); });
         labelMarker.addTo(enemyLayer);
@@ -4714,12 +4732,23 @@ const _spotHlLayer  = L.layerGroup().addTo(leafletMap);
 function _clearSpotHighlights() {
     for (const m of _spotHighlights) _spotHlLayer.removeLayer(m);
     _spotHighlights = [];
+    for (const el of _spotHlChipEls) el.classList.remove('spot-hl-chip');
+    _spotHlChipEls = [];
 }
+
+let _spotHlChipEls = [];   // chip DOM elements that have the highlight class
 
 function _addSpotHighlight(latlng) {
     // className='spot-hl-outer' keeps Leaflet's translate3d intact; inner div carries the scale animation
     const icon = L.divIcon({ className: 'spot-hl-outer', html: '<div class="spot-hl"></div>', iconSize: [22, 22], iconAnchor: [11, 11] });
     _spotHighlights.push(L.marker(latlng, { icon, interactive: false }).addTo(_spotHlLayer));
+}
+
+function _addChipHighlight(g) {
+    const el = g.labelMarker.getElement()?.querySelector('.group-chip');
+    if (!el) return;
+    el.classList.add('spot-hl-chip');
+    _spotHlChipEls.push(el);
 }
 
 // Resolve the best highlight/flyTo position for a spot index entry at the moment it's needed.
@@ -5025,10 +5054,20 @@ function _rebuildSpotIndex() {
 }
 _enemySpawnPromise  .then(() => {
     _rebuildSpotIndex();
-    // Refresh all chip icons now that boss data is available
+    // Refresh all chip icons and mark boss markers now that spawn data is available
     for (const g of _groupStore.values()) {
         if (_groupHasBoss(g)) {
             g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, g.isExpanded, g.yOffset, g.isKeyBearerGroup, true));
+        }
+        // Re-apply boss styling for any already-expanded groups
+        for (const markers of Object.values(g.sgMarkers)) {
+            for (const m of markers) {
+                const entries = m._spawnKey ? (_enemySpawnCache.get(m._spawnKey) ?? []) : [];
+                if (entries.some(e => e.isBossGauge || e.isAreaBoss || e.raidBossId > 0)) {
+                    m.setStyle({ color: '#ff3333', fillColor: '#cc0000', weight: 3, radius: 8 });
+                    m._origStyle = { ...m._origStyle, color: '#ff3333', fillColor: '#cc0000', weight: 3, radius: 8 };
+                }
+            }
         }
     }
 }).catch(() => {});
@@ -5127,12 +5166,23 @@ function _runSpotSearch() {
 
         row.addEventListener('mouseenter', () => {
             _clearSpotHighlights();
+            const drawnGroups = new Set();
             for (const item of items) {
                 if (_currentFloorObbs && item.worldPos) {
                     const f = getEnemyFloor(item.worldPos.x, item.worldPos.y, item.worldPos.z, _currentFloorObbs);
                     if (f !== null && f !== currentLayer) continue;
                 }
-                _addSpotHighlight(_resolveSpotLatLng(item));
+                const grp = item.groupId ? _groupStore.get(item.groupId) : null;
+                if (item.groupId && !grp) continue;  // group not on this floor, skip
+                if (grp && !grp.isExpanded) {
+                    // Collapsed: highlight the chip element directly — no separate marker needed
+                    if (!drawnGroups.has(item.groupId)) {
+                        drawnGroups.add(item.groupId);
+                        _addChipHighlight(grp);
+                    }
+                } else {
+                    _addSpotHighlight(_resolveSpotLatLng(item));
+                }
             }
         });
         row.addEventListener('mouseleave', _clearSpotHighlights);

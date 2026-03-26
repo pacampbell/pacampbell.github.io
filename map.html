@@ -675,6 +675,14 @@
             animation: spot-pulse 0.85s ease-in-out infinite;
             pointer-events: none;
         }
+        /* Applied directly to the .group-chip element when a spot search row is hovered */
+        .group-chip.spot-hl-chip {
+            animation: spot-pulse-chip 0.85s ease-in-out infinite;
+        }
+        @keyframes spot-pulse-chip {
+            0%, 100% { box-shadow: 0 0 4px rgba(0,0,0,0.7), 0 0 0 2px rgba(255,230,0,0.5), 0 0 12px 5px rgba(255,200,0,0.7); }
+            50%       { box-shadow: 0 0 4px rgba(0,0,0,0.7), 0 0 0 4px rgba(255,230,0,0.15), 0 0 18px 8px rgba(255,200,0,0.25); }
+        }
         @keyframes spot-pulse {
             0%, 100% { transform: scale(1);   opacity: 1; }
             50%       { transform: scale(1.6); opacity: 0.35; }
