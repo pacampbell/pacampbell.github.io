@@ -1253,7 +1253,10 @@ function buildGroupDetails(g) {
                             `</div>`;
                         return toggleRow + conflict;
                     }
-                    const banner = `<div style="background:#f0f7f0;border:1px solid #7ab87a;border-radius:3px;padding:3px 7px;font-size:11px;color:#3a6b3a;margin-bottom:4px">⚡ Spawn Set ${sg} — changes apply to all ${total} positions</div>`;
+                    const emptyCount = peers.filter(p => !p.entries.length).length;
+                    const fillBtn    = emptyCount > 0
+                        ? ` <button class="se-set-fill-btn" style="font-size:10px;padding:1px 7px;border-radius:3px;cursor:pointer;border:1px solid;background:#4a90d9;color:#fff;border-color:#357abd" title="Copy this position's enemy and all values to the ${emptyCount} empty position${emptyCount > 1 ? 's' : ''} in this spawn set">📋 Fill ${emptyCount} empty</button>` : '';
+                    const banner = `<div style="background:#f0f7f0;border:1px solid #7ab87a;border-radius:3px;padding:3px 7px;font-size:11px;color:#3a6b3a;margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">⚡ Spawn Set ${sg} — changes apply to all ${total} positions${fillBtn}</div>`;
                     return toggleRow + banner;
                 })();
                 return `<div class="popup-edit-section"><div class="se-spawn-view">${setModeBar}` +
@@ -1570,6 +1573,120 @@ function buildGroupDetails(g) {
                         if (e.target.closest('.se-set-keep-diffs-btn')) {
                             e.stopPropagation();
                             _spawnSetConflictDismissed = true;
+                            rebuildPopup();
+                            return;
+                        }
+                        if (e.target.closest('.se-set-fill-btn')) {
+                            e.stopPropagation();
+                            const si0 = getEntries()[displayIdx];
+                            if (!si0) return;
+                            const peers = getPeers(cache);
+                            const fields = {
+                                emCode: si0.emCode, lv: si0.lv, bloodOrbs: si0.bloodOrbs,
+                                highOrbs: si0.highOrbs, scale: si0.scale, exp: si0.exp,
+                                repopNum: si0.repopNum, repopCount: si0.repopCount,
+                                setType: si0.setType, infection: si0.infection,
+                                targetTypeId: si0.targetTypeId, spawnTime: si0.spawnTime,
+                                namedId: si0.namedId, raidBossId: si0.raidBossId,
+                                isBossGauge: si0.isBossGauge, isBossBGM: si0.isBossBGM,
+                                isAreaBoss: si0.isAreaBoss, isManualSet: si0.isManualSet,
+                                isBloodOrbEnemy: si0.isBloodOrbEnemy, isHighOrbEnemy: si0.isHighOrbEnemy,
+                                startThink: si0.startThink, montage: si0.montage,
+                                ppDrop: si0.ppDrop, dropsTableId: si0.dropsTableId, drops: si0.drops,
+                                subGroupId: si0.subGroupId,
+                            };
+                            const hexId = si0.emCode ? ('0x' + si0.emCode.slice(2).toUpperCase()) : null;
+                            for (const peer of peers) {
+                                if (peer.entries.length > 0) {
+                                    // Update existing entries
+                                    for (const pEntry of peer.entries) {
+                                        Object.assign(pEntry, fields);
+                                        if (_rawEnemyData && pEntry._rawIdx >= 0) {
+                                            const pRow = _rawEnemyData.enemies[pEntry._rawIdx];
+                                            if (pRow) {
+                                                const { iEnemyId, iLv, iBlood, iHigh, iScale, iNamed, iRaidBoss,
+                                                        iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
+                                                        iExp, iRepopNum, iRepopCount, iTargetType, iSpawnTime,
+                                                        iStartThink, iMontage, iIsManualSet, iPPDrop,
+                                                        iIsBloodOrbEnemy, iIsHighOrbEnemy, iDrops, iSubGroup } = _rawEnemySchemas;
+                                                if (iEnemyId >= 0 && hexId) pRow[iEnemyId] = hexId;
+                                                pRow[iLv] = fields.lv;
+                                                pRow[iBlood] = fields.bloodOrbs;
+                                                pRow[iHigh]  = fields.highOrbs;
+                                                if (iScale      >= 0) pRow[iScale]      = fields.scale;
+                                                if (iExp        >= 0) pRow[iExp]        = fields.exp;
+                                                if (iRepopNum   >= 0) pRow[iRepopNum]   = fields.repopNum;
+                                                if (iRepopCount >= 0) pRow[iRepopCount] = fields.repopCount;
+                                                if (iSetType    >= 0) pRow[iSetType]    = fields.setType;
+                                                if (iInfection  >= 0) pRow[iInfection]  = fields.infection;
+                                                if (iTargetType >= 0) pRow[iTargetType] = fields.targetTypeId;
+                                                if (iSpawnTime  >= 0) pRow[iSpawnTime]  = fields.spawnTime;
+                                                if (iNamed      >= 0) pRow[iNamed]      = fields.namedId;
+                                                if (iRaidBoss   >= 0) pRow[iRaidBoss]   = fields.raidBossId;
+                                                if (iIsBossG    >= 0) pRow[iIsBossG]    = fields.isBossGauge;
+                                                if (iIsBossBGM  >= 0) pRow[iIsBossBGM]  = fields.isBossBGM;
+                                                if (iIsAreaBoss >= 0) pRow[iIsAreaBoss] = fields.isAreaBoss;
+                                                if (iIsManualSet    >= 0) pRow[iIsManualSet]    = fields.isManualSet;
+                                                if (iIsBloodOrbEnemy >= 0) pRow[iIsBloodOrbEnemy] = fields.isBloodOrbEnemy;
+                                                if (iIsHighOrbEnemy  >= 0) pRow[iIsHighOrbEnemy]  = fields.isHighOrbEnemy;
+                                                if (iStartThink >= 0) pRow[iStartThink] = fields.startThink;
+                                                if (iMontage    >= 0) pRow[iMontage]    = fields.montage;
+                                                if (iPPDrop     >= 0) pRow[iPPDrop]     = fields.ppDrop;
+                                                if (iSubGroup   >= 0) pRow[iSubGroup]   = fields.subGroupId;
+                                                pRow[iDrops] = fields.dropsTableId;
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // Create a brand-new entry for this empty position
+                                    const [pSid, pGid, pPosIdx] = peer.key.split(',');
+                                    const newEntry = { ...fields, hmPreset: si0.hmPreset ?? 0, _rawIdx: -1 };
+                                    if (_rawEnemyData && hexId) {
+                                        const { iStage, iGroup, iPosIdx: iPI, iEnemyId, iLv, iBlood, iHigh,
+                                                iSpawnTime, iDrops, iScale, iSubGroup, iNamed, iRaidBoss,
+                                                iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
+                                                iIsBloodOrbEnemy, iIsHighOrbEnemy,
+                                                iExp, iRepopNum, iRepopCount, iTargetType,
+                                                iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop } = _rawEnemySchemas;
+                                        const newRaw = new Array(_rawEnemyData.schemas.enemies.length).fill(null);
+                                        newRaw[iStage]  = Number(pSid);
+                                        newRaw[iGroup]  = Number(pGid);
+                                        newRaw[iPI]     = Number(pPosIdx);
+                                        if (iEnemyId >= 0) newRaw[iEnemyId] = hexId;
+                                        newRaw[iLv]     = fields.lv;
+                                        newRaw[iBlood]  = fields.bloodOrbs;
+                                        newRaw[iHigh]   = fields.highOrbs;
+                                        newRaw[iSpawnTime] = fields.spawnTime;
+                                        newRaw[iDrops]  = fields.dropsTableId;
+                                        if (iScale      >= 0) newRaw[iScale]      = fields.scale;
+                                        if (iSubGroup   >= 0) newRaw[iSubGroup]   = fields.subGroupId;
+                                        if (iNamed      >= 0) newRaw[iNamed]      = fields.namedId;
+                                        if (iRaidBoss   >= 0) newRaw[iRaidBoss]   = fields.raidBossId;
+                                        if (iSetType    >= 0) newRaw[iSetType]    = fields.setType;
+                                        if (iInfection  >= 0) newRaw[iInfection]  = fields.infection;
+                                        if (iIsBossG    >= 0) newRaw[iIsBossG]    = fields.isBossGauge;
+                                        if (iIsBossBGM  >= 0) newRaw[iIsBossBGM]  = fields.isBossBGM;
+                                        if (iIsAreaBoss >= 0) newRaw[iIsAreaBoss] = fields.isAreaBoss;
+                                        if (iIsManualSet    >= 0) newRaw[iIsManualSet]    = fields.isManualSet;
+                                        if (iIsBloodOrbEnemy >= 0) newRaw[iIsBloodOrbEnemy] = fields.isBloodOrbEnemy;
+                                        if (iIsHighOrbEnemy  >= 0) newRaw[iIsHighOrbEnemy]  = fields.isHighOrbEnemy;
+                                        if (iExp        >= 0) newRaw[iExp]        = fields.exp;
+                                        if (iRepopNum   >= 0) newRaw[iRepopNum]   = fields.repopNum;
+                                        if (iRepopCount >= 0) newRaw[iRepopCount] = fields.repopCount;
+                                        if (iTargetType >= 0) newRaw[iTargetType] = fields.targetTypeId;
+                                        if (iHmPreset   >= 0) newRaw[iHmPreset]   = hmPresetsByEmCode.get(fields.emCode)?.id ?? 0;
+                                        if (iStartThink >= 0) newRaw[iStartThink] = fields.startThink;
+                                        if (iMontage    >= 0) newRaw[iMontage]    = fields.montage;
+                                        if (iIsManualSet >= 0) newRaw[iIsManualSet] = fields.isManualSet;
+                                        if (iPPDrop     >= 0) newRaw[iPPDrop]     = fields.ppDrop;
+                                        _rawEnemyData.enemies.push(newRaw);
+                                        newEntry._rawIdx = _rawEnemyData.enemies.length - 1;
+                                    }
+                                    cache.set(peer.key, [newEntry]);
+                                }
+                            }
+                            _spawnSetConflictDismissed = true;
+                            if (_markDirty) _markDirty('ddon-src-spawns');
                             rebuildPopup();
                             return;
                         }
