@@ -246,6 +246,7 @@ let _editDirty       = false;       // any unsaved changes this session
 let _dirtySet        = new Set();   // which source keys have unsaved changes
 let _rawEnemyData    = null;        // full EnemySpawn.json object kept for write-back
 let _rawEnemySchemas = null;        // field-index shortcuts (same as iLv etc. but accessible globally)
+let _copiedEnemyConfig = null;      // cross-marker copy/paste clipboard
 let _rawGatheringRows    = null;    // mutable array of CSV row-objects for write-back
 let _rawGatheringHeaders = null;    // original CSV header string (including leading '#')
 let _rawShopData          = null;   // full Shop.json array kept for write-back
@@ -295,12 +296,10 @@ function getLayersHash() {
     if (document.getElementById('layer-landmarks').checked)     s += 'l';
     if (document.getElementById('layer-connections').checked)   s += 'c';
     if (document.getElementById('layer-grid').checked)          s += 'g';
-    if (document.getElementById('layer-territory').checked)     s += 't';
     if (document.getElementById('layer-stage-labels').checked)  s += 'a';
     if (document.getElementById('layer-gather').checked)        s += 'r';
     if (document.getElementById('layer-radii').checked)         s += 'i';
-    if (document.getElementById('layer-npc-shops').checked)           s += 'n';
-    if (document.getElementById('layer-special-shops').checked)       s += 'p';
+    if (document.getElementById('layer-shops').checked)               s += 'n';
     if (document.getElementById('layer-break-targets').checked)       s += 'b';
     if (document.getElementById('sidebar').classList.contains('collapsed')) s += 's';
     const openIds = [..._groupStore.values()]
@@ -332,12 +331,10 @@ function saveLayerPrefs() {
         landmarks:    document.getElementById('layer-landmarks').checked,
         connections:  document.getElementById('layer-connections').checked,
         grid:         document.getElementById('layer-grid').checked,
-        territory:    document.getElementById('layer-territory').checked,
         stageLabels:  document.getElementById('layer-stage-labels').checked,
         gather:       document.getElementById('layer-gather').checked,
         radii:        document.getElementById('layer-radii').checked,
-        npcShops:      document.getElementById('layer-npc-shops').checked,
-        specialShops:  document.getElementById('layer-special-shops').checked,
+        shops:         document.getElementById('layer-shops').checked,
         breakTargets:  document.getElementById('layer-break-targets').checked,
     };
     try { localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
@@ -364,12 +361,10 @@ function loadLayerPrefs() {
     document.getElementById('layer-landmarks').checked     = isOn('landmarks',    true);
     document.getElementById('layer-connections').checked   = isOn('connections',  true);
     document.getElementById('layer-grid').checked          = isOn('grid',         false);
-    document.getElementById('layer-territory').checked     = isOn('territory',    false);
     document.getElementById('layer-stage-labels').checked  = isOn('stageLabels',  true);
     document.getElementById('layer-gather').checked        = isOn('gather',        false);
     document.getElementById('layer-radii').checked         = isOn('radii',         false);
-    document.getElementById('layer-npc-shops').checked      = isOn('npcShops',      true);
-    document.getElementById('layer-special-shops').checked  = isOn('specialShops',  false);
+    document.getElementById('layer-shops').checked          = isOn('shops', false) || isOn('npcShops', true);
     document.getElementById('layer-break-targets').checked  = isOn('breakTargets',  false);
 
     if (!document.getElementById('layer-landmarks').checked)
@@ -378,16 +373,14 @@ function loadLayerPrefs() {
         leafletMap.removeLayer(connectionLayer);
     if (document.getElementById('layer-grid').checked)
         leafletMap.addLayer(gridLayer);
-    if (document.getElementById('layer-territory').checked)
-        leafletMap.addLayer(territoryLayer);
     if (!document.getElementById('layer-stage-labels').checked)
         leafletMap.removeLayer(stageLabelsLayer);
     if (document.getElementById('layer-gather').checked)
         leafletMap.addLayer(gatherLayer);
-    if (document.getElementById('layer-npc-shops').checked)
+    if (document.getElementById('layer-shops').checked) {
         leafletMap.addLayer(npcShopLayer);
-    if (document.getElementById('layer-special-shops').checked)
         leafletMap.addLayer(specialShopLayer);
+    }
     if (document.getElementById('layer-break-targets').checked)
         leafletMap.addLayer(breakTargetLayer);
     if (!document.getElementById('layer-enemies').checked)
@@ -424,12 +417,9 @@ document.getElementById('layer-radii').addEventListener('change', e => {
     if (!e.target.checked) clearSpawnRadii();
     saveLayerPrefs();
 });
-document.getElementById('layer-npc-shops').addEventListener('change', e => {
-    e.target.checked ? leafletMap.addLayer(npcShopLayer) : leafletMap.removeLayer(npcShopLayer);
-    saveLayerPrefs();
-});
-document.getElementById('layer-special-shops').addEventListener('change', e => {
-    e.target.checked ? leafletMap.addLayer(specialShopLayer) : leafletMap.removeLayer(specialShopLayer);
+document.getElementById('layer-shops').addEventListener('change', e => {
+    if (e.target.checked) { leafletMap.addLayer(npcShopLayer); leafletMap.addLayer(specialShopLayer); }
+    else { leafletMap.removeLayer(npcShopLayer); leafletMap.removeLayer(specialShopLayer); }
     saveLayerPrefs();
 });
 document.getElementById('layer-break-targets').addEventListener('change', e => {
@@ -445,19 +435,6 @@ function setSidebarCollapsed(collapsed) {
 }
 document.getElementById('sidebar-collapse').addEventListener('click', () => setSidebarCollapsed(true));
 document.getElementById('sidebar-toggle').addEventListener('click',   () => setSidebarCollapsed(false));
-
-document.getElementById('layer-territory').addEventListener('change', e => {
-    if (e.target.checked) {
-        leafletMap.addLayer(territoryLayer);
-        // Populate with any already-expanded groups
-        for (const g of _groupStore.values())
-            if (g.isExpanded && g.territoryRect) territoryLayer.addLayer(g.territoryRect);
-    } else {
-        territoryLayer.clearLayers();
-        leafletMap.removeLayer(territoryLayer);
-    }
-    saveLayerPrefs();
-});
 
 document.getElementById('btn-expand-collapse').addEventListener('click', () => {
     const anyCollapsed = [..._groupStore.values()].some(g => !g.isExpanded);
@@ -724,12 +701,10 @@ function parseHash() {
             landmarks:    flagStr.includes('l'),
             connections:  flagStr.includes('c'),
             grid:         flagStr.includes('g'),
-            territory:    flagStr.includes('t'),
             stageLabels:  flagStr.includes('a'),
             gather:       flagStr.includes('r'),
             radii:         flagStr.includes('i'),
-            npcShops:      flagStr.includes('n'),
-            specialShops:  flagStr.includes('p'),
+            shops:         flagStr.includes('n') || flagStr.includes('p'),
             breakTargets:  flagStr.includes('b'),
             sidebarHidden: flagStr.includes('s'),
         };
@@ -1167,14 +1142,46 @@ function buildGroupDetails(g) {
                 const h = (spawnInfo.isHighOrbEnemy  && spawnInfo.highOrbs)  ? `<span title="High Orbs">⭐</span> ${spawnInfo.highOrbs}`   : '';
                 return `<br><span style="font-size:12px">${[b, h].filter(Boolean).join(' &nbsp;&nbsp; ')}</span>`;
             })() : '';
+            // ── Spawn-set prev/next nav (visible in both viewer and edit mode) ──
+            const buildSetNavRow = () => {
+                if (!spawnKey || sg == null) return '';
+                const [sid, gid] = spawnKey.split(',');
+                const allPos = g.items
+                    .filter(item => item.sg === sg)
+                    .map(item => ({
+                        key: `${sid},${gid},${item.spawn.posIdx ?? item.idx}`,
+                        idx: item.idx,
+                    }))
+                    .sort((a, b) => a.idx - b.idx);
+                if (allPos.length < 2) return '';
+                const curIdx  = allPos.findIndex(p => p.key === spawnKey);
+                const nb      = 'font-size:10px;padding:1px 6px;border-radius:3px;cursor:pointer;border:1px solid #ccc;background:#f0f0f0;color:#555';
+                const prevPos = allPos[(curIdx - 1 + allPos.length) % allPos.length];
+                const nextPos = allPos[(curIdx + 1) % allPos.length];
+                const posLabel = curIdx >= 0 ? `${curIdx + 1}/${allPos.length}` : `?/${allPos.length}`;
+                return `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px">`
+                    + `<span style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:0.4px;margin-right:2px">Set ${sg}</span>`
+                    + `<button class="se-set-nav-btn" data-key="${prevPos.key}" style="${nb}" title="Previous in spawn set">◀</button>`
+                    + `<span style="font-size:10px;color:#666;min-width:28px;text-align:center">${posLabel}</span>`
+                    + `<button class="se-set-nav-btn" data-key="${nextPos.key}" style="${nb}" title="Next in spawn set">▶</button>`
+                    + `</div>`;
+            };
+
             const editSection = _editMode ? (() => {
                 if (!spawnKey) return '';
                 if (!spawnInfo) {
-                    // Empty node — show drop zone only
+                    // Empty node — show set nav + drop zone + paste button if clipboard has data
                     return `<div class="popup-edit-section">` +
+                        buildSetNavRow() +
                         `<div class="se-spawn-view se-spawn-empty" style="min-height:40px;display:flex;align-items:center;justify-content:center;border:1px dashed rgba(120,120,120,0.4);border-radius:3px;margin:4px 0">` +
                         `<span style="color:#666;font-size:11px;pointer-events:none">Drop an enemy here to add a spawn</span>` +
-                        `</div></div>`;
+                        `</div>` +
+                        (_copiedEnemyConfig
+                            ? `<div style="text-align:center;margin-top:4px">` +
+                              `<button class="popup-edit-btn accent" data-edit-action="paste-config">📋 Paste ${emNames[_copiedEnemyConfig.emCode]?.name ?? _copiedEnemyConfig.emCode ?? 'enemy'}</button>` +
+                              `</div>`
+                            : '') +
+                        `</div>`;
                 }
                 const rawIdx = spawnInfo._rawIdx ?? '';
                 const inp = (key, val, w='48px', type='number') =>
@@ -1234,13 +1241,16 @@ function buildGroupDetails(g) {
                     const singleBtn = `<button class="se-set-single-btn" style="${btnBase}${singleOn ? 'background:#4a90d9;color:#fff;border-color:#357abd' : 'background:#f0f0f0;color:#555;border-color:#ccc'}">Single</button>`;
                     const setBtn    = `<button class="se-set-mode-btn"   style="${btnBase}${_spawnSetMode ? 'background:#4a90d9;color:#fff;border-color:#357abd' : 'background:#f0f0f0;color:#555;border-color:#ccc'}">Set ${sg}</button>`;
                     const toggleRow = `<div style="display:flex;gap:4px;align-items:center;margin-bottom:4px"><span style="font-size:9px;color:#aaa;text-transform:uppercase;letter-spacing:0.4px;margin-right:2px">Edit</span>${singleBtn}${setBtn}</div>`;
-                    if (!_spawnSetMode) return toggleRow;
+                    if (!_spawnSetMode) {
+                        return toggleRow + buildSetNavRow();
+                    }
                     // In set mode — determine peers (same SpawnGroup) and check for mixed content
                     const peers = getPeers(spawnCache);
                     const total = peers.length + 1;
+                    const navRow = buildSetNavRow();
                     if (!peers.length) {
                         const info = `<div style="background:#f0f4ff;border:1px solid #b0c4de;border-radius:3px;padding:3px 7px;font-size:11px;color:#555;margin-bottom:4px">⚡ Spawn Set ${sg} — only position in this group with that value</div>`;
-                        return toggleRow + info;
+                        return toggleRow + navRow + info;
                     }
                     const curEmCode = spawnInfo?.emCode;
                     const hasMixed  = !_spawnSetConflictDismissed && peers.some(p => p.entries.some(e => e.emCode && e.emCode !== curEmCode));
@@ -1251,13 +1261,19 @@ function buildGroupDetails(g) {
                             `<button class="se-set-use-template-btn" style="${nb}background:#4a90d9;color:#fff;border-color:#357abd">Use this as template</button>&nbsp;` +
                             `<button class="se-set-keep-diffs-btn"   style="${nb}background:#f0f0f0;color:#555;border-color:#ccc">Keep differences</button>` +
                             `</div>`;
-                        return toggleRow + conflict;
+                        return toggleRow + navRow + conflict;
                     }
-                    const emptyCount = peers.filter(p => !p.entries.length).length;
-                    const fillBtn    = emptyCount > 0
-                        ? ` <button class="se-set-fill-btn" style="font-size:10px;padding:1px 7px;border-radius:3px;cursor:pointer;border:1px solid;background:#4a90d9;color:#fff;border-color:#357abd" title="Copy this position's enemy and all values to the ${emptyCount} empty position${emptyCount > 1 ? 's' : ''} in this spawn set">📋 Fill ${emptyCount} empty</button>` : '';
-                    const banner = `<div style="background:#f0f7f0;border:1px solid #7ab87a;border-radius:3px;padding:3px 7px;font-size:11px;color:#3a6b3a;margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">⚡ Spawn Set ${sg} — changes apply to all ${total} positions${fillBtn}</div>`;
-                    return toggleRow + banner;
+                    const emptyCount   = peers.filter(p => !p.entries.length).length;
+                    const nb           = 'font-size:10px;padding:1px 7px;border-radius:3px;cursor:pointer;border:1px solid;';
+                    const fillBtn      = emptyCount > 0
+                        ? `<button class="se-set-fill-btn" data-fill-mode="empty" style="${nb}background:#4a90d9;color:#fff;border-color:#357abd" title="Copy this position's enemy and all values to the ${emptyCount} empty position${emptyCount > 1 ? 's' : ''} in this spawn set">📋 Fill ${emptyCount} empty</button>` : '';
+                    const copyAllBtn   = `<button class="se-set-fill-btn" data-fill-mode="all" style="${nb}background:#d97b4a;color:#fff;border-color:#b85e2e" title="Overwrite all ${total} positions in this spawn set with this position's enemy and values">📋 Copy to all ${total}</button>`;
+                    const removeAllBtn = `<button class="se-set-remove-all-btn" style="${nb}background:#c0392b;color:#fff;border-color:#96281b" title="Remove enemy data from all ${total} positions in this spawn set">🗑 Remove all</button>`;
+                    const banner = `<div style="background:#f0f7f0;border:1px solid #7ab87a;border-radius:3px;padding:3px 7px;font-size:11px;color:#3a6b3a;margin-bottom:4px">`
+                        + `<div>⚡ Spawn Set ${sg} — ${total} positions</div>`
+                        + `<div style="display:flex;gap:4px;margin-top:3px">${fillBtn}${copyAllBtn}${removeAllBtn}</div>`
+                        + `</div>`;
+                    return toggleRow + navRow + banner;
                 })();
                 return `<div class="popup-edit-section"><div class="se-spawn-view">${setModeBar}` +
                     grp('Drops',
@@ -1402,7 +1418,9 @@ function buildGroupDetails(g) {
                     `</div>` +
                     `</div>` +
                     `<div style="display:flex;gap:6px;margin-top:8px">` +
-                    `<button class="popup-edit-btn" data-edit-action="apply" data-raw="${rawIdx}" style="flex:1">✔ Apply</button>` +
+                    `<button class="popup-edit-btn" data-edit-action="apply" data-raw="${rawIdx}" style="flex:1;opacity:0.45;cursor:not-allowed" disabled>✔ Apply</button>` +
+                    `<button class="popup-edit-btn" data-edit-action="copy-config" title="Copy this enemy's config to clipboard">📋 Copy</button>` +
+                    (_copiedEnemyConfig ? `<button class="popup-edit-btn accent" data-edit-action="paste-config" title="Paste clipboard config onto this enemy">📋 Paste</button>` : '') +
                     `<button class="popup-edit-btn danger" data-edit-action="remove-spawn" data-raw="${rawIdx}">🗑 Remove</button>` +
                     `</div></div>`;
             })() : '';
@@ -1495,6 +1513,19 @@ function buildGroupDetails(g) {
         // Rebuild popup content and attach cycle-button handlers on open.
         // Uses direct innerHTML update on the content div to avoid Leaflet's
         // setContent/update reflow, which closes tooltips and repositions the popup.
+        const watchEditChanges = (cd) => {
+            const applyBtn = cd?.querySelector('[data-edit-action="apply"]');
+            if (!applyBtn) return;
+            const enable = () => {
+                applyBtn.disabled = false;
+                applyBtn.style.opacity = '';
+                applyBtn.style.cursor = '';
+            };
+            const section = cd.querySelector('.popup-edit-section');
+            if (!section) return;
+            section.addEventListener('input', enable, { once: true });
+            section.addEventListener('change', enable, { once: true });
+        };
         let _popupClickHandler = null;
         marker.on('popupopen', function() {
             leafletMap.on('move', _repositionNamedStatsPanel);
@@ -1514,6 +1545,7 @@ function buildGroupDetails(g) {
                     const ni = cd.querySelector('[data-edit="namedId"]');
                     if (_editMode && ni) showNamedStatsPanel(parseInt(ni.value) || 0, el, baseEm0);
                     else hideNamedStatsPanel();
+                    watchEditChanges(cd);
                 }
             };
             const bind = (cache) => {
@@ -1535,6 +1567,7 @@ function buildGroupDetails(g) {
                         const ni = contentDiv.querySelector('[data-edit="namedId"]');
                         if (_editMode && ni) showNamedStatsPanel(parseInt(ni.value) || 0, el, baseEm);
                         else hideNamedStatsPanel();
+                        watchEditChanges(contentDiv);
                     }
                     // Replace click handler (event delegation — survives innerHTML swaps)
                     if (_popupClickHandler) el.removeEventListener('click', _popupClickHandler);
@@ -1552,8 +1585,26 @@ function buildGroupDetails(g) {
                         const ni = cd.querySelector('[data-edit="namedId"]');
                         if (_editMode && ni) showNamedStatsPanel(parseInt(ni.value) || 0, el, baseEm);
                         else hideNamedStatsPanel();
+                        watchEditChanges(cd);
                     };
                     _popupClickHandler = (e) => {
+                        // ── Spawn-set set navigation ───────────────────────────
+                        if (e.target.closest('.se-set-nav-btn')) {
+                            e.stopPropagation();
+                            const targetKey = e.target.closest('.se-set-nav-btn').dataset.key;
+                            let targetMarker = null;
+                            for (const markers of Object.values(g.sgMarkers)) {
+                                for (const m of markers) {
+                                    if (m._spawnKey === targetKey) { targetMarker = m; break; }
+                                }
+                                if (targetMarker) break;
+                            }
+                            if (targetMarker) {
+                                marker.closePopup();
+                                setTimeout(() => targetMarker.openPopup(), 0);
+                            }
+                            return;
+                        }
                         // ── Spawn-set mode toggles ─────────────────────────────
                         if (e.target.closest('.se-set-single-btn')) {
                             e.stopPropagation();
@@ -1578,6 +1629,7 @@ function buildGroupDetails(g) {
                         }
                         if (e.target.closest('.se-set-fill-btn')) {
                             e.stopPropagation();
+                            const fillMode = e.target.closest('.se-set-fill-btn').dataset.fillMode; // 'empty' | 'all'
                             const si0 = getEntries()[displayIdx];
                             if (!si0) return;
                             const peers = getPeers(cache);
@@ -1597,8 +1649,8 @@ function buildGroupDetails(g) {
                             };
                             const hexId = si0.emCode ? ('0x' + si0.emCode.slice(2).toUpperCase()) : null;
                             for (const peer of peers) {
-                                if (peer.entries.length > 0) {
-                                    // Update existing entries
+                                if (peer.entries.length > 0 && fillMode === 'all') {
+                                    // Overwrite existing entries (copy-to-all mode only)
                                     for (const pEntry of peer.entries) {
                                         Object.assign(pEntry, fields);
                                         if (_rawEnemyData && pEntry._rawIdx >= 0) {
@@ -1688,6 +1740,45 @@ function buildGroupDetails(g) {
                             _spawnSetConflictDismissed = true;
                             if (_markDirty) _markDirty('ddon-src-spawns');
                             rebuildPopup();
+                            return;
+                        }
+                        if (e.target.closest('.se-set-remove-all-btn')) {
+                            e.stopPropagation();
+                            const peers = getPeers(cache);
+                            // Remove current position's entry too
+                            if (spawnKey) {
+                                const arr = cache.get(spawnKey);
+                                if (arr) {
+                                    if (_rawEnemyData) {
+                                        for (const ent of arr) {
+                                            if (ent._rawIdx >= 0) {
+                                                _rawEnemyData.enemies.splice(ent._rawIdx, 1);
+                                                for (const entryArr of cache.values())
+                                                    for (const e2 of entryArr)
+                                                        if (e2._rawIdx > ent._rawIdx) e2._rawIdx--;
+                                            }
+                                        }
+                                    }
+                                    cache.delete(spawnKey);
+                                }
+                            }
+                            // Remove all peer entries
+                            for (const peer of peers) {
+                                if (!peer.entries.length) continue;
+                                if (_rawEnemyData) {
+                                    for (const ent of peer.entries) {
+                                        if (ent._rawIdx >= 0) {
+                                            _rawEnemyData.enemies.splice(ent._rawIdx, 1);
+                                            for (const entryArr of cache.values())
+                                                for (const e2 of entryArr)
+                                                    if (e2._rawIdx > ent._rawIdx) e2._rawIdx--;
+                                        }
+                                    }
+                                }
+                                cache.delete(peer.key);
+                            }
+                            if (_markDirty) _markDirty('ddon-src-spawns');
+                            marker.closePopup();
                             return;
                         }
                         if (e.target.closest('.se-set-use-template-btn')) {
@@ -1939,7 +2030,137 @@ function buildGroupDetails(g) {
                                 cd.innerHTML = buildEnemyPopup(cache);
                                 popup._updateLayout?.();
                                 popup._updatePosition?.();
+                                watchEditChanges(cd);
+                                const view = cd.querySelector('.se-spawn-view');
+                                if (view) {
+                                    view.style.transition = 'background 0.08s';
+                                    view.style.background = 'rgba(80,200,120,0.35)';
+                                    setTimeout(() => {
+                                        view.style.transition = 'background 0.5s';
+                                        view.style.background = '';
+                                    }, 150);
+                                }
                             }
+                        } else if (action === 'copy-config') {
+                            const src = getEntries()[displayIdx];
+                            if (!src) return;
+                            _copiedEnemyConfig = {
+                                emCode: src.emCode, lv: src.lv,
+                                bloodOrbs: src.bloodOrbs, highOrbs: src.highOrbs,
+                                scale: src.scale, exp: src.exp,
+                                repopNum: src.repopNum, repopCount: src.repopCount,
+                                setType: src.setType, infection: src.infection,
+                                targetTypeId: src.targetTypeId, spawnTime: src.spawnTime,
+                                namedId: src.namedId, raidBossId: src.raidBossId,
+                                isBossGauge: src.isBossGauge, isBossBGM: src.isBossBGM,
+                                isAreaBoss: src.isAreaBoss, isManualSet: src.isManualSet,
+                                isBloodOrbEnemy: src.isBloodOrbEnemy, isHighOrbEnemy: src.isHighOrbEnemy,
+                                startThink: src.startThink, montage: src.montage, ppDrop: src.ppDrop,
+                                dropsTableId: src.dropsTableId, drops: [...(src.drops ?? [])],
+                            };
+                            _updateClipboardBar();
+                            actionBtn.textContent = '✓ Copied!';
+                            setTimeout(() => { if (_rebuildOpenPopup) _rebuildOpenPopup(); }, 1000);
+                        } else if (action === 'paste-config') {
+                            if (!_copiedEnemyConfig) return;
+                            const cfg = _copiedEnemyConfig;
+                            const entry = getEntries()[displayIdx];
+                            const hexId = cfg.emCode ? ('0x' + cfg.emCode.slice(2).toUpperCase()) : null;
+                            if (entry) {
+                                // ── Overwrite existing entry ──────────────────
+                                Object.assign(entry, cfg, { drops: [...(cfg.drops ?? [])] });
+                                if (_rawEnemyData && entry._rawIdx >= 0) {
+                                    const row = _rawEnemyData.enemies[entry._rawIdx];
+                                    if (row) {
+                                        const { iEnemyId, iLv, iBlood, iHigh, iScale, iNamed, iRaidBoss,
+                                                iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
+                                                iExp, iRepopNum, iRepopCount, iTargetType, iSpawnTime,
+                                                iStartThink, iMontage, iIsManualSet, iPPDrop,
+                                                iIsBloodOrbEnemy, iIsHighOrbEnemy, iDrops } = _rawEnemySchemas;
+                                        if (iEnemyId >= 0 && hexId) row[iEnemyId] = hexId;
+                                        row[iLv]    = cfg.lv;
+                                        row[iBlood] = cfg.bloodOrbs;
+                                        row[iHigh]  = cfg.highOrbs;
+                                        if (iScale      >= 0) row[iScale]      = cfg.scale;
+                                        if (iExp        >= 0) row[iExp]        = cfg.exp;
+                                        if (iRepopNum   >= 0) row[iRepopNum]   = cfg.repopNum;
+                                        if (iRepopCount >= 0) row[iRepopCount] = cfg.repopCount;
+                                        if (iSetType    >= 0) row[iSetType]    = cfg.setType;
+                                        if (iInfection  >= 0) row[iInfection]  = cfg.infection;
+                                        if (iTargetType >= 0) row[iTargetType] = cfg.targetTypeId;
+                                        if (iSpawnTime  >= 0) row[iSpawnTime]  = cfg.spawnTime;
+                                        if (iNamed      >= 0) row[iNamed]      = cfg.namedId;
+                                        if (iRaidBoss   >= 0) row[iRaidBoss]   = cfg.raidBossId;
+                                        if (iIsBossG    >= 0) row[iIsBossG]    = cfg.isBossGauge;
+                                        if (iIsBossBGM  >= 0) row[iIsBossBGM]  = cfg.isBossBGM;
+                                        if (iIsAreaBoss >= 0) row[iIsAreaBoss] = cfg.isAreaBoss;
+                                        if (iIsManualSet     >= 0) row[iIsManualSet]     = cfg.isManualSet;
+                                        if (iIsBloodOrbEnemy >= 0) row[iIsBloodOrbEnemy] = cfg.isBloodOrbEnemy;
+                                        if (iIsHighOrbEnemy  >= 0) row[iIsHighOrbEnemy]  = cfg.isHighOrbEnemy;
+                                        if (iStartThink >= 0) row[iStartThink] = cfg.startThink;
+                                        if (iMontage    >= 0) row[iMontage]    = cfg.montage;
+                                        if (iPPDrop     >= 0) row[iPPDrop]     = cfg.ppDrop;
+                                        row[iDrops] = cfg.dropsTableId;
+                                    }
+                                }
+                            } else {
+                                // ── Create new entry on empty node ────────────
+                                if (!spawnKey) return;
+                                const newEntry = {
+                                    ...cfg, drops: [...(cfg.drops ?? [])],
+                                    subGroupId: _activeSubGroupId ?? 0,
+                                    hmPreset: cfg.emCode ? (hmPresetsByEmCode.get(cfg.emCode)?.id ?? 0) : 0,
+                                    _rawIdx: -1,
+                                };
+                                if (_rawEnemyData && hexId) {
+                                    const { iStage, iGroup, iPosIdx, iEnemyId, iLv, iBlood, iHigh,
+                                            iSpawnTime, iDrops, iScale, iSubGroup, iNamed, iRaidBoss,
+                                            iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
+                                            iIsBloodOrbEnemy, iIsHighOrbEnemy,
+                                            iExp, iRepopNum, iRepopCount, iTargetType,
+                                            iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop } = _rawEnemySchemas;
+                                    const [sid, gid, pidx] = spawnKey.split(',');
+                                    const newRaw = new Array(_rawEnemyData.schemas.enemies.length).fill(null);
+                                    newRaw[iStage]     = Number(sid);
+                                    newRaw[iGroup]     = Number(gid);
+                                    newRaw[iPosIdx]    = Number(pidx);
+                                    if (iEnemyId >= 0) newRaw[iEnemyId] = hexId;
+                                    newRaw[iLv]        = cfg.lv;
+                                    newRaw[iBlood]     = cfg.bloodOrbs;
+                                    newRaw[iHigh]      = cfg.highOrbs;
+                                    newRaw[iSpawnTime] = cfg.spawnTime;
+                                    newRaw[iDrops]     = cfg.dropsTableId;
+                                    if (iScale      >= 0) newRaw[iScale]      = cfg.scale;
+                                    if (iSubGroup   >= 0) newRaw[iSubGroup]   = _activeSubGroupId ?? 0;
+                                    if (iNamed      >= 0) newRaw[iNamed]      = cfg.namedId;
+                                    if (iRaidBoss   >= 0) newRaw[iRaidBoss]   = cfg.raidBossId;
+                                    if (iSetType    >= 0) newRaw[iSetType]    = cfg.setType;
+                                    if (iInfection  >= 0) newRaw[iInfection]  = cfg.infection;
+                                    if (iIsBossG    >= 0) newRaw[iIsBossG]    = cfg.isBossGauge;
+                                    if (iIsBossBGM  >= 0) newRaw[iIsBossBGM]  = cfg.isBossBGM;
+                                    if (iIsAreaBoss >= 0) newRaw[iIsAreaBoss] = cfg.isAreaBoss;
+                                    if (iIsManualSet     >= 0) newRaw[iIsManualSet]     = cfg.isManualSet;
+                                    if (iIsBloodOrbEnemy >= 0) newRaw[iIsBloodOrbEnemy] = cfg.isBloodOrbEnemy;
+                                    if (iIsHighOrbEnemy  >= 0) newRaw[iIsHighOrbEnemy]  = cfg.isHighOrbEnemy;
+                                    if (iExp        >= 0) newRaw[iExp]        = cfg.exp;
+                                    if (iRepopNum   >= 0) newRaw[iRepopNum]   = cfg.repopNum;
+                                    if (iRepopCount >= 0) newRaw[iRepopCount] = cfg.repopCount;
+                                    if (iTargetType >= 0) newRaw[iTargetType] = cfg.targetTypeId;
+                                    if (iHmPreset   >= 0) newRaw[iHmPreset]   = newEntry.hmPreset;
+                                    if (iStartThink >= 0) newRaw[iStartThink] = cfg.startThink;
+                                    if (iMontage    >= 0) newRaw[iMontage]    = cfg.montage;
+                                    if (iPPDrop     >= 0) newRaw[iPPDrop]     = cfg.ppDrop;
+                                    _rawEnemyData.enemies.push(newRaw);
+                                    newEntry._rawIdx = _rawEnemyData.enemies.length - 1;
+                                }
+                                let arr = cache.get(spawnKey);
+                                if (!arr) { arr = []; cache.set(spawnKey, arr); }
+                                arr.push(newEntry);
+                                displayIdx = arr.length - 1;
+                                if (_editMode && _renderEditPanel) _renderEditPanel();
+                            }
+                            if (_markDirty) _markDirty('ddon-src-spawns');
+                            if (_rebuildOpenPopup) _rebuildOpenPopup();
                         } else if (action === 'remove-spawn') {
                             // Remove from cache
                             const arr = cache.get(spawnKey);
@@ -1972,7 +2193,7 @@ function buildGroupDetails(g) {
                                 emCode, lv: 1, bloodOrbs: 0, highOrbs: 0,
                                 spawnTime: null, drops: [], scale: 100,
                                 subGroupId: _activeSubGroupId ?? 0, namedId: 2298, raidBossId: 0,
-                                setType: 1, infection: 0, isBossGauge: false,
+                                setType: 0, infection: 0, isBossGauge: false,
                                 isBossBGM: false, isAreaBoss: false, isManualSet: false,
                                 isBloodOrbEnemy: false, isHighOrbEnemy: false,
                                 dropsTableId: -1,
@@ -2002,7 +2223,7 @@ function buildGroupDetails(g) {
                                 if (iSubGroup    >= 0) newRaw[iSubGroup]    = _activeSubGroupId ?? 0;
                                 if (iNamed       >= 0) newRaw[iNamed]       = 2298;
                                 if (iRaidBoss    >= 0) newRaw[iRaidBoss]    = 0;
-                                if (iSetType     >= 0) newRaw[iSetType]     = 1;
+                                if (iSetType     >= 0) newRaw[iSetType]     = 0;
                                 if (iInfection   >= 0) newRaw[iInfection]   = 0;
                                 if (iIsBossG     >= 0) newRaw[iIsBossG]     = false;
                                 if (iIsBossBGM   >= 0) newRaw[iIsBossBGM]   = false;
@@ -2043,6 +2264,7 @@ function buildGroupDetails(g) {
                             const cd = el.querySelector('.leaflet-popup-content');
                             if (cd) {
                                 cd.innerHTML = buildEnemyPopup(cache);
+                                watchEditChanges(cd);
                                 const view = cd.querySelector('.se-spawn-view');
                                 if (view) {
                                     view.style.transition = 'background 0.1s';
@@ -2101,8 +2323,6 @@ function _expandGroupCore(g) {
     if (!g.detailsLayer) buildGroupDetails(g);
     const enemiesOn = document.getElementById('layer-enemies').checked;
     if (enemiesOn) g.detailsLayer.addTo(leafletMap);
-    if (document.getElementById('layer-territory').checked && g.territoryRect)
-        territoryLayer.addLayer(g.territoryRect);
     g.isExpanded = true;
     // Move chip to just above the topmost spawn so it doesn't cover any enemies.
     // Use the topmost spawn's own X so the chip stays directly above the hull, not the centroid.
@@ -2595,14 +2815,27 @@ async function getSrcUrl(lsKey, defaultUrl) {
             const handle = await _idbGet(lsKey + '-handle');
             if (handle) {
                 try {
-                    const perm = await handle.queryPermission({ mode: 'read' });
-                    if (perm === 'granted') {
-                        const file = await handle.getFile();
-                        return URL.createObjectURL(file);
+                    if (typeof handle.queryPermission === 'function') {
+                        // Chrome / Brave: full permission API available
+                        let perm = await handle.queryPermission({ mode: 'read' });
+                        if (perm === 'prompt') {
+                            // Attempt to re-request permission. Requires a user gesture;
+                            // may succeed silently within the same browser session.
+                            try { perm = await handle.requestPermission({ mode: 'read' }); } catch { /* blocked */ }
+                        }
+                        if (perm !== 'granted') {
+                            // Not granted — fall through to stored content.
+                            // User can open ⚙ Settings to grant it (opening the modal = a user gesture).
+                            throw new Error('permission not granted');
+                        }
                     }
-                    // Permission not yet granted — fall through to stored content.
-                    // User can open ⚙ Settings to grant it (opening the modal = user gesture).
-                } catch { /* handle may be stale; fall through */ }
+                    // Read via stream() → Response to bypass Chromium's FSA write-through cache.
+                    // file.text() can return buffered content from the browser's last write;
+                    // consuming the stream through a Response uses a different code path.
+                    const file = await handle.getFile();
+                    const text = await new Response(file.stream()).text();
+                    return URL.createObjectURL(new Blob([text], { type: file.type || 'text/plain' }));
+                } catch { /* handle stale or permission denied — fall through */ }
             }
             // Fall back to stored content (IDB or legacy localStorage)
             const data = await _idbGet(lsKey);
@@ -2615,8 +2848,36 @@ async function getSrcUrl(lsKey, defaultUrl) {
     } catch { return defaultUrl; }
 }
 
-// Show a visible error banner in the sidebar when a data source fails to load.
-function showSrcError(label) {
+// On page load: for every __local__ source, show a sidebar indicator.
+// If permission needs re-granting (Chromium after restart), show a Re-grant button instead.
+async function checkLocalSources() {
+    const ua = navigator.userAgent;
+    const isBrave   = navigator.brave?.isBrave != null;
+    const isFirefox = ua.includes('Firefox/');
+    // Chrome and Edge handle FSA permissions natively with their own dialogs — no indicator needed.
+    if (!isBrave && !isFirefox) return;
+
+    if (sessionStorage.getItem('ddon-src-reloaded')) {
+        sessionStorage.removeItem('ddon-src-reloaded');
+        return;
+    }
+    const KEYS = ['ddon-src-gathering', 'ddon-src-spawns', 'ddon-src-shop', 'ddon-src-special-shop'];
+    const LABELS = { 'ddon-src-gathering': 'Gathering Items', 'ddon-src-spawns': 'Enemy Spawns',
+                     'ddon-src-shop': 'Shop Data', 'ddon-src-special-shop': 'Appraisal Data' };
+    for (const lsKey of KEYS) {
+        if (localStorage.getItem(lsKey) !== '__local__') continue;
+        const label  = LABELS[lsKey];
+        const handle = await _idbGet(lsKey + '-handle');
+        if (handle && typeof handle.queryPermission === 'function') {
+            try {
+                const perm = await handle.queryPermission({ mode: 'read' });
+                if (perm !== 'granted') { showSrcPermissionWarning(label, handle); continue; }
+            } catch { /* ignore */ }
+        }
+        showSrcLocalIndicator(label);
+    }
+}
+function _srcErrorBox() {
     let box = document.getElementById('src-errors');
     if (!box) {
         box = document.createElement('div');
@@ -2626,6 +2887,51 @@ function showSrcError(label) {
         const anchor  = sidebar.querySelector('#search-box') ?? sidebar.children[1];
         sidebar.insertBefore(box, anchor);
     }
+    return box;
+}
+function showSrcLocalIndicator(label) {
+    const box = _srcErrorBox();
+    if ([...box.children].some(c => c.dataset.localLabel === label)) return;
+    const item = document.createElement('div');
+    item.dataset.localLabel = label;
+    item.style.cssText = 'display:flex;align-items:center;gap:5px;margin-bottom:3px;'
+        + 'color:#aad4ff;background:#0d1f2d;border-left:3px solid #42a5f5;border-radius:2px;padding:3px 6px;';
+    item.innerHTML = `&#128196; <span style="flex:1"><b>${label}</b> from local file</span>`
+        + `<button data-action="reload" style="font-size:0.7rem;padding:1px 5px;cursor:pointer;`
+        + `background:#42a5f5;color:#000;border:none;border-radius:2px" title="Reload to re-read file from disk">&#8635; Reload</button>`
+        + `<button data-action="dismiss" style="font-size:0.7rem;padding:1px 4px;cursor:pointer;`
+        + `background:none;color:#aaa;border:none">&#10005;</button>`;
+    item.querySelector('[data-action="reload"]').addEventListener('click', () => {
+        sessionStorage.setItem('ddon-src-reloaded', '1');
+        location.reload();
+    });
+    item.querySelector('[data-action="dismiss"]').addEventListener('click', () => item.remove());
+    box.appendChild(item);
+}
+function showSrcPermissionWarning(label, handle) {
+    const box = _srcErrorBox();
+    if ([...box.children].some(c => c.dataset.permLabel === label)) return;
+    const item = document.createElement('div');
+    item.dataset.permLabel = label;
+    item.style.cssText = 'display:flex;align-items:center;gap:5px;margin-bottom:3px;'
+        + 'color:#ffd27f;background:#2a1f00;border-left:3px solid #ffa726;border-radius:2px;padding:3px 6px;';
+    item.innerHTML = `&#128274; <span style="flex:1"><b>${label}</b> needs file access</span>`
+        + `<button data-action="grant" style="font-size:0.7rem;padding:1px 5px;cursor:pointer;`
+        + `background:#ffa726;color:#111;border:none;border-radius:2px">Re-grant &amp; Reload</button>`
+        + `<button data-action="dismiss" style="font-size:0.7rem;padding:1px 4px;cursor:pointer;`
+        + `background:none;color:#aaa;border:none">&#10005;</button>`;
+    item.querySelector('[data-action="grant"]').addEventListener('click', async () => {
+        try {
+            const perm = await handle.requestPermission({ mode: 'read' });
+            if (perm === 'granted') location.reload();
+            else alert('Permission was not granted.');
+        } catch (err) { alert('Could not request permission: ' + err.message); }
+    });
+    item.querySelector('[data-action="dismiss"]').addEventListener('click', () => item.remove());
+    box.appendChild(item);
+}
+function showSrcError(label) {
+    const box = _srcErrorBox();
     const item = document.createElement('div');
     item.style.cssText = 'display:flex;align-items:center;gap:5px;margin-bottom:3px;'
         + 'color:#f99;background:#2a0f0f;border-left:3px solid #c0392b;border-radius:2px;padding:3px 6px;';
@@ -2640,16 +2946,75 @@ function showSrcError(label) {
     box.appendChild(item);
 }
 
+function _updateClipboardBar() {
+    const bar = document.getElementById('edit-clipboard-bar');
+    if (!bar) return;
+    if (_copiedEnemyConfig) {
+        const name = emNames[_copiedEnemyConfig.emCode]?.name ?? _copiedEnemyConfig.emCode ?? '?';
+        bar.querySelector('.edit-clipboard-label').textContent = `📋 ${name} — click Paste on any marker`;
+        bar.style.display = '';
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
 const _DEFAULT_GATHERING_URL = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/GatheringItem.csv';
 const _DEFAULT_SPAWNS_URL        = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/EnemySpawn.json';
 const _DEFAULT_SHOP_URL          = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/Shop.json';
 const _DEFAULT_SPECIAL_SHOP_URL  = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/SpecialShops.json';
 
+// Shared metadata for all user-editable data sources.
+// Used by both the settings dialog and the edit panel footer.
+const _SOURCE_META = {
+    'ddon-src-spawns':       { label: 'Enemy Spawns',   name: 'EnemySpawn.json',   types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }], defaultUrl: _DEFAULT_SPAWNS_URL },
+    'ddon-src-gathering':    { label: 'Gathering Items', name: 'GatherItem.csv',    types: [{ description: 'CSV',  accept: { 'text/csv':            ['.csv'] } }], defaultUrl: _DEFAULT_GATHERING_URL },
+    'ddon-src-shop':         { label: 'Shop Data',       name: 'Shop.json',         types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }], defaultUrl: _DEFAULT_SHOP_URL },
+    'ddon-src-special-shop': { label: 'Appraisal Data', name: 'SpecialShops.json', types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }], defaultUrl: _DEFAULT_SPECIAL_SHOP_URL },
+};
+
+// Download the current source URL (or default) to disk via FSA, then immediately
+// assign it as the active local source.  Returns the saved filename, or null if
+// the user cancelled the save-file picker.
+async function downloadAndAssignLocal(lsKey, overrideUrl = null) {
+    const meta    = _SOURCE_META[lsKey];
+    const stored  = localStorage.getItem(lsKey);
+    const url     = overrideUrl ?? ((!stored || stored === '__local__') ? meta.defaultUrl : stored);
+    const r       = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const text = await r.text();
+    if (typeof showSaveFilePicker === 'function') {
+        let handle;
+        try {
+            handle = await showSaveFilePicker({ suggestedName: meta.name, types: meta.types });
+        } catch (e) {
+            if (e.name === 'AbortError') return null;   // user cancelled picker
+            throw e;
+        }
+        const writable = await handle.createWritable();
+        await writable.write(text);
+        await writable.close();
+        await _idbSet(lsKey + '-handle', handle);
+        localStorage.setItem(lsKey + '-name', handle.name);
+        localStorage.setItem(lsKey, '__local__');
+        return handle.name;
+    } else {
+        // FSA unavailable — trigger browser download and cache in IDB
+        const blob = new Blob([text], { type: 'text/plain' });
+        const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(blob), download: meta.name });
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+        await _idbSet(lsKey, text);
+        localStorage.setItem(lsKey + '-name', meta.name);
+        localStorage.setItem(lsKey, '__local__');
+        return meta.name;
+    }
+}
+
 // Cached promises — fetch starts once, result shared by all callers.
 // Map key: "stageId,groupId,posId" → [{itemId, itemNum, maxItemNum, quality, dropChance, isHidden}]
 let _gatherItemsCache = null;
 const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_URL)
-    .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }))
+    .then(url => fetch(url, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }))
     .then(text => {
         const lines = text.split('\n');
         // First column header is "#StageId" — strip the leading '#'
@@ -2693,7 +3058,7 @@ const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_U
 // Map key for enemy spawns: "stageId,groupId,posIdx" → [{emCode, lv, bloodOrbs, highOrbs, spawnTime, drops}]
 let _enemySpawnCache = null;
 const _enemySpawnPromise = getSrcUrl('ddon-src-spawns', _DEFAULT_SPAWNS_URL)
-    .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
+    .then(url => fetch(url, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
     .then(data => {
         const schemas = data.schemas?.enemies ?? [];
         const iStage      = schemas.indexOf('StageId'),
@@ -2790,7 +3155,7 @@ const _enemySpawnPromise = getSrcUrl('ddon-src-spawns', _DEFAULT_SPAWNS_URL)
 // Map: ShopId → {walletType, items:[{itemId, price, stock}]}
 let _shopCache = null;
 const _shopPromise = getSrcUrl('ddon-src-shop', _DEFAULT_SHOP_URL)
-    .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
+    .then(url => fetch(url, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
     .then(data => {
         _rawShopData = data; // store for write-back
         const result = new Map();
@@ -2809,7 +3174,7 @@ const _shopPromise = getSrcUrl('ddon-src-shop', _DEFAULT_SHOP_URL)
 // appraisal: { label, comment?, base_items:[{item_id,name,amount}], pool:[{item_id,name,amount,crests?}] }
 let _specialShopCache = null;
 const _specialShopPromise = getSrcUrl('ddon-src-special-shop', _DEFAULT_SPECIAL_SHOP_URL)
-    .then(url => fetch(url).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
+    .then(url => fetch(url, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); }))
     .then(data => {
         _rawSpecialShopData = data;
         const result = new Map();
@@ -4837,6 +5202,12 @@ function loadMap(mapName) {
     _spotOpenedGroup = null;
     buildSpotIndex(info);
     if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
+
+    if (_pendingGlobalNavTarget) {
+        const t = _pendingGlobalNavTarget;
+        _pendingGlobalNavTarget = null;
+        setTimeout(() => _navigateToSpot(t), 300);
+    }
 }
 
 // ── Spot search panel ─────────────────────────────────────────────────────────
@@ -4845,6 +5216,9 @@ let _spotIndex        = [];    // searchable entries for the current map
 let _spotHighlights   = [];    // active pulsing ring markers
 let _spotOpenedGroup  = null;  // groupId of the enemy group last opened by spot search
 const _spotHlLayer  = L.layerGroup().addTo(leafletMap);
+let _spotGlobal       = false; // true = global (all stages) search mode
+let _globalSpotIndex  = [];    // searchable entries across all maps/stages
+let _pendingGlobalNavTarget = null; // deferred navigation target after stage switch
 
 function _clearSpotHighlights() {
     for (const m of _spotHighlights) _spotHlLayer.removeLayer(m);
@@ -4985,6 +5359,23 @@ function _navigateToSpot(target) {
             const m = _shopMarkerByNpcId.get(target.shopKey);
             if (m) setTimeout(() => m.openPopup(), 450);
         }
+    }
+}
+
+function _navigateToSpotGlobal(item) {
+    const info = mapParams[item.mapName];
+    if (!info) return;
+    const latlng = worldToPixel(item.worldPos.x, item.worldPos.z, info);
+    const target = { ...item, latlng };
+
+    const isSameStage = item.mapName === _loadedMapName &&
+        (item.stageId === currentStageName() || (!item.stageId && !currentStageName()));
+
+    if (isSameStage) {
+        _navigateToSpot(target);
+    } else {
+        _pendingGlobalNavTarget = target;
+        navigateTo(item.mapName, item.stageId);
     }
 }
 
@@ -5171,6 +5562,7 @@ function _rebuildSpotIndex() {
 }
 _enemySpawnPromise  .then(() => {
     _rebuildSpotIndex();
+    _rebuildGlobalSpotIndex();
     // Refresh all chip icons and mark boss markers now that spawn data is available
     for (const g of _groupStore.values()) {
         if (_groupHasBoss(g)) {
@@ -5188,26 +5580,220 @@ _enemySpawnPromise  .then(() => {
         }
     }
 }).catch(() => {});
-_gatherItemsPromise .then(_rebuildSpotIndex).catch(() => {});
-_shopPromise        .then(_rebuildSpotIndex).catch(() => {});
+_gatherItemsPromise .then(() => { _rebuildSpotIndex(); _rebuildGlobalSpotIndex(); }).catch(() => {});
+_shopPromise        .then(() => { _rebuildSpotIndex(); _rebuildGlobalSpotIndex(); }).catch(() => {});
+
+function _buildGlobalSpotIndex() {
+    _globalSpotIndex = [];
+    for (const [mapName, info] of Object.entries(mapParams)) {
+        if (!info.stages?.length) continue;
+        const mapDisplayName = info.name_en ? splitPascalCase(info.name_en) : mapName;
+        for (const stageId of info.stages) {
+            const stageNo = String(parseInt(stageId.slice(2), 10));
+            const serverStageId = stageIds[stageNo];
+            const sLabel = stageLabel(info, stageId);
+            const locationTag = `${mapDisplayName} · ${sLabel}`;
+
+            // Enemies — same logic as local buildSpotIndex, using global spawn cache
+            const groups = enemyPositions[stageNo];
+            if (groups) {
+                for (const [groupId, groupData] of Object.entries(groups)) {
+                    const spawns = groupData.spawns ?? groupData;
+                    if (!Array.isArray(spawns) || !spawns.length) continue;
+                    for (let i = 0; i < spawns.length; i++) {
+                        const s = spawns[i];
+                        const spawnKey = serverStageId != null ? `${serverStageId},${groupId},${s.posIdx ?? i}` : null;
+                        if (_enemySpawnCache && spawnKey) {
+                            const byEmCode = new Map();
+                            for (const e of (_enemySpawnCache.get(spawnKey) ?? [])) {
+                                if (!e.emCode) continue;
+                                if (!byEmCode.has(e.emCode)) byEmCode.set(e.emCode, new Set());
+                                if (e.lv != null) byEmCode.get(e.emCode).add(e.lv);
+                            }
+                            for (const [emCode, lvSet] of byEmCode) {
+                                const baseName = emNames[emCode]?.name;
+                                if (!baseName) continue;
+                                const lvs = [...lvSet].sort((a, b) => a - b);
+                                const lo = lvs[0], hi = lvs[lvs.length - 1];
+                                const lvLabel = lvs.length ? (lo === hi ? `Lv${lo}` : `Lv${lo}-${hi}`) : '';
+                                const displayName = lvLabel ? `${baseName} ${lvLabel}` : baseName;
+                                _globalSpotIndex.push({
+                                    type: 'enemy', name: displayName,
+                                    searchText: `${baseName} ${lvLabel}`.toLowerCase(),
+                                    worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
+                                    groupId, emCode, spawnKey,
+                                    mapName, stageId, stageNo, locationTag,
+                                });
+                            }
+                        } else if (s.EmName) {
+                            const emCode = s.EmName;
+                            const displayName = emNames[emCode]?.name ?? emCode;
+                            _globalSpotIndex.push({
+                                type: 'enemy', name: displayName,
+                                searchText: `${displayName} ${emCode}`.toLowerCase(),
+                                worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
+                                groupId, emCode: null, spawnKey: null,
+                                mapName, stageId, stageNo, locationTag,
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Enemy drops
+            if (_enemySpawnCache && serverStageId != null && groups) {
+                for (const [groupId, groupData] of Object.entries(groups)) {
+                    const spawns = groupData.spawns ?? groupData;
+                    if (!Array.isArray(spawns) || !spawns.length) continue;
+                    for (let i = 0; i < spawns.length; i++) {
+                        const s = spawns[i];
+                        const spawnKey = `${serverStageId},${groupId},${s.posIdx ?? i}`;
+                        const seen = new Set();
+                        for (const e of (_enemySpawnCache.get(spawnKey) ?? [])) {
+                            if (!e.emCode || !e.drops?.length) continue;
+                            for (const row of e.drops) {
+                                const itemId = row[0];
+                                const dedup = `${itemId}\0${e.emCode}`;
+                                if (seen.has(dedup)) continue;
+                                seen.add(dedup);
+                                const itemName = itemNames[String(itemId)]?.name ?? `Item #${itemId}`;
+                                const emName   = emNames[e.emCode]?.name ?? e.emCode;
+                                const qty = row[2] > row[1] ? `×${row[1]}–${row[2]}` : `×${row[1] ?? 1}`;
+                                const pct = row[5] > 0 && row[5] < 1 ? ` (${Math.round(row[5] * 100)}%)` : '';
+                                _globalSpotIndex.push({
+                                    type: 'item', source: 'enemy',
+                                    name: itemName,
+                                    searchText: `${itemName} ${itemId}`.toLowerCase(),
+                                    itemId, groupId, emCode: e.emCode, spawnKey,
+                                    dropDesc: `${emName} ${qty}${pct}`,
+                                    worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
+                                    mapName, stageId, stageNo, locationTag,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Gathering spots
+            const nodes = gatherPoints[stageNo];
+            if (nodes) {
+                for (const node of nodes) {
+                    const label = GATHER_LABELS[node.type]
+                        ?? node.type.replace(/^(OM_GATHER_|CHEST_)/, '').replace(/_/g, ' ');
+                    _globalSpotIndex.push({
+                        type: 'gather', name: label,
+                        gatherType: node.type,
+                        searchText: label.toLowerCase(),
+                        worldPos: { x: node.x, y: node.y, z: node.z },
+                        nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
+                        mapName, stageId, stageNo, locationTag,
+                    });
+                }
+            }
+
+            // Shop items (uses globally-loaded shop cache)
+            if (_shopCache) {
+                for (const npc of (npcShops[stageNo] ?? [])) {
+                    if (npc.ShopId == null) continue;
+                    const shop = _shopCache.get(npc.ShopId);
+                    if (!shop?.items?.length) continue;
+                    const npcName = npcNames[String(npc.NpcId)] ?? `NPC #${npc.NpcId}`;
+                    for (const it of shop.items) {
+                        if (it.ItemId == null) continue;
+                        const itemName = itemNames[String(it.ItemId)]?.name ?? `Item #${it.ItemId}`;
+                        _globalSpotIndex.push({
+                            type: 'item', source: 'shop',
+                            name: itemName,
+                            searchText: `${itemName} ${it.ItemId}`.toLowerCase(),
+                            itemId: it.ItemId,
+                            worldPos: { x: npc.Position.x, y: npc.Position.y, z: npc.Position.z },
+                            shopKey: `${stageNo}:${npc.NpcId}`,
+                            mapName, stageId, stageNo, locationTag,
+                        });
+                    }
+                }
+            }
+
+            // Gather items (uses globally-loaded gather items cache)
+            if (_gatherItemsCache && serverStageId != null) {
+                for (const node of (gatherPoints[stageNo] ?? [])) {
+                    const csvKey = `${serverStageId},${node.groupId},${node.posId}`;
+                    const nodeItems = _gatherItemsCache.get(csvKey) ?? [];
+                    for (const it of nodeItems) {
+                        const itemName = itemNames[String(it.itemId)]?.name ?? `Item #${it.itemId}`;
+                        _globalSpotIndex.push({
+                            type: 'item', source: 'gather',
+                            name: itemName,
+                            searchText: `${itemName} ${it.itemId}`.toLowerCase(),
+                            itemId: it.itemId,
+                            worldPos: { x: node.x, y: node.y, z: node.z },
+                            nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
+                            mapName, stageId, stageNo, locationTag,
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+function _rebuildGlobalSpotIndex() {
+    _buildGlobalSpotIndex();
+    if (_spotGlobal && document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
+}
+
+// Parse a search query for exact-match syntax: "quoted phrase" → prefix match on name.
+// Returns { term: string, exact: boolean }
+function _parseSpotQuery(raw) {
+    if (raw.length > 2 && raw.startsWith('"') && raw.endsWith('"'))
+        return { term: raw.slice(1, -1), exact: true };
+    return { term: raw, exact: false };
+}
+
+function _spotEntryMatches(e, term, exact) {
+    if (!term) return true;
+    if (exact) return e.name.toLowerCase().startsWith(term);
+    return e.searchText.includes(term);
+}
 
 function _runSpotSearch() {
-    const query     = (document.getElementById('spot-search-input')?.value ?? '').trim().toLowerCase();
+    const raw       = (document.getElementById('spot-search-input')?.value ?? '').trim().toLowerCase();
+    const { term, exact } = _parseSpotQuery(raw);
     const filter    = document.querySelector('.spot-tab.active')?.dataset.filter ?? 'enemy';
     const resultsEl = document.getElementById('spot-results');
     if (!resultsEl) return;
 
     _clearSpotHighlights();
 
+    if (_spotGlobal) {
+        if (!raw) {
+            resultsEl.innerHTML = `<div class="spot-empty">Enter a search term to search across all stages.</div>`;
+            return;
+        }
+        const matches = _globalSpotIndex.filter(e => {
+            if (filter === 'enemy'  && e.type !== 'enemy')  return false;
+            if (filter === 'gather' && e.type !== 'gather') return false;
+            if (filter === 'item'   && e.type !== 'item')   return false;
+            return _spotEntryMatches(e, term, exact);
+        });
+        if (!matches.length) {
+            resultsEl.innerHTML = `<div class="spot-empty">No matches for <em>${raw}</em> across all stages.</div>`;
+            return;
+        }
+        _renderGlobalResults(matches, resultsEl);
+        return;
+    }
+
     const matches = _spotIndex.filter(e => {
         if (filter === 'enemy'  && e.type !== 'enemy')  return false;
         if (filter === 'gather' && e.type !== 'gather') return false;
         if (filter === 'item'   && e.type !== 'item')   return false;
-        return !query || e.searchText.includes(query);
+        return _spotEntryMatches(e, term, exact);
     });
 
     if (!matches.length) {
-        resultsEl.innerHTML = `<div class="spot-empty">No matches for <em>${query}</em>.</div>`;
+        resultsEl.innerHTML = `<div class="spot-empty">No matches for <em>${raw}</em>.</div>`;
         return;
     }
 
@@ -5237,6 +5823,8 @@ function _runSpotSearch() {
             ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#8c8">🌿</span>`
             : first.type === 'item' && first.source === 'shop'
             ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#fc8">🏪</span>`
+            : first.type === 'item' && first.source === 'enemy'
+            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
             : isBossResult
             ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#f44">☠</span>`
             : `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`;
@@ -5315,6 +5903,95 @@ function _runSpotSearch() {
     resultsEl.appendChild(frag);
 }
 
+function _renderGlobalResults(matches, resultsEl) {
+    // Group by name + type + source + stage — each row is one name on one stage
+    const grouped = new Map();
+    for (const m of matches) {
+        const key = m.type === 'item'
+            ? `item:${m.source}\0${m.name}\0${m.mapName}\0${m.stageId}`
+            : `${m.type}\0${m.name}\0${m.mapName}\0${m.stageId}`;
+        if (!grouped.has(key)) grouped.set(key, []);
+        grouped.get(key).push(m);
+    }
+
+    // Sort groups by locationTag (stage name) then by name
+    const sortedGroups = [...grouped.values()].sort((a, b) => {
+        const locCmp = a[0].locationTag.localeCompare(b[0].locationTag);
+        return locCmp !== 0 ? locCmp : a[0].name.localeCompare(b[0].name);
+    });
+
+    const uniqueNames = new Set(matches.map(m => m.name)).size;
+    const frag = document.createDocumentFragment();
+    const summary = document.createElement('div');
+    summary.className = 'spot-summary';
+    summary.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${uniqueNames} unique · ${sortedGroups.length} stage entries`;
+    frag.appendChild(summary);
+
+    for (const items of sortedGroups) {
+        const first = items[0];
+        const multi = items.length > 1;
+
+        const dotHtml = first.type === 'gather'
+            ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GATHER_COLORS[first.gatherType] ?? '#aaa'};flex-shrink:0"></span>`
+            : first.type === 'item' && first.source === 'gather'
+            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#8c8">🌿</span>`
+            : first.type === 'item' && first.source === 'shop'
+            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#fc8">🏪</span>`
+            : first.type === 'item' && first.source === 'enemy'
+            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
+            : `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`;
+
+        const row = document.createElement('div');
+        row.className = 'spot-result-row';
+        row.title = `${first.name} — ${first.locationTag}`;
+
+        if (multi) {
+            let idx = -1;
+            row.innerHTML =
+                `${dotHtml}<div style="flex:1;min-width:0">`
+                + `<div class="spot-result-name">${first.name}</div>`
+                + `<div class="spot-stage-sub">${first.locationTag}</div>`
+                + `</div>`
+                + `<div class="spot-nav" style="display:flex;align-items:center;gap:2px;flex-shrink:0">`
+                + `<button class="spot-nav-btn spot-prev" title="Previous">◀</button>`
+                + `<span class="spot-nav-pos" style="font-size:0.68rem;color:#667;min-width:32px;text-align:center">×${items.length}</span>`
+                + `<button class="spot-nav-btn spot-next" title="Next">▶</button>`
+                + `</div>`;
+
+            const posEl   = row.querySelector('.spot-nav-pos');
+            const stageSub = row.querySelector('.spot-stage-sub');
+            const prev    = row.querySelector('.spot-prev');
+            const next    = row.querySelector('.spot-next');
+
+            const goTo = (i) => {
+                idx = (i + items.length) % items.length;
+                posEl.textContent = `${idx + 1}/${items.length}`;
+                _navigateToSpotGlobal(items[idx]);
+            };
+
+            prev.addEventListener('click', e => { e.stopPropagation(); goTo(idx <= 0 ? items.length - 1 : idx - 1); });
+            next.addEventListener('click', e => { e.stopPropagation(); goTo(idx + 1); });
+            row.addEventListener('click', e => {
+                if (e.target.closest('.spot-nav')) return;
+                goTo(idx < 0 ? 0 : idx + 1);
+            });
+        } else {
+            row.innerHTML =
+                `${dotHtml}<div style="flex:1;min-width:0">`
+                + `<div class="spot-result-name">${first.name}</div>`
+                + `<div class="spot-stage-sub">${first.locationTag}</div>`
+                + `</div>`;
+            row.addEventListener('click', () => _navigateToSpotGlobal(first));
+        }
+        // No hover highlight effects in global mode (results may be on other stages)
+
+        frag.appendChild(row);
+    }
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(frag);
+}
+
 // Panel wiring — called once on startup
 (function initSpotPanel() {
     const panel  = document.getElementById('spot-panel');
@@ -5325,6 +6002,14 @@ function _runSpotSearch() {
     if (!panel || !toggle || !close || !input) return;
 
     const openPanel = () => {
+        // Close edit panel if open (mutually exclusive)
+        if (_editMode) {
+            _editMode = false;
+            document.getElementById('edit-panel')?.classList.remove('open');
+            document.getElementById('edit-mode-btn')?.classList.remove('active');
+            const btn = document.getElementById('edit-mode-btn');
+            if (btn) btn.title = 'Enter edit mode';
+        }
         panel.classList.add('open');
         toggle.style.display = 'none';
         input.focus();
@@ -5359,6 +6044,17 @@ function _runSpotSearch() {
         })
     );
 
+    document.querySelectorAll('.spot-scope').forEach(btn =>
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.spot-scope').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            _spotGlobal = btn.dataset.scope === 'global';
+            if (_spotGlobal && !_globalSpotIndex.length) _buildGlobalSpotIndex();
+            _clearSpotHighlights();
+            _runSpotSearch();
+        })
+    );
+
     document.addEventListener('keydown', e => {
         if ((e.ctrlKey || e.metaKey) && e.key === 'f' && !e.shiftKey && _loadedMapName) {
             e.preventDefault();
@@ -5366,7 +6062,12 @@ function _runSpotSearch() {
         }
         if (e.key === 'Escape' && panel.classList.contains('open')) closePanel();
     });
+
+    // Resize handled by shared _initPanelResize (called after this IIFE)
 })();
+
+// Pre-build global spot index in the background after startup
+setTimeout(_buildGlobalSpotIndex, 0);
 
 // ── Coordinate readout ────────────────────────────────────────────────────────
 // Shows pixel and world coordinates under the cursor, useful for calibration.
@@ -5438,6 +6139,41 @@ function _runSpotSearch() {
     });
 })();
 
+// ── Panel resize helpers ───────────────────────────────────────────────────────
+function _initPanelResize({ handleId, panelId, lsKey, minW, maxW, dragDir }) {
+    const handle = document.getElementById(handleId);
+    const panel  = document.getElementById(panelId);
+    if (!handle || !panel) return;
+
+    const saved = parseInt(localStorage.getItem(lsKey), 10);
+    if (saved >= minW && saved <= maxW) panel.style.width = saved + 'px';
+
+    handle.addEventListener('mousedown', e => {
+        e.preventDefault();
+        const startX     = e.clientX;
+        const startWidth = panel.offsetWidth;
+        panel.classList.add('resizing');
+
+        const onMove = (e) => {
+            const delta  = dragDir === 'left' ? startX - e.clientX : e.clientX - startX;
+            const newW   = Math.min(maxW, Math.max(minW, startWidth + delta));
+            panel.style.width = newW + 'px';
+        };
+        const onUp = () => {
+            panel.classList.remove('resizing');
+            localStorage.setItem(lsKey, panel.offsetWidth);
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+}
+
+_initPanelResize({ handleId: 'sidebar-resize-handle', panelId: 'sidebar',    lsKey: 'ddon-sidebar-width',    minW: 180, maxW: 520, dragDir: 'right' });
+_initPanelResize({ handleId: 'edit-resize-handle',    panelId: 'edit-panel', lsKey: 'ddon-edit-panel-width', minW: 240, maxW: 600, dragDir: 'left'  });
+_initPanelResize({ handleId: 'spot-resize-handle',    panelId: 'spot-panel', lsKey: 'ddon-spot-panel-width', minW: 200, maxW: 600, dragDir: 'left'  });
+
 // Patch loadMap to keep currentInfo updated
 const _origLoadMap = loadMap;
 loadMap = function (mapName) {
@@ -5457,7 +6193,6 @@ loadMap = function (mapName) {
     async function srcStatus(row) {
         const lsKey = row.dataset.key;
         const el    = row.querySelector('.src-status');
-        const dlBtn = row.querySelector('.src-download-btn');
         const handle = pendingHandles.get(lsKey);
         const file   = pendingFiles.get(lsKey);
         let isLocal = false;
@@ -5484,8 +6219,15 @@ loadMap = function (mapName) {
                             el.textContent = `📁 ${storedHandle.name}`;
                             el.style.color = '#4caf50';
                         } else {
-                            el.textContent = `📁 ${storedHandle.name} ⚠ needs permission`;
+                            el.innerHTML = `📁 ${storedHandle.name} <button style="font-size:10px;padding:1px 5px;cursor:pointer;background:#ffa726;color:#111;border:none;border-radius:3px;vertical-align:middle" title="Click to re-grant file access and reload">⚠ Re-grant &amp; Reload</button>`;
                             el.style.color = '#ffa726';
+                            el.querySelector('button')?.addEventListener('click', async () => {
+                                try {
+                                    const newPerm = await storedHandle.requestPermission({ mode: 'read' });
+                                    if (newPerm === 'granted') location.reload();
+                                    else alert('Permission was not granted.');
+                                } catch (err) { alert('Could not request permission: ' + err.message); }
+                            });
                         }
                     } catch {
                         el.textContent = '📁 Local file (stale handle)';
@@ -5503,8 +6245,6 @@ loadMap = function (mapName) {
                 el.style.color = '#666';
             }
         }
-        dlBtn.disabled = isLocal;
-        dlBtn.title = isLocal ? 'Already using a local copy' : 'Fetch from URL and save as local copy';
     }
 
     // Opening the modal IS a user gesture — we can call requestPermission here.
@@ -5512,6 +6252,7 @@ loadMap = function (mapName) {
         pendingHandles.clear();
         pendingFiles.clear();
         pendingResets.clear();
+        document.getElementById('settings-reload-note').style.display = 'none';
         for (const row of srcRows) {
             const lsKey  = row.dataset.key;
             const stored = localStorage.getItem(lsKey);
@@ -5537,6 +6278,30 @@ loadMap = function (mapName) {
     }
 
     function closeSettings() { modal.classList.remove('open'); }
+
+    // ── Browser-specific file permission hint ──────────────────────────────────
+    (() => {
+        const hint = document.getElementById('settings-browser-hint');
+        if (!hint) return;
+        const ua = navigator.userAgent;
+        const isFirefox = ua.includes('Firefox/');
+        const isEdge    = ua.includes('Edg/');
+        const isBrave   = navigator.brave?.isBrave != null;
+        // Brave UA looks identical to Chrome — check the Brave API first
+        const isChrome  = !isFirefox && !isBrave && ua.includes('Chrome/');
+        const base = `<b style="color:#ccc">&#128274; Local file permissions</b><br>`;
+        if (isFirefox) {
+            hint.innerHTML = base
+                + `File access only persists within the current browser session. `
+                + `After a restart, re-select the file via <b>Browse</b> to read the current version from disk.`;
+        } else {
+            // Chrome, Brave, Edge, or other Chromium
+            hint.innerHTML = base
+                + `After a browser restart, file access needs to be re-granted — a warning will appear in the sidebar with a <b>Re-grant &amp; Reload</b> button.<br>`
+                + `If a page reload does not pick up an external file change, use <b>Browse</b> to re-select the same file. `
+                + `This forces a fresh read, bypassing the browser&apos;s file cache.`;
+        }
+    })();
 
     document.getElementById('settings-btn').addEventListener('click', openSettings);
     document.getElementById('settings-close').addEventListener('click', closeSettings);
@@ -5574,59 +6339,6 @@ loadMap = function (mapName) {
             srcStatus(row);
         });
 
-        row.querySelector('.src-download-btn').addEventListener('click', async () => {
-            const btn = row.querySelector('.src-download-btn');
-            const url = row.querySelector('.src-url-input').value.trim() || row.dataset.default;
-            const fname = url.split('/').pop().split('?')[0] || 'data';
-            const ext   = fname.includes('.') ? fname.split('.').pop().toLowerCase() : '';
-            const origText = btn.textContent;
-            btn.textContent = '…';
-            btn.disabled = true;
-            try {
-                const r = await fetch(url);
-                if (!r.ok) throw new Error(`HTTP ${r.status}`);
-                const text = await r.text();
-
-                if (window.showSaveFilePicker) {
-                    // FSA path: let user choose save location, write file, store handle
-                    let handle;
-                    try {
-                        const typeMap = { csv: 'text/csv', json: 'application/json' };
-                        handle = await showSaveFilePicker({
-                            suggestedName: fname,
-                            types: [{ description: fname, accept: { [typeMap[ext] ?? 'text/plain']: ['.' + (ext || 'txt')] } }],
-                        });
-                    } catch (e) {
-                        if (e.name === 'AbortError') return; // user cancelled
-                        throw e;
-                    }
-                    const writable = await handle.createWritable();
-                    await writable.write(text);
-                    await writable.close();
-                    pendingHandles.set(lsKey, handle);
-                    pendingFiles.delete(lsKey);
-                    row.querySelector('.src-url-input').value = handle.name;
-                    srcStatus(row);
-                } else {
-                    // Fallback: trigger browser download so user can save to disk,
-                    // then have them Browse… to point back to it.
-                    const blob = new Blob([text], { type: 'text/plain' });
-                    const a = Object.assign(document.createElement('a'),
-                        { href: URL.createObjectURL(blob), download: fname });
-                    a.click();
-                    URL.revokeObjectURL(a.href);
-                    alert(`Your browser doesn't support choosing a save location directly.\n\n` +
-                          `"${fname}" has been sent to your Downloads folder.\n\n` +
-                          `Use Browse… to select it and switch to local mode.`);
-                }
-            } catch (e) {
-                alert('Download failed: ' + e.message);
-            } finally {
-                btn.textContent = origText;
-                btn.disabled = false;
-            }
-        });
-
         row.querySelector('.src-reset-btn').addEventListener('click', () => {
             pendingHandles.delete(lsKey);
             pendingFiles.delete(lsKey);
@@ -5634,6 +6346,7 @@ loadMap = function (mapName) {
             row.querySelector('.src-url-input').value = row.dataset.default;
             row.querySelector('.src-file-input').value = '';
             srcStatus(row);
+            showSettingsReloadNote(false);
         });
         row.querySelector('.src-url-input').addEventListener('input', () => {
             pendingHandles.delete(lsKey);
@@ -5642,6 +6355,16 @@ loadMap = function (mapName) {
             row.querySelector('.src-file-input').value = '';
             srcStatus(row);
         });
+    }
+
+    function showSettingsReloadNote(immediate) {
+        const el = document.getElementById('settings-reload-note');
+        if (immediate) {
+            el.innerHTML = `⚠ Sources reset. <button class="src-btn" style="padding:1px 7px" onclick="location.reload()">Reload now</button> to apply changes.`;
+        } else {
+            el.innerHTML = `⚠ Source staged for reset — click <strong>Apply &amp; Reload</strong> below to apply.`;
+        }
+        el.style.display = '';
     }
 
     document.getElementById('settings-reset-all').addEventListener('click', async () => {
@@ -5658,6 +6381,7 @@ loadMap = function (mapName) {
             await _idbDel(row.dataset.key + '-handle');
             srcStatus(row);
         }
+        showSettingsReloadNote(true);
     });
 
     document.getElementById('settings-apply').addEventListener('click', async () => {
@@ -5681,6 +6405,15 @@ loadMap = function (mapName) {
                     localStorage.setItem(lsKey, '__local__');
                     localStorage.setItem(lsKey + '-name', file.name);
                     localStorage.removeItem(lsKey + '-data');
+                } else if (pendingResets.has(lsKey)) {
+                    // User explicitly reset this source — clear everything
+                    localStorage.removeItem(lsKey);
+                    localStorage.removeItem(lsKey + '-name');
+                    localStorage.removeItem(lsKey + '-data');
+                    await _idbDel(lsKey);
+                    await _idbDel(lsKey + '-handle');
+                } else if (localStorage.getItem(lsKey) === '__local__') {
+                    // Local source with no pending change — preserve handle/IDB as-is
                 } else {
                     const val = row.querySelector('.src-url-input').value.trim();
                     if (!val || val === row.dataset.default) {
@@ -5721,33 +6454,77 @@ loadMap = function (mapName) {
         const footer = document.getElementById('edit-panel-footer');
         if (!footer) return;
         footer.innerHTML = '';
-        const localKeys = Object.keys(SOURCE_LABELS)
-            .filter(k => SOURCE_DATA_LOADED[k]());
-        if (!localKeys.length) return;
 
-        // Per-source chips
-        const chips = document.createElement('div');
-        chips.style.cssText = 'display:flex;gap:6px;flex-wrap:wrap;flex:1;align-items:center';
-        for (const key of localKeys) {
-            const isDirty = _dirtySet.has(key);
-            const chip = document.createElement('button');
-            chip.className = 'edit-save-chip' + (isDirty ? ' dirty' : '');
-            chip.dataset.saveKey = key;
-            const isLocal = localStorage.getItem(key) === '__local__';
-            chip.title = isDirty
-                ? (isLocal ? `Save ${SOURCE_LABELS[key]} to file` : `Save ${SOURCE_LABELS[key]} — will ask where to save`)
-                : `${SOURCE_LABELS[key]} — no changes`;
-            chip.textContent = (isDirty ? '● ' : '○ ') + SOURCE_LABELS[key];
-            chip.disabled = !isDirty;
-            chips.appendChild(chip);
+        // Reload note (shown after a source is downloaded and needs reload to take effect)
+        const needsReload = footer.dataset.reloadNeeded === '1';
+        if (needsReload) {
+            const note = document.createElement('div');
+            note.className = 'edit-reload-note';
+            note.innerHTML = `⚠ Reload page to use new local source.`
+                + ` <button class="edit-reload-btn" onclick="location.reload()">Reload now</button>`;
+            footer.appendChild(note);
         }
-        footer.appendChild(chips);
 
-        // Save All button — only if more than one source is dirty
-        const dirtyLocal = localKeys.filter(k => _dirtySet.has(k));
-        if (dirtyLocal.length > 1) {
+        // One row per source
+        for (const key of Object.keys(SOURCE_LABELS)) {
+            const isLocal   = localStorage.getItem(key) === '__local__';
+            const fname     = localStorage.getItem(key + '-name');
+            const isDirty   = _dirtySet.has(key);
+            const isLoaded  = SOURCE_DATA_LOADED[key]();
+
+            const row = document.createElement('div');
+            row.className = 'edit-source-row';
+
+            // Label
+            const lbl = document.createElement('span');
+            lbl.className = 'edit-source-lbl';
+            lbl.textContent = SOURCE_LABELS[key];
+            row.appendChild(lbl);
+
+            // Status badge
+            const badge = document.createElement('span');
+            if (isLocal) {
+                const display = fname ? fname.replace(/^.*[\\/]/, '') : 'local file';
+                badge.className = 'edit-src-badge' + (isDirty ? ' dirty' : ' clean');
+                badge.textContent = `📁 ${display}${isDirty ? ' ●' : ' ✓'}`;
+                badge.title = isDirty ? 'Unsaved changes' : 'Saved';
+            } else if (isDirty) {
+                badge.className = 'edit-src-badge dirty';
+                badge.textContent = '🌐 Remote ●';
+                badge.title = 'Unsaved changes — saving will create a local copy';
+            } else {
+                badge.className = 'edit-src-badge remote';
+                badge.textContent = '🌐 Remote';
+                badge.title = 'Using remote URL — click ⬇ to save a local copy';
+            }
+            row.appendChild(badge);
+
+            // Action button
+            if (isDirty && isLoaded) {
+                // Dirty (local or remote) — save in-memory state to file
+                const btn = document.createElement('button');
+                btn.className = 'edit-src-btn save';
+                btn.textContent = '💾 Save';
+                btn.dataset.saveKey = key;
+                row.appendChild(btn);
+            } else if (!isLocal) {
+                // Clean remote — offer to download baseline as local copy
+                const btn = document.createElement('button');
+                btn.className = 'edit-src-btn dl';
+                btn.textContent = '⬇ Save';
+                btn.title = 'Download from remote and save as a local file';
+                btn.dataset.dlKey = key;
+                row.appendChild(btn);
+            }
+
+            footer.appendChild(row);
+        }
+
+        // Save All — only when multiple sources have unsaved changes
+        const dirtyLoaded = Object.keys(SOURCE_LABELS)
+            .filter(k => _dirtySet.has(k) && SOURCE_DATA_LOADED[k]());
+        if (dirtyLoaded.length > 1) {
             const all = document.createElement('button');
-            all.id = 'edit-save-btn';
             all.className = 'edit-save-all';
             all.textContent = '💾 Save All';
             footer.appendChild(all);
@@ -6016,6 +6793,18 @@ loadMap = function (mapName) {
         document.getElementById('edit-mode-btn').classList.toggle('active', on);
         document.getElementById('edit-mode-btn').title = on ? 'Exit edit mode' : 'Enter edit mode';
         document.getElementById('edit-panel').classList.toggle('open', on);
+        if (!on) { _copiedEnemyConfig = null; _updateClipboardBar(); }
+        if (on) updateSaveFooter();
+        if (on) {
+            // Close spot search panel when entering edit mode
+            const spotPanel = document.getElementById('spot-panel');
+            if (spotPanel?.classList.contains('open')) {
+                spotPanel.classList.remove('open');
+                const toggle = document.getElementById('spot-panel-toggle');
+                if (toggle) toggle.style.display = '';
+                _clearSpotHighlights();
+            }
+        }
         if (on) renderEditPanel();
         const curInfo = mapParams[_loadedMapName];
         if (curInfo) buildStageGroupsPanel(curInfo, currentStageName());
@@ -6041,6 +6830,10 @@ loadMap = function (mapName) {
         () => setEditMode(!_editMode));
     document.getElementById('edit-panel-close').addEventListener('click',
         () => setEditMode(false));
+    document.getElementById('edit-clipboard-clear').addEventListener('click', () => {
+        _copiedEnemyConfig = null;
+        _updateClipboardBar();
+    });
 
     document.querySelectorAll('.edit-tab').forEach(tab => {
         tab.addEventListener('click', () => {
@@ -6081,25 +6874,18 @@ loadMap = function (mapName) {
         return lines.join('\n');
     }
 
-    const SUGGESTED_NAMES = {
-        'ddon-src-spawns':        { name: 'EnemySpawn.json',  types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] },
-        'ddon-src-gathering':     { name: 'GatherItem.csv',   types: [{ description: 'CSV',  accept: { 'text/csv': ['.csv'] } }] },
-        'ddon-src-shop':          { name: 'Shop.json',        types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] },
-        'ddon-src-special-shop':  { name: 'SpecialShops.json', types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] },
-    };
-
     async function writeToFile(lsKey, content) {
+        const meta = _SOURCE_META[lsKey];
         let handle = await _idbGet(lsKey + '-handle');
         if (!handle && typeof showSaveFilePicker === 'function') {
-            // First save from remote — ask the user where to put the file
-            const opts = SUGGESTED_NAMES[lsKey];
+            // First save — ask where to put the file, then assign as local source
             try {
-                handle = await showSaveFilePicker({ suggestedName: opts?.name, types: opts?.types });
+                handle = await showSaveFilePicker({ suggestedName: meta?.name, types: meta?.types });
                 await _idbSet(lsKey + '-handle', handle);
+                localStorage.setItem(lsKey + '-name', handle.name);
                 localStorage.setItem(lsKey, '__local__');
             } catch (err) {
-                if (err.name === 'AbortError') throw err; // user cancelled — do not save
-                // FSA failed (security context etc.) — fall through to download
+                if (err.name === 'AbortError') throw err;
             }
         }
         if (handle) {
@@ -6111,21 +6897,14 @@ loadMap = function (mapName) {
             await writable.write(content);
             await writable.close();
         } else {
-            // FSA not available — trigger a browser download so the user gets an actual file
-            const opts = SUGGESTED_NAMES[lsKey];
-            const mimeType = opts?.types?.[0]?.accept
-                ? Object.keys(opts.types[0].accept)[0]
-                : 'application/octet-stream';
+            // FSA not available — trigger browser download and cache in IDB
+            const mimeType = meta?.types?.[0]?.accept
+                ? Object.keys(meta.types[0].accept)[0] : 'application/octet-stream';
             const blob = new Blob([content], { type: mimeType });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = opts?.name ?? 'download';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(url), 1000);
-            // Also cache in IDB so edits survive a reload
+            const a = Object.assign(document.createElement('a'),
+                { href: URL.createObjectURL(blob), download: meta?.name ?? 'download' });
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
             await _idbSet(lsKey, content);
             localStorage.setItem(lsKey, '__local__');
         }
@@ -6147,25 +6926,54 @@ loadMap = function (mapName) {
     }
 
     document.getElementById('edit-panel-footer').addEventListener('click', async (e) => {
-        const chip = e.target.closest('[data-save-key]');
+        // ── ⬇ Use Local ────────────────────────────────────────────────────────
+        const dlBtn = e.target.closest('[data-dl-key]');
+        if (dlBtn) {
+            const key = dlBtn.dataset.dlKey;
+            const origText = dlBtn.textContent;
+            dlBtn.disabled = true;
+            dlBtn.textContent = '⏳';
+            try {
+                const fname = await downloadAndAssignLocal(key);
+                if (fname !== null) {
+                    const footer = document.getElementById('edit-panel-footer');
+                    if (footer) footer.dataset.reloadNeeded = '1';
+                    updateSaveFooter();
+                    showSrcLocalIndicator(_SOURCE_META[key].label);
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') alert('Download failed: ' + err.message);
+                dlBtn.disabled = false;
+                dlBtn.textContent = origText;
+            }
+            return;
+        }
+
+        // ── 💾 Save / Save All ─────────────────────────────────────────────────
+        const saveBtn = e.target.closest('[data-save-key]');
         const saveAll = e.target.closest('.edit-save-all');
-        const keys = chip ? [chip.dataset.saveKey]
-                   : saveAll ? [..._dirtySet].filter(k => localStorage.getItem(k) === '__local__')
+        const keys = saveBtn ? [saveBtn.dataset.saveKey]
+                   : saveAll ? [..._dirtySet].filter(k => SOURCE_DATA_LOADED[k]())
                    : null;
         if (!keys?.length) return;
 
-        // Mark saving state on clicked element
-        const clicked = chip || saveAll;
+        const clicked = saveBtn || saveAll;
         const origText = clicked.textContent;
         clicked.disabled = true;
-        clicked.textContent = '⏳ ' + (chip ? SOURCE_LABELS[chip.dataset.saveKey] : 'Saving…');
+        clicked.textContent = '⏳';
 
         try {
-            for (const key of keys) await saveSource(key);
+            for (const key of keys) {
+                const wasRemote = localStorage.getItem(key) !== '__local__';
+                await saveSource(key);
+                if (wasRemote && localStorage.getItem(key) === '__local__') {
+                    showSrcLocalIndicator(_SOURCE_META[key].label);
+                }
+            }
             updateSaveFooter();
-        } catch (e) {
+        } catch (err) {
             updateSaveFooter();
-            alert('Save failed: ' + e.message);
+            alert('Save failed: ' + err.message);
         }
     });
 
@@ -6743,3 +7551,4 @@ if (!location.hash || location.hash === '#') {
 }
 buildSidebar();
 loadMap(currentMapName());
+checkLocalSources();
