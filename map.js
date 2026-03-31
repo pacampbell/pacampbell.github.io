@@ -3030,7 +3030,7 @@ const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_U
             if (cols.length < 5) continue;
             const row = {
                 stageId:    cols[iStage],
-                layerNo:    iLayer >= 0 ? cols[iLayer] : '',
+                layerNo:    iLayer >= 0 ? cols[iLayer] : 0,
                 groupId:    cols[iGroup],
                 posId:      cols[iPos],
                 itemId:     parseInt(cols[iItem]),
@@ -6876,7 +6876,7 @@ loadMap = function (mapName) {
         for (const row of _rawGatheringRows) {
             const cols = new Array(headers.length).fill('');
             cols[iStage] = row.stageId;
-            if (iLayer >= 0) cols[iLayer] = row.layerNo ?? '';
+            if (iLayer >= 0) cols[iLayer] = row.layerNo ?? 0;
             cols[iGroup] = row.groupId;   cols[iPos]   = row.posId;
             cols[iItem]  = row.itemId;    cols[iNum]   = row.itemNum;
             cols[iMax]   = row.maxItemNum; cols[iQual]  = row.quality;
