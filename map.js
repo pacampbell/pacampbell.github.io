@@ -1903,10 +1903,7 @@ function buildGroupDetails(g) {
                             const setType    = iv('setType');
                             const infection  = iv('infection');
                             const targetTypeId = iv('targetTypeId');
-                            const spawnTime  = (() => {
-                                const v = g('spawnTime')?.value || '00:00,23:59';
-                                return v === '00:00,23:59' ? null : v;
-                            })();
+                            const spawnTime = g('spawnTime')?.value || '00:00,23:59';
                             const namedId     = (() => {
                                 const btn = section.querySelector('.se-named-picker-btn');
                                 if (btn?.dataset.namedId != null) return parseInt(btn.dataset.namedId) || 0;
