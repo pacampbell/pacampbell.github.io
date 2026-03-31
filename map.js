@@ -3013,14 +3013,14 @@ let _gatherItemsCache = null;
 const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_URL)
     .then(url => fetch(url, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }))
     .then(text => {
-        const lines = text.split('\n');
+        const lines = text.trim().split(/\r?\n/);
         // First column header is "#StageId" — strip the leading '#'
         _rawGatheringHeaders = lines[0]; // keep original (with '#') for write-back
         lines[0] = lines[0].replace(/^#/, '');
         const result = new Map();
         const headers = lines[0].split(',');
         const idx = name => headers.indexOf(name);
-        const iStage = idx('StageId'), iGroup = idx('GroupId'),
+        const iStage = idx('StageId'), iLayer = idx('LayerNo'), iGroup = idx('GroupId'),
               iPos = idx('PosId'), iItem = idx('ItemId'), iNum = idx('ItemNum'),
               iMax = idx('MaxItemNum'), iQual = idx('Quality'),
               iHidden = idx('IsHidden'), iChance = idx('DropChance');
@@ -3030,6 +3030,7 @@ const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_U
             if (cols.length < 5) continue;
             const row = {
                 stageId:    cols[iStage],
+                layerNo:    iLayer >= 0 ? cols[iLayer] : '',
                 groupId:    cols[iGroup],
                 posId:      cols[iPos],
                 itemId:     parseInt(cols[iItem]),
@@ -6866,19 +6867,21 @@ loadMap = function (mapName) {
     async function serializeGatheringCsv() {
         if (!_rawGatheringRows || !_rawGatheringHeaders) return null;
         const headers   = _rawGatheringHeaders.replace(/^#/, '').split(',');
-        const iStage    = headers.indexOf('StageId'),  iGroup = headers.indexOf('GroupId');
-        const iPos      = headers.indexOf('PosId'),    iItem  = headers.indexOf('ItemId');
-        const iNum      = headers.indexOf('ItemNum'),  iMax   = headers.indexOf('MaxItemNum');
-        const iQual     = headers.indexOf('Quality'),  iHid   = headers.indexOf('IsHidden');
-        const iChance   = headers.indexOf('DropChance');
+        const iStage    = headers.indexOf('StageId'),  iLayer = headers.indexOf('LayerNo');
+        const iGroup    = headers.indexOf('GroupId'),  iPos   = headers.indexOf('PosId');
+        const iItem     = headers.indexOf('ItemId'),   iNum   = headers.indexOf('ItemNum');
+        const iMax      = headers.indexOf('MaxItemNum'), iQual = headers.indexOf('Quality');
+        const iHid      = headers.indexOf('IsHidden'), iChance = headers.indexOf('DropChance');
         const lines = [_rawGatheringHeaders];
         for (const row of _rawGatheringRows) {
             const cols = new Array(headers.length).fill('');
-            cols[iStage] = row.stageId;   cols[iGroup] = row.groupId;
-            cols[iPos]   = row.posId;     cols[iItem]  = row.itemId;
-            cols[iNum]   = row.itemNum;   cols[iMax]   = row.maxItemNum;
-            cols[iQual]  = row.quality;   cols[iHid]   = row.isHidden ? 'true' : 'false';
-            cols[iChance]= row.dropChance;
+            cols[iStage] = row.stageId;
+            if (iLayer >= 0) cols[iLayer] = row.layerNo ?? '';
+            cols[iGroup] = row.groupId;   cols[iPos]   = row.posId;
+            cols[iItem]  = row.itemId;    cols[iNum]   = row.itemNum;
+            cols[iMax]   = row.maxItemNum; cols[iQual]  = row.quality;
+            cols[iHid]   = row.isHidden ? 'true' : 'false';
+            if (iChance >= 0) cols[iChance] = row.dropChance;
             lines.push(cols.join(','));
         }
         return lines.join('\n');
