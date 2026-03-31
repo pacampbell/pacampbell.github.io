@@ -1537,6 +1537,7 @@
        _updateLayout; !important overrides it whenever the edit section is present. */
     .leaflet-popup-content:has(.se-spawn-view) { width: auto !important; min-width: 320px; }
     .se-spawn-view { min-width: 320px; }
+    .leaflet-popup-content:has(.popup-edit-items-table) { width: auto !important; min-width: 340px; }
 
     /* ── Special Shop split-panel popup ───────────────────────────────── */
     .leaflet-popup-content:has(.ssp-split-panel) { width: auto !important; }
@@ -1764,6 +1765,7 @@
     .dt-list-new:hover { background: rgba(76,175,80,0.1); }
     .popup-edit-items-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
     .popup-edit-items-table td { padding: 2px 4px; vertical-align: middle; }
+    .ge-apply-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
     /* edit mode indicator on edit button */
     #edit-mode-btn.active { color: #e94560; }

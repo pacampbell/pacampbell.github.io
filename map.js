@@ -3428,7 +3428,7 @@ function loadGatherPoints(info, stid = null) {
                         `<div class="popup-edit-row" style="margin-top:5px">` +
                         `<input class="popup-edit-input" id="ge-add-id" type="number" placeholder="Item ID" style="width:70px">` +
                         `<button class="popup-edit-btn" data-edit-action="ge-add-item">+ Add</button>` +
-                        `<button class="popup-edit-btn" data-edit-action="ge-apply">✔ Apply</button>` +
+                        `<button class="popup-edit-btn ge-apply-btn" data-edit-action="ge-apply" disabled>✔ Apply</button>` +
                         `</div></div>`;
                 }
                 return `${badge}${typeLine}${coordLine}${itemsHtml}${editSection}`;
@@ -3476,8 +3476,8 @@ function loadGatherPoints(info, stid = null) {
                         if (_dragItemId == null || !_editMode) return;
                         const itemId = _dragItemId;
                         const doAdd = (gatherMap) => {
-                            const items = gatherMap.get(csvKey);
-                            if (!items) return;
+                            let items = gatherMap.get(csvKey);
+                            if (!items) { items = []; gatherMap.set(csvKey, items); }
                             const [rs, rg, rp] = csvKey.split(',');
                             const newItem = { itemId, itemNum: 1, maxItemNum: 1, quality: 0, isHidden: false, dropChance: 1 };
                             items.push(newItem);
@@ -3500,26 +3500,34 @@ function loadGatherPoints(info, stid = null) {
                 const rebuildGatherPopup = (m, gatherMap) => {
                     m.getPopup().setContent(buildGatherPopup(gatherMap));
                     m.getPopup().update();
-                    if (_editMode && _attachDragReorder) {
+                    if (_editMode) {
                         const popupEl = m.getPopup().getElement();
                         const tbl = popupEl?.querySelector('.popup-edit-items-table');
-                        const items = gatherMap.get(csvKey) ?? [];
-                        _attachDragReorder(tbl, items, (reorderedItems) => {
-                            // Sync raw rows to match new order
-                            if (_rawGatheringRows) {
-                                const [rs, rg, rp] = csvKey.split(',');
-                                const others = _rawGatheringRows.filter(
-                                    r => !(r.stageId === rs && r.groupId === rg && r.posId === rp));
-                                const reordered = reorderedItems.map(it => ({
-                                    stageId: rs, groupId: rg, posId: rp,
-                                    itemId: it.itemId, itemNum: it.itemNum, maxItemNum: it.maxItemNum,
-                                    quality: it.quality, isHidden: it.isHidden, dropChance: it.dropChance,
-                                }));
-                                _rawGatheringRows = [...others, ...reordered];
-                            }
-                            if (_markDirty) _markDirty('ddon-src-gathering');
-                            rebuildGatherPopup(m, gatherMap);
-                        });
+                        const applyBtn = popupEl?.querySelector('.ge-apply-btn');
+                        // Enable Apply when any field in the table changes
+                        if (tbl && applyBtn) {
+                            tbl.addEventListener('input', () => { applyBtn.disabled = false; });
+                            tbl.addEventListener('change', () => { applyBtn.disabled = false; });
+                        }
+                        if (_attachDragReorder) {
+                            const items = gatherMap.get(csvKey) ?? [];
+                            _attachDragReorder(tbl, items, (reorderedItems) => {
+                                // Sync raw rows to match new order
+                                if (_rawGatheringRows) {
+                                    const [rs, rg, rp] = csvKey.split(',');
+                                    const others = _rawGatheringRows.filter(
+                                        r => !(r.stageId === rs && r.groupId === rg && r.posId === rp));
+                                    const reordered = reorderedItems.map(it => ({
+                                        stageId: rs, groupId: rg, posId: rp,
+                                        itemId: it.itemId, itemNum: it.itemNum, maxItemNum: it.maxItemNum,
+                                        quality: it.quality, isHidden: it.isHidden, dropChance: it.dropChance,
+                                    }));
+                                    _rawGatheringRows = [...others, ...reordered];
+                                }
+                                if (_markDirty) _markDirty('ddon-src-gathering');
+                                rebuildGatherPopup(m, gatherMap);
+                            });
+                        }
                     }
                 };
                 let _gatherClickHandler = null;
@@ -3541,7 +3549,8 @@ function loadGatherPoints(info, stid = null) {
                             const removeBtn = e.target.closest('.ge-remove');
                             if (!actionBtn && !removeBtn) return;
                             e.stopPropagation();
-                            const items = gatherMap.get(csvKey) ?? [];
+                            let items = gatherMap.get(csvKey);
+                            if (!items) { items = []; gatherMap.set(csvKey, items); }
                             if (removeBtn) {
                                 const idx = parseInt(removeBtn.dataset.idx);
                                 items.splice(idx, 1);
@@ -3596,7 +3605,10 @@ function loadGatherPoints(info, stid = null) {
                                     }
                                 });
                                 if (_markDirty) _markDirty('ddon-src-gathering');
-                                rebuildGatherPopup(self, gatherMap);
+                                actionBtn.textContent = '✔ Saved';
+                                actionBtn.style.background = '#4a9';
+                                actionBtn.style.color = '#fff';
+                                setTimeout(() => rebuildGatherPopup(self, gatherMap), 500);
                             } else if (actionBtn.dataset.editAction === 'ge-add-item') {
                                 const idInput = popupEl.querySelector('#ge-add-id');
                                 const newId   = parseInt(idInput?.value);
@@ -3619,7 +3631,8 @@ function loadGatherPoints(info, stid = null) {
                         // the popupclose handler can safely clear it.
                         const doAddDraggedItem = (itemId) => {
                             const [rs, rg, rp] = csvKey.split(',');
-                            const items = gatherMap.get(csvKey) ?? [];
+                            let items = gatherMap.get(csvKey);
+                            if (!items) { items = []; gatherMap.set(csvKey, items); }
                             const newItem = { itemId, itemNum: 1, maxItemNum: 1, quality: 0, isHidden: false, dropChance: 1 };
                             items.push(newItem);
                             if (_rawGatheringRows)
