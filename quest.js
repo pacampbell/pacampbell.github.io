@@ -3,38 +3,91 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Resource imports ──────────────────────────────────────────────────────────
-let npcNames   = {};
-let itemNames  = {};
-let emNames    = {};
-let stageIds   = {};
-let stageNames = {};
-let newsImages = [];
+let npcNames        = {};
+let itemNames       = {};
+let emNames         = {};
+let stageIds        = {};
+let stageNames      = {};
+let newsImages      = [];
+let wildHuntImages  = [];
+let emThinkInfo     = {};
+let emMontageInfo   = {};
+let hmPresetList    = [];
+let thinkTableNotes = {};
+let montageNotes    = {};
+let namedParamList  = [];
 
 try {
-    const [n, i, e, s, sn, ni] = await Promise.all([
+    const [n, i, e, s, sn, ni, whi, eti, emi, hpl, ttn, mn, npl] = await Promise.all([
         fetch('./resources/npcNames.json').then(r => r.json()),
         fetch('./resources/itemNames.json').then(r => r.json()),
         fetch('./resources/emNames.json').then(r => r.json()),
         fetch('./resources/stageIds.json').then(r => r.json()),
         fetch('./resources/stageNames.json').then(r => r.json()),
         fetch('./resources/newsImages.json').then(r => r.json()),
+        fetch('./resources/wildHuntImages.json').then(r => r.json()),
+        fetch('./resources/emThinkInfo.json').then(r => r.json()),
+        fetch('./resources/emMontageInfo.json').then(r => r.json()),
+        fetch('./resources/hmPresets.json').then(r => r.json()),
+        fetch('./resources/thinkTableNotes.json').then(r => r.json()),
+        fetch('./resources/montageNotes.json').then(r => r.json()),
+        fetch('./resources/namedParams.json').then(r => r.json()),
     ]);
-    npcNames   = n;
-    itemNames  = i;
-    emNames    = e;
-    stageIds   = s;
-    stageNames = sn;
-    newsImages = ni;
+    npcNames        = n;
+    itemNames       = i;
+    emNames         = e;
+    stageIds        = s;
+    stageNames      = sn;
+    newsImages      = ni;
+    wildHuntImages  = whi;
+    emThinkInfo     = eti;
+    emMontageInfo   = emi;
+    hmPresetList    = hpl;
+    thinkTableNotes = ttn;
+    montageNotes    = mn;
+    namedParamList  = npl;
 } catch (_) { /* offline / path issues — proceed without lookup */ }
+
+const hmPresetsByEmCode = new Map(hmPresetList.filter(p => p.emCode).map(p => [p.emCode, p]));
+const namedParamsById   = new Map(namedParamList.map(p => [p.id, p]));
 
 function newsImagePath(id) {
     return `images/news/news_bannar_${String(id).padStart(3, '0')}_ID.png`;
 }
+function mainQuestImagePath(questId) {
+    return `images/main_quest/mq${String(questId).padStart(4, '0')}_ID.png`;
+}
+function wildHuntImagePath(bgId) {
+    return `images/wildhunt/mh${String(bgId).padStart(4, '0')}_ID.png`;
+}
+function substoryImagePath(groupId, seqNum) {
+    return `images/substory/banner/pq_img_${String(groupId).padStart(3, '0')}_${String(seqNum).padStart(3, '0')}_ID.png`;
+}
+function substoryPortraitPath(groupId) {
+    const grp = SUBSTORY_GROUPS.find(g => g.id === groupId);
+    return grp ? `images/substory/portrait/pq_npc_img_${String(grp.npcId).padStart(5, '0')}_ID.png` : null;
+}
+function questImagePath(q) {
+    switch (q?.type) {
+        case 'World':    return q.news_image          != null ? newsImagePath(q.news_image) : null;
+        case 'Main':     return q.quest_id            != null ? mainQuestImagePath(q.quest_id) : null;
+        case 'WildHunt': return q.order_background_id != null ? wildHuntImagePath(q.order_background_id) : null;
+        case 'Substory': return q.substory_group_id   != null
+            ? substoryImagePath(q.substory_group_id, q.substory_sequence_num ?? 0) : null;
+        default: return null;
+    }
+}
+
+const SUBSTORY_GROUPS = [
+    { id: 1, name: 'Carrie', npcId: 580, seqs: [0, 3, 4, 5, 7, 8, 9, 10] },
+    { id: 2, name: 'Sonel',  npcId: 582, seqs: [0, 11, 12, 13, 14, 15, 16, 17] },
+    { id: 3, name: 'Mephis', npcId: 680, seqs: [0, 18, 19, 20, 21, 22, 23, 24] },
+];
 
 // ── Static data ───────────────────────────────────────────────────────────────
 const QUEST_TYPES = [
     // Canonical enum names
-    'Main', 'Tutorial', 'Limited', 'CycleContents', 'CycleContentsQuest', 'WorldManage',
+    'Main', 'Tutorial', 'Substory', 'Limited', 'CycleContents', 'CycleContentsQuest', 'WorldManage',
     // Pseudo aliases
     'World', 'Board', 'ExtremeMission', 'WildHunt',
 ];
@@ -435,6 +488,50 @@ const CMD_PARAMS = {
     IsLinkageEnemyFlag:               p('StageNo','GroupNo','SetNo','FlagNo'),
     IsLinkageEnemyFlagOff:            p('StageNo','GroupNo','SetNo','FlagNo'),
     IsReleaseSecretRoom:              p(),
+    // ── New check commands (211–256) ────────────────────────────────────────
+    IsSubstoryStateBit18:             p(),
+    StoreLinkageEnemyFlagGlobal:      p(),
+    SetNpcOrderFlagAndCheckBit18:     p('StageNo','NpcId','NpcLookupId','StoreVal'),
+    TalkNpcChoice:                    p('StageNo','NpcId','Choice'),
+    SubstoryEnemyHpNotLess:           p('SubstoryId','HpRatePercent'),
+    SubstoryEnemyHpLess:              p('SubstoryId','HpRatePercent'),
+    SubstoryAvgEnemyHpNotLess:        p('Param1','HpRatePercent'),
+    SubstoryAvgEnemyHpLess:           p('Param1','HpRatePercent'),
+    IsOmBehaviorState:                p('StageNo','GroupNo','SetNo','BehaviorState'),
+    IsPlayerSpecificLayoutFlag:       p('PlayerId','FlagId','ExpectedValue'),
+    IsQuestEnemyAlive:                p('StageNo','GroupNo','SetNo'),
+    IsQuestEnemyAlive2:               p('StageNo','GroupNo','SetNo'),
+    IsQuestOrAreaEnemyAlive:          p('StageNo','GroupNo','SetNo'),
+    IsQuestOrAreaEnemyAlive2:         p('StageNo','GroupNo','SetNo'),
+    IsRewardPointNotLess:             p('PlayerId','RewardId','ExpectedValue'),
+    OmSetTouchRadius:                 p('StageNo','GroupNo','SetNo'),
+    OmReleaseTouchRadius:             p('StageNo','GroupNo','SetNo'),
+    QuestTalkNpcRadius:               p('StageNo','GroupNo','SetNo'),
+    IsOmBrokenInCurrentPhase:         p('StageNo','GroupNo','SetNo'),
+    IsEnemyFoundRadius:               p('StageNo','GroupNo','SetNo','MarkerFlag'),
+    IsEnemyFoundForOrderRadius:       p('StageNo','GroupNo','SetNo'),
+    IsPawnAvailable:                  p('PawnId'),
+    IsSubstoryStateBit19:             p(),
+    IsPartyMemberHasItem:             p('ItemListIdx'),
+    IsSubstoryStateBit20:             p(),
+    IsSubstoryStateBit21:             p(),
+    IsSubstoryStateBit22:             p(),
+    IsSubstoryStateBit23:             p(),
+    IsFsmNpcTalkComplete:             p('NpcId'),
+    IsSubstoryIngameHourInRange:      p('MinHour','MaxHour'),
+    IsKilledTargetEnemySetGroupMode15:         p('FlagNo'),
+    IsKilledTargetEnemySetGroupMode15NoMarker: p('FlagNo'),
+    IsContentsTimerBElapsed:          p('TimerNo'),
+    IsQuestClearCountNotLess:         p(),
+    IsContentsModeTimerNotLess:       p('TimeSec'),
+    IsTriggerFlagSetAndClear:         p(),
+    IsKillGroupCompleteInRadius:      p('FlagNo'),
+    IsContentsTimerAZero:             p('TimerNo'),
+    IsWildHuntTargetEnemyKilled:      p('ZoneLinkageId','Param2','Param3','MarkerFlag'),
+    IsContentsModeStateFlag:          p(),
+    Padding254:                       p(),
+    IsQuestEnemyHpNotGreater:         p('StageNo','GroupNo','SetNo','HpLostPct'),
+    IsAreaLinkageQuestFlagOn:         p('FlagKey'),
     // ── Result commands ─────────────────────────────────────────────────────
     LotOn:                            p('StageNo','LotNo'),
     LotOff:                           p('StageNo','LotNo'),
@@ -531,6 +628,43 @@ const CMD_PARAMS = {
     SwitchPawnQuestTalk:              p('Type'),
     LinkageEnemyFlagOn:               p('StageNo','GroupNo','SetNo','FlagId'),
     LinkageEnemyFlagOff:              p('StageNo','GroupNo','SetNo','FlagId'),
+    // ── New result commands (99–134) ────────────────────────────────────────
+    SubstoryProgress:                 p('Delta'),
+    AddSubstoryProgress:              p('SubstoryId','ProgressDelta'),
+    TriggerSubstoryEvent:             p(),
+    EnableSubstoryUIElement:          p(),
+    DisableSubstoryUIElement:         p(),
+    QstTalkChgFsm:                    p('NpcId','MsgNo'),
+    SetSubstoryEnemyInvincible:       p('EnemyGroupFlag','Invincible'),
+    Padding106:                       p(),
+    AddFsmTalkNpc:                    p('NpcId'),
+    SetSubstoryEnemyGroupFlag:        p('GroupId','FlagValue'),
+    EnableSubstoryElementB:           p(),
+    DisableSubstoryElementB:          p(),
+    SetWorldManageBarrierOn:          p(),
+    SetWorldManageBarrierOff:         p(),
+    SetFsmNpcSchedule:                p('Param1','Param2','Param3','ScheduleId'),
+    SetQuestEnemyLevel:               p('StageNo','GroupNo','SetNo','Level'),
+    SetQuestEnemyLevelEx:             p('StageNo','GroupNo','SetNo','Level'),
+    SetQuestEnemyTierUp:              p('StageNo','GroupNo','SetNo','Tier'),
+    SetQuestEnemyTierUpEx:            p('StageNo','GroupNo','SetNo','Tier'),
+    SetQuestOmMontageFix:             p('StageNo','GroupNo','SetNo','PoseId'),
+    SetQuestOmMontageFixEx:           p('StageNo','GroupNo','SetNo','PoseId'),
+    Padding120:                       p(),
+    SetQuestLayoutEnemyLevel:         p('StageNo','GroupNo','SetNo','Level'),
+    Padding122:                       p(),
+    Padding123:                       p(),
+    RemoveFsmNpcFromSchedule:         p(),
+    Padding125:                       p(),
+    SetEnemyExpeditionState:          p('Mode'),
+    Padding127:                       p(),
+    TriggerSubstoryEndSequence:       p(),
+    Padding129:                       p(),
+    CheckSubstoryCondition:           p(),
+    Padding131:                       p(),
+    Padding132:                       p(),
+    SetPawnExpeditionFlag:            p('Mode'),
+    SetQuestLayoutEnemyBodyPose:      p('StageNo','GroupNo','SetNo','PoseId'),
 };
 
 const CHECK_CMD_TYPES = [
@@ -581,6 +715,22 @@ const CHECK_CMD_TYPES = [
     'IsOneOffGather','IsOmBrokenLayoutNoMarker','IsOmBrokenQuestNoMarker','KeyItemPointEq',
     'IsEmotion','IsEquipColor','IsEquip','IsTakePicturesNpc','SayMessage',
     'IsTakePicturesWithoutPawn','IsLinkageEnemyFlag','IsLinkageEnemyFlagOff','IsReleaseSecretRoom',
+    // 211–256
+    'IsSubstoryStateBit18','StoreLinkageEnemyFlagGlobal','SetNpcOrderFlagAndCheckBit18',
+    'TalkNpcChoice','SubstoryEnemyHpNotLess','SubstoryEnemyHpLess',
+    'SubstoryAvgEnemyHpNotLess','SubstoryAvgEnemyHpLess','IsOmBehaviorState',
+    'IsPlayerSpecificLayoutFlag','IsQuestEnemyAlive','IsQuestEnemyAlive2',
+    'IsQuestOrAreaEnemyAlive','IsQuestOrAreaEnemyAlive2','IsRewardPointNotLess',
+    'OmSetTouchRadius','OmReleaseTouchRadius','QuestTalkNpcRadius','IsOmBrokenInCurrentPhase',
+    'IsEnemyFoundRadius','IsEnemyFoundForOrderRadius',
+    'IsPawnAvailable','IsSubstoryStateBit19','IsPartyMemberHasItem',
+    'IsSubstoryStateBit20','IsSubstoryStateBit21','IsSubstoryStateBit22','IsSubstoryStateBit23',
+    'IsFsmNpcTalkComplete','IsSubstoryIngameHourInRange',
+    'IsKilledTargetEnemySetGroupMode15','IsKilledTargetEnemySetGroupMode15NoMarker',
+    'IsContentsTimerBElapsed','IsQuestClearCountNotLess','IsContentsModeTimerNotLess',
+    'IsTriggerFlagSetAndClear','IsKillGroupCompleteInRadius',
+    'IsContentsTimerAZero','IsWildHuntTargetEnemyKilled','IsContentsModeStateFlag',
+    'Padding254','IsQuestEnemyHpNotGreater','IsAreaLinkageQuestFlagOn',
 ].sort();
 
 const RESULT_CMD_TYPES = [
@@ -620,6 +770,18 @@ const RESULT_CMD_TYPES = [
     'PlayMessage','StopMessage','DecideDivideArea','ShiftPhase','ReleaseMyRoom',
     'DivideSuccess','DivideFailed','SetProgressBonus','RefreshOmKeyDisp',
     'SwitchPawnQuestTalk','LinkageEnemyFlagOn','LinkageEnemyFlagOff',
+    // 99–134
+    'SubstoryProgress','AddSubstoryProgress','TriggerSubstoryEvent',
+    'EnableSubstoryUIElement','DisableSubstoryUIElement','QstTalkChgFsm',
+    'SetSubstoryEnemyInvincible','Padding106','AddFsmTalkNpc','SetSubstoryEnemyGroupFlag',
+    'EnableSubstoryElementB','DisableSubstoryElementB',
+    'SetWorldManageBarrierOn','SetWorldManageBarrierOff','SetFsmNpcSchedule',
+    'SetQuestEnemyLevel','SetQuestEnemyLevelEx','SetQuestEnemyTierUp','SetQuestEnemyTierUpEx',
+    'SetQuestOmMontageFix','SetQuestOmMontageFixEx','Padding120',
+    'SetQuestLayoutEnemyLevel','Padding122','Padding123',
+    'RemoveFsmNpcFromSchedule','Padding125','SetEnemyExpeditionState','Padding127',
+    'TriggerSubstoryEndSequence','Padding129','CheckSubstoryCondition',
+    'Padding131','Padding132','SetPawnExpeditionFlag','SetQuestLayoutEnemyBodyPose',
 ].sort();
 
 // All known command types for lookups (getCmdParams etc.)
@@ -850,6 +1012,7 @@ const LS_CAM          = 'questBuilder_cam';
 const LS_PROP_W       = 'questBuilder_propW';
 const LS_PANEL_STATES = 'questBuilder_panels';  // { fname → {x,y,w,h,pinned,labels} }
 const LS_SRC_LOADED   = 'questBuilder_srcLoaded'; // '1' if source files were loaded last session
+// Aux viewers key is dynamic — call auxViewersKey() to get the current one
 const IDB_NAME    = 'questBuilder';
 const IDB_STORE   = 'handles';
 
@@ -867,6 +1030,11 @@ let _selectedLang      = localStorage.getItem('ddon-lang') || 'English';
 let _msgMap            = null;  // Map<key,{jp,en,lang?}> loaded from gmd.csv
 let _npcNameMap        = null;  // Map<npcId string,{en,jp,lang?}> cross-ref from gmd npc_name entries
 let _epData            = null;  // enemyPositions.json cache (lazy-loaded, ~20MB)
+let _loadedSourceFiles = null;  // { fname: data } — cached after spider loads
+let _mssGroupMap       = null;  // Map<groupSerial, {npcName, msgs:[{en,jp}]}> built from mss files
+let _auxViewers        = [];   // [{ id, questId, x, y }] — auxiliary quest viewer cards on the canvas
+let _auxQuestIndex     = null; // [{ id: number }] sorted, lazily built from client dir scan; null = not yet loaded
+let _auxQuestNames     = new Map(); // id → name string (lazily loaded from QTD files)
 
 // Camera state
 let _cam = { x: 0, y: 0, z: 1.0 };
@@ -937,8 +1105,55 @@ const itemEntry = id => (typeof id === 'number' ? itemNames[String(id)] : itemNa
 const itemName  = id => itemEntry(id)?.name ?? (id != null ? `item ${id}` : '');
 const itemIconPath = id => { const e = itemEntry(id); return e ? `images/icons/small/ii${String(e.iconNo).padStart(6,'0')}.png` : null; };
 // enemy_id "0x015820" → key "em015820" for emNames lookup
-const emNameKey = id => id ? `em${String(id).replace(/^0x/i,'').toLowerCase()}` : null;
-const emName    = id => { const k = emNameKey(id); return k ? (emNames[k]?.name ?? '') : ''; };
+const emNameKey      = id => id ? `em${String(id).replace(/^0x/i,'').toLowerCase()}` : null;
+const emName         = id => { const k = emNameKey(id); return k ? (emNames[k]?.name ?? '') : ''; };
+const emDisplayLabel = id => { const n = emName(id); const k = emNameKey(id); return n ? `${n} · ${k}` : (id ?? ''); };
+// think-table info for a given hex enemy_id
+const emThink = id => { const k = emNameKey(id); return k ? (emThinkInfo[k] ?? null) : null; };
+// montage valid indices for a given hex enemy_id (null = no data, [] = none recorded)
+const emMontage = id => { const k = emNameKey(id); return k ? (emMontageInfo[k] ?? null) : null; };
+// hm preset entry for a given hex enemy_id
+const emHmPreset = id => { const k = emNameKey(id); return k ? (hmPresetsByEmCode.get(k) ?? null) : null; };
+// Full display name for an enemy object, applying named param prefix/suffix/replace
+const enDisplayName = en => {
+    const base  = emName(en.enemy_id) || en.enemy_id || '';
+    const np    = en.named_enemy_params_id ? namedParamsById.get(en.named_enemy_params_id) : null;
+    return namedParamDisplayName(np, base) ?? base;
+};
+
+// ── Named param helpers ────────────────────────────────────────────────────────
+function namedParamLabel(p) {
+    if (!p || p.id === 0) return '0 — None';
+    const name = p.name?.trim();
+    const tag = p.type === 'NAMED_TYPE_PREFIX'  ? ' [Pfx]'
+              : p.type === 'NAMED_TYPE_REPLACE'  ? ' [Rep]'
+              : p.type === 'NAMED_TYPE_SUFFIX'   ? ' [Sfx]'
+              : '';
+    return name ? `${p.id}: ${name}${tag}` : `#${p.id}${tag}`;
+}
+// Returns the combined enemy display name with the param applied, or null if no name change.
+function namedParamDisplayName(p, baseEmName) {
+    const name = p?.name?.trim();
+    if (!name || !p || p.id === 0 || p.type === 'NAMED_TYPE_NONE') return baseEmName ?? null;
+    if (p.type === 'NAMED_TYPE_REPLACE') return baseEmName ? `${name} (${baseEmName})` : name;
+    if (p.type === 'NAMED_TYPE_PREFIX')  return baseEmName ? `${name} ${baseEmName}` : name;
+    if (p.type === 'NAMED_TYPE_SUFFIX')  return baseEmName ? `${baseEmName} ${name}` : name;
+    return baseEmName ?? null;
+}
+// Returns HTML showing the combined name with the param part highlighted.
+function namedParamCombinedHtml(p, baseEmName) {
+    const name = p?.name?.trim();
+    if (!name || !p || p.id === 0 || p.type === 'NAMED_TYPE_NONE') return escHtml(baseEmName ?? '');
+    const hi  = `<span class="np-name-hi">${escHtml(name)}</span>`;
+    const em  = escHtml(baseEmName ?? '…');
+    if (p.type === 'NAMED_TYPE_REPLACE') return baseEmName
+        ? `${hi} <span class="np-orig-inline">(${em})</span>`
+        : hi;
+    if (p.type === 'NAMED_TYPE_PREFIX')  return `${hi} ${em}`;
+    if (p.type === 'NAMED_TYPE_SUFFIX')  return `${em} ${hi}`;
+    return em;
+}
+
 const stName   = sid => {
     if (!sid) return '?';
     const key = String(sid.id ?? sid);
@@ -1073,6 +1288,7 @@ function buildItemPicker(currentId, onChange) {
 
 // ── NPC picker (fuzzy search, shows "Name #id" for all to handle duplicates) ──
 const NPC_PARAM_NAMES = new Set(['NpcId', 'NpcId01', 'NpcId02', 'NpcId03']);
+const MSG_PARAM_NAMES = new Set(['GroupSerial', 'NoOrderGroupSerial', 'OrderGroupSerial', 'MsgNo']);
 
 function buildNpcPicker(currentId, onChange) {
     const wrap = document.createElement('div');
@@ -1108,7 +1324,7 @@ function buildNpcPicker(currentId, onChange) {
             return primary.toLowerCase().includes(q) || (jp && jp.toLowerCase().includes(q));
         }).slice(0, 20);
 
-        dropdown.innerHTML = matches.map(({ id, primary, jp, label }) =>
+        dropdown.innerHTML = matches.map(({ id, primary, jp }) =>
             `<div class="npc-option" data-id="${escAttr(id)}" title="${escAttr(jp ? `${jp} (${primary})` : primary)}">
                 <span class="npc-opt-name">${escHtml(primary)}</span>
                 <span class="npc-opt-id">#${id}</span>
@@ -1135,6 +1351,225 @@ function buildNpcPicker(currentId, onChange) {
     input.addEventListener('focus', () => populate(input.value));
     input.addEventListener('input', () => populate(input.value));
     input.addEventListener('blur',  () => { setTimeout(() => { dropdown.style.display = 'none'; }, 160); });
+
+    return wrap;
+}
+
+// ── MSS message picker (fuzzy search by serial, NPC name, or message text) ──
+// Short label shown inside the picker input (name + NPC ID only)
+function msgInputLabel(serial) {
+    if (serial == null || serial === '') return '';
+    const entry = _mssGroupMap?.get(Number(serial));
+    if (!entry) return `#${serial}`;
+    return entry.npcId != null ? `${entry.npcName} #${entry.npcId}` : entry.npcName;
+}
+
+// Full label used elsewhere (e.g. canvas chip title)
+function msgDisplayLabel(serial) {
+    if (serial == null || serial === '') return '';
+    const entry = _mssGroupMap?.get(Number(serial));
+    if (!entry) return `#${serial}`;
+    const npcPart = entry.npcId != null ? `${entry.npcName} #${entry.npcId}` : entry.npcName;
+    return `${npcPart} serial:${serial}`;
+}
+
+function buildMsgPicker(currentSerial, onChange, filterNpcId = null) {
+    const wrap = document.createElement('div');
+    wrap.className = 'msg-picker';
+
+    // When filtering by NPC, show all their groups on focus without typing
+    const npcFiltered = filterNpcId != null && _mssGroupMap != null;
+    const placeholder = !_mssGroupMap
+        ? 'Serial number…'
+        : npcFiltered ? 'Filter by serial or message…'
+        : 'Search by serial, NPC, or message…';
+
+    const inputVal    = currentSerial != null ? String(currentSerial) : '';
+    const serialBadge = currentSerial != null ? `<span class="msg-serial-badge">${escHtml(msgInputLabel(currentSerial))}</span>` : '';
+    wrap.innerHTML = `
+        <div class="msg-picker-inner">
+            <input type="text" class="msg-picker-input prop-input"
+                   value="${escAttr(inputVal)}"
+                   placeholder="${escAttr(placeholder)}"
+                   autocomplete="off" spellcheck="false">
+            ${serialBadge}
+            ${currentSerial != null ? `<button class="msg-preview-chip msg-picker-chip" data-serial="${currentSerial}" title="Preview messages">💬</button>` : ''}
+        </div>
+        <div class="msg-picker-dropdown"></div>`;
+
+    const input    = wrap.querySelector('.msg-picker-input');
+    const dropdown = wrap.querySelector('.msg-picker-dropdown');
+    const inner    = wrap.querySelector('.msg-picker-inner');
+
+    wrap.querySelector('.msg-picker-chip')?.addEventListener('click', e => {
+        e.stopPropagation();
+        showMsgPreview(e.currentTarget, Number(e.currentTarget.dataset.serial));
+    });
+
+    function setSelected(serial) {
+        input.value = serial != null ? String(serial) : '';
+        // Update or remove NPC name badge
+        inner.querySelector('.msg-serial-badge')?.remove();
+        inner.querySelector('.msg-picker-chip')?.remove();
+        if (serial != null) {
+            const badge = document.createElement('span');
+            badge.className = 'msg-serial-badge';
+            badge.textContent = msgInputLabel(serial);
+            const chip = document.createElement('button');
+            chip.className = 'msg-preview-chip msg-picker-chip';
+            chip.dataset.serial = serial;
+            chip.title = 'Preview messages';
+            chip.textContent = '💬';
+            chip.addEventListener('click', e => { e.stopPropagation(); showMsgPreview(chip, serial); });
+            input.after(badge);
+            badge.after(chip);
+        }
+        dropdown.style.display = 'none';
+        onChange(serial);
+    }
+
+    function populate(query) {
+        if (!_mssGroupMap) { dropdown.style.display = 'none'; return; }
+        const q = (query ?? '').toLowerCase().trim();
+        const isNum = /^\d+$/.test(q);
+        // When NPC-filtered: show all NPC entries on empty query; hide only when no match on typed query
+        if (!npcFiltered && !q) { dropdown.style.display = 'none'; return; }
+
+        const matches = [];
+        for (const [serial, entry] of _mssGroupMap) {
+            // NPC filter: skip entries not belonging to this NPC
+            if (npcFiltered && entry.npcId !== filterNpcId) continue;
+
+            if (q) {
+                const serialStr   = String(serial);
+                const nameMatch   = entry.npcName.toLowerCase().includes(q);
+                const serialMatch = isNum ? serialStr.startsWith(q) : false;
+                const npcIdMatch  = isNum && entry.npcId != null ? String(entry.npcId).startsWith(q) : false;
+                const msgMatch    = entry.msgs.some(m =>
+                    m.en.toLowerCase().includes(q) || m.jp.toLowerCase().includes(q));
+                if (!nameMatch && !serialMatch && !npcIdMatch && !msgMatch) continue;
+            }
+
+            matches.push({ serial, entry });
+            if (matches.length >= 50) break;
+        }
+
+        dropdown.innerHTML = matches.map(({ serial, entry }) => {
+            const first    = entry.msgs[0] ?? {};
+            const previewEn = first.en ? first.en.slice(0, 80) + (first.en.length > 80 ? '…' : '') : '';
+            const previewJp = first.jp ? first.jp.slice(0, 60) + (first.jp.length > 60 ? '…' : '') : '';
+            // When NPC-filtered, no need to show NPC name (it's the same for all)
+            const npcLabel = npcFiltered
+                ? ''
+                : entry.npcId != null
+                    ? `${escHtml(entry.npcName)} <span class="msg-opt-npcid">#${entry.npcId}</span>`
+                    : escHtml(entry.npcName);
+            return `<div class="msg-option" data-serial="${serial}">
+                <div class="msg-opt-hdr">
+                    ${npcLabel ? `<span class="msg-opt-name">${npcLabel}</span>` : ''}
+                    <span class="msg-opt-serial">serial:${serial}</span>
+                </div>
+                ${previewEn ? `<div class="msg-opt-preview">${escHtml(previewEn)}</div>` : ''}
+                ${previewJp ? `<div class="msg-opt-preview msg-opt-preview--jp">${escHtml(previewJp)}</div>` : ''}
+            </div>`;
+        }).join('');
+
+        dropdown.style.display = matches.length ? 'block' : 'none';
+
+        dropdown.querySelectorAll('.msg-option').forEach(opt => {
+            opt.addEventListener('mousedown', e => {
+                e.preventDefault();
+                setSelected(parseInt(opt.dataset.serial));
+            });
+        });
+    }
+
+    input.addEventListener('focus', () => populate(input.value));
+    input.addEventListener('input', () => populate(input.value));
+    input.addEventListener('blur', () => {
+        setTimeout(() => { dropdown.style.display = 'none'; }, 160);
+        // Accept raw number typed directly
+        const raw = input.value.trim();
+        const asNum = parseInt(raw);
+        if (raw !== '' && !isNaN(asNum)) {
+            setSelected(asNum);
+        } else if (raw === '') {
+            setSelected(null);
+        }
+    });
+
+    return wrap;
+}
+
+// ── Enemy picker (fuzzy search by name or hex ID, always shows ID to disambiguate) ──
+function buildEmPicker(currentHexId, onChange) {
+    const wrap = document.createElement('div');
+    wrap.className = 'em-picker';
+
+    const displayVal = emDisplayLabel(currentHexId);
+    wrap.innerHTML = `
+        <input type="text" class="em-picker-input prop-input"
+               value="${escAttr(displayVal)}"
+               title="${escAttr(displayVal)}"
+               placeholder="Search enemy name or ID…"
+               autocomplete="off" spellcheck="false"
+               style="font-size:11px">
+        <div class="em-picker-dropdown"></div>`;
+
+    const input    = wrap.querySelector('.em-picker-input');
+    const dropdown = wrap.querySelector('.em-picker-dropdown');
+
+    function populate(query) {
+        const q = (query ?? '').toLowerCase().trim();
+        if (!q) { dropdown.style.display = 'none'; return; }
+        // Hex-like query → match on key; otherwise → match on name
+        const isHex = /^(0x|em)?[0-9a-f]+$/i.test(q);
+        const qHex  = q.replace(/^(0x|em)/i, '');
+        const entries = Object.entries(emNames);
+        const filtered = entries.filter(([k, v]) =>
+            isHex ? k.slice(2).includes(qHex) : (v.name || '').toLowerCase().includes(q)
+        ).slice(0, 30);
+
+        dropdown.innerHTML = filtered.map(([k, v]) =>
+            `<div class="em-option" data-emkey="${escAttr(k)}" title="${escAttr(`${v.name || k} (${k})`)}">
+                <span class="em-opt-name">${escHtml(v.name || k)}</span>
+                <span class="em-opt-id">${escHtml(k)}</span>
+            </div>`
+        ).join('');
+        dropdown.style.display = filtered.length ? 'block' : 'none';
+
+        dropdown.querySelectorAll('.em-option').forEach(opt => {
+            opt.addEventListener('mousedown', e => {
+                e.preventDefault();
+                const emKey = opt.dataset.emkey;
+                const hexId = '0x' + emKey.replace(/^em/i, '').toUpperCase();
+                const label = emDisplayLabel(hexId);
+                input.value = label;
+                input.title = label;
+                dropdown.style.display = 'none';
+                onChange(hexId);
+            });
+        });
+    }
+
+    input.addEventListener('focus', () => populate(input.value));
+    input.addEventListener('input', () => populate(input.value));
+    input.addEventListener('blur', () => {
+        setTimeout(() => {
+            dropdown.style.display = 'none';
+            // Accept raw hex entry (0xNNNNNN, emNNNNNN, or bare hex digits)
+            const raw = input.value.trim();
+            const m = raw.match(/(?:0x|em)?([0-9a-f]{4,6})/i);
+            if (m) {
+                const digits = m[1].toLowerCase().padStart(6, '0');
+                const hexId  = '0x' + digits.toUpperCase();
+                const label  = emDisplayLabel(hexId);
+                input.value  = label;
+                input.title  = label;
+                onChange(hexId);
+            }
+        }, 160);
+    });
 
     return wrap;
 }
@@ -1211,7 +1646,15 @@ function blockSummary(block) {
     if (block.checkpoint)         lines.push('🔖 checkpoint');
     if (block.npc_id)             lines.push(npcName(block.npc_id));
     if (block.stage_id)           lines.push(stNameHtml(block.stage_id));
-    if (block.message_id != null) lines.push(`msg ${block.message_id}`);
+    if (block.message_id != null) {
+        const mid = block.message_id;
+        const mssEntry = _mssGroupMap?.get(mid);
+        const chipCls  = mssEntry ? 'msg-preview-chip' : 'msg-preview-chip msg-preview-chip--dim';
+        const npcLabel = mssEntry ? (mssEntry.npcId != null ? `${mssEntry.npcName} #${mssEntry.npcId}` : mssEntry.npcName) : null;
+        const chipLbl  = npcLabel ? `💬 ${escHtml(npcLabel)}` : `💬 #${mid}`;
+        const chipTip  = npcLabel ? escAttr(npcLabel) : 'Load source files to preview';
+        lines.push({ html: `<button class="${chipCls}" data-serial="${mid}" title="${chipTip}">${chipLbl}</button>` });
+    }
     if (block.groups?.length) {
         const egs = _quest?.enemy_groups || [];
         const chips = block.groups.map(gi => {
@@ -1332,6 +1775,26 @@ function init() {
     window.addEventListener('mouseup',   onCanvasMouseUp);
     canvasWrap.addEventListener('wheel',     onCanvasWheel, { passive: false });
 
+    // Right-click context menu — add auxiliary viewers
+    canvasWrap.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        document.querySelector('.canvas-ctx-menu')?.remove();
+        const menu = document.createElement('div');
+        menu.className = 'canvas-ctx-menu';
+        menu.style.cssText = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9000;`;
+        menu.innerHTML = `<button class="ctx-menu-item">📁 Add Auxiliary Viewer</button>`;
+        const closeMenu = () => { menu.remove(); document.removeEventListener('click', closeMenu); };
+        menu.querySelector('.ctx-menu-item').addEventListener('click', () => {
+            const rect = canvasWrap.getBoundingClientRect();
+            const worldX = (e.clientX - rect.left - _cam.x) / _cam.z;
+            const worldY = (e.clientY - rect.top  - _cam.y) / _cam.z;
+            addAuxViewer(worldX, worldY);
+            closeMenu();
+        });
+        document.body.appendChild(menu);
+        setTimeout(() => document.addEventListener('click', closeMenu), 0);
+    });
+
     // Spacebar pan — hold space to grab-pan from anywhere over the canvas
     window.addEventListener('keydown', e => {
         if (e.code === 'Space' && !e.target.matches('input, textarea, [contenteditable]')) {
@@ -1409,9 +1872,10 @@ function init() {
     const savedCam  = localStorage.getItem(LS_CAM);
     if (cleanJson) {
         try {
-            _quest     = JSON.parse(cleanJson);
+            _quest     = normalizeQuest(JSON.parse(cleanJson));
             _cleanJson = cleanJson;
             if (savedCam) { _cam = JSON.parse(savedCam); applyCamera(); } else { resetCamera(); }
+            loadAuxViewers();
             render();
             enableQuestUI();
             updateDirtyUI();
@@ -1604,6 +2068,8 @@ async function pickClientDir() {
     try {
         const h = await window.showDirectoryPicker({ mode: 'read' });
         _clientHandle = h;
+        _auxQuestIndex = null;
+        _auxQuestNames = new Map();
         await idbPut('clientDirHandle', h);
         updateSettingsUI();
         syncSourceFilesCard();
@@ -1612,6 +2078,10 @@ async function pickClientDir() {
 
 async function clearClientDir() {
     _clientHandle = null;
+    _loadedSourceFiles = null;
+    _mssGroupMap = null;
+    _auxQuestIndex = null;
+    _auxQuestNames = new Map();
     try { const db = await idbOpen(); db.transaction(IDB_STORE,'readwrite').objectStore(IDB_STORE).delete('clientDirHandle'); } catch (_) {}
     updateSettingsUI();
     syncSourceFilesCard();
@@ -1718,7 +2188,7 @@ async function loadTranslations() {
                 }
             }
             // Overlay translated NPC names
-            for (const [id, entry] of npcMap) {
+            for (const [, entry] of npcMap) {
                 const translated = gmdNpcLangByEn.get(entry.en.toLowerCase());
                 if (translated) entry.lang = translated;
             }
@@ -1758,7 +2228,6 @@ async function readQuestSourceFiles(questId) {
     if (!questRoot) return null;
 
     const files = {};
-    const SKIP_KEYS = ['@class', 'FileHeader', 'FileSize', 'HashTable'];
 
     async function readDir(d, prefix) {
         for await (const [name, entry] of d.entries()) {
@@ -1897,11 +2366,12 @@ function buildSourceHtml(files) {
         if (!groups.length) return `<span class="source-meta">No NPC dialogue</span>`;
         let h = '';
         for (const grp of groups) {
-            const npcName = grp.NpcName?.En ?? grp.NpcName?.Jp ?? `NPC ${grp.NpcId ?? '?'}`;
-            const serial  = grp.GroupSerial != null ? `serial:${grp.GroupSerial}` : '';
+            const npcName  = grp.NpcName?.En ?? grp.NpcName?.Jp ?? `NPC ${grp.NpcId ?? '?'}`;
+            const npcIdStr = grp.NpcId != null ? ` #${grp.NpcId}` : '';
+            const serial   = grp.GroupSerial != null ? `serial:${grp.GroupSerial}` : '';
             h += `<div class="source-grp">
                 <div class="source-grp-hdr">
-                    🧑 ${escHtml(npcName)}
+                    🧑 ${escHtml(npcName)}${escHtml(npcIdStr)}
                     ${serial ? `<span class="source-meta">${escHtml(serial)}</span>` : ''}
                 </div>`;
             for (const msg of (grp.MsgData ?? [])) {
@@ -1930,7 +2400,6 @@ function buildSourceHtml(files) {
 
     let html = `<div class="source-viewer">`;
     for (const [fname, data] of Object.entries(files).sort(([a],[b]) => a.localeCompare(b))) {
-        const cls = data['@class'] ?? '';
         let body;
         if      (fname.includes('.qst.'))  body = renderQst(data);
         else if (fname.includes('.qmi.') || fname.includes('.fmi.')) body = renderQmi(data);
@@ -2091,12 +2560,13 @@ function initPropResize() {
     });
 }
 
-function loadQuestJson(text, filename) {
+function loadQuestJson(text) {
     try {
         const data = JSON.parse(text);
         _quest = normalizeQuest(data);
         _selection = null;
         _focusedProc = null;
+        loadAuxViewers();
         resetCamera();
         render();
         enableQuestUI();
@@ -2120,6 +2590,14 @@ function normalizeQuest(data) {
         comment: p.comment ?? `process ${i}`,
         blocks: (p.blocks || []).map(normalizeBlock),
     }));
+    // Ensure substory image fields have defaults so the meta card renders correctly on load
+    if (q.type === 'Substory') {
+        if (q.substory_group_id == null) q.substory_group_id = SUBSTORY_GROUPS[0].id;
+        if (q.substory_sequence_num == null) {
+            const grp = SUBSTORY_GROUPS.find(g => g.id === q.substory_group_id) ?? SUBSTORY_GROUPS[0];
+            q.substory_sequence_num = grp.seqs[0] ?? 0;
+        }
+    }
     return q;
 }
 
@@ -2215,6 +2693,15 @@ function normalizeForSave(q) {
             out.enable_cancel = defaultEnableCancel(out.type);
         }
         // For non-applicable types, omit entirely (no field written)
+    }
+
+    // Order conditions — fill in default param values (0) for any params not yet touched
+    for (const oc of (out.order_conditions ?? [])) {
+        const params = OC_PARAMS[oc.type] || [];
+        params.forEach((_, pi) => {
+            const pk = pi === 0 ? 'Param1' : 'Param2';
+            if (oc[pk] === undefined) oc[pk] = 0;
+        });
     }
 
     for (const proc of (out.processes ?? [])) {
@@ -2350,7 +2837,7 @@ function onCanvasMouseMove(e) {
     applyCamera();
 }
 
-function onCanvasMouseUp(e) {
+function onCanvasMouseUp() {
     if (_drag) {
         if (_drag.live) commitDrop();
         cancelDrag();
@@ -2550,6 +3037,7 @@ function render() {
     renderSwimlanes();
     renderArrows();
     if (_selection?.enemyGroup != null) openEnemyGroupSpider(_selection.enemyGroup);
+    renderAllAuxViewers();
 }
 
 function renderSidebar() {
@@ -2712,13 +3200,24 @@ function deleteProcess(pi) {
     render(); renderPropPanel(); persistQuest();
 }
 
+function getQtdOrderEntry() {
+    if (!_loadedSourceFiles) return null;
+    for (const data of Object.values(_loadedSourceFiles)) {
+        if (!data.QuestTextDataList) continue;
+        const e = data.QuestTextDataList.find(e => e.TypeName === 'QUEST_TEXT_TYPE_ORDER');
+        if (e) return { en: e.Message?.En ?? '', jp: e.Message?.Jp ?? '' };
+    }
+    return null;
+}
+
 function renderMetaCard() {
     const q = _quest;
     const isSel = _selection?.meta === true;
     const card = document.createElement('div');
     card.id = 'meta-card';
     card.className = 'meta-card' + (isSel ? ' selected' : '');
-    const hasImg = q.news_image != null && newsImages.includes(q.news_image);
+    const imgSrcInit = questImagePath(q);
+    const hasImg = !!imgSrcInit;
     card.innerHTML = `
         <div class="meta-card-header">
             <span>⚙</span>
@@ -2728,20 +3227,41 @@ function renderMetaCard() {
             <span class="meta-card-type">${q.type ?? ''}</span>
         </div>
         <div class="meta-card-body">
-            <div class="meta-card-name">${escHtml(q.comment ?? '(unnamed)')}</div>
-            <div class="meta-card-details">
-                ${q.base_level       != null ? `<span>Lv ${q.base_level}</span>` : ''}
-                ${q.minimum_item_rank > 0   ? `<span>IR ${q.minimum_item_rank}+</span>` : ''}
-                ${q.area_id          ? `<span>${escHtml(areaIdLabel(q.area_id))}</span>` : ''}
-                ${q.next_quest    != null ? `<span>→ q${String(q.next_quest).padStart(8,'0')}</span>` : ''}
+            <div class="meta-card-identity">
+                <div class="meta-card-identity-text">
+                    <div class="meta-card-name-row">
+                        <div class="meta-card-name">${escHtml(q.comment ?? '(unnamed)')}</div>
+                        <button class="qtd-order-chip msg-preview-chip msg-preview-chip--dim" title="Load source files to preview order text">📋</button>
+                    </div>
+                    <div class="meta-card-details">
+                        ${q.base_level       != null ? `<span>Lv ${q.base_level}</span>` : ''}
+                        ${q.minimum_item_rank > 0   ? `<span>IR ${q.minimum_item_rank}+</span>` : ''}
+                        ${q.area_id          ? `<span>${escHtml(areaIdLabel(q.area_id))}</span>` : ''}
+                        ${q.next_quest ? `<span>→ q${String(q.next_quest).padStart(8,'0')}</span>` : ''}
+                    </div>
+                </div>
+                ${q.type === 'Substory' && q.substory_group_id != null ? `<img class="meta-card-portrait" src="${substoryPortraitPath(q.substory_group_id)}" alt="NPC portrait">` : ''}
             </div>
             ${metaCardOcHtml(q)}
             ${metaCardRewardsHtml(q)}
             ${metaCardCrHtml(q)}
-            ${hasImg ? `<img class="meta-card-news-img" src="${newsImagePath(q.news_image)}" alt="News ${q.news_image}">` : ''}
+            ${hasImg ? `<div class="meta-card-img-wrap" style="position:relative">
+                <img class="meta-card-news-img${q.type === 'WildHunt' ? ' meta-card-news-img--wildhunt' : ''}" src="${imgSrcInit}" alt="${escAttr(q.type ?? 'Quest image')}">
+                <button class="meta-card-img-chip">🔍 View</button>
+            </div>` : ''}
         </div>`;
     applyMetaCardTheme(card, q.type);
     card.addEventListener('click', e => { e.stopPropagation(); selectMeta(); });
+    card.querySelector('.meta-card-img-chip')?.addEventListener('click', e => {
+        e.stopPropagation();
+        const src = questImagePath(q);
+        if (src) openImgLightbox(src);
+    });
+    card.querySelector('.qtd-order-chip').addEventListener('click', e => {
+        e.stopPropagation();
+        showOrderTextPop(e.currentTarget);
+    });
+    syncOrderChip(card);
     world.appendChild(card);
 }
 
@@ -2781,10 +3301,10 @@ function syncSourceFilesCard() {
 function closeSourceFilesSpider() {
     world.querySelector('#src-spider')?.remove();
     world.querySelector('.src-file-detail')?.remove();
+    syncOrderChip();
 }
 
 async function loadAndSpiderSourceFiles() {
-    const card = world.querySelector('#src-files-card');
     const files = await readQuestSourceFiles(_quest?.quest_id);
     if (!files) {
         return;
@@ -2803,6 +3323,40 @@ function openSourceFilesSpider(files) {
     closeSourceFilesSpider();
     const fileEntries = Object.entries(files).sort(([a], [b]) => a.localeCompare(b));
     if (!fileEntries.length) return;
+
+    // Cache source files and build MSS group serial lookup
+    _loadedSourceFiles = files;
+    _mssGroupMap = new Map();
+    for (const [fname, data] of fileEntries) {
+        if (!fname.includes('.mss.')) continue;
+        for (const grp of (data.NativeMsgGroupArray ?? [])) {
+            if (grp.GroupSerial == null) continue;
+            const npcName = grp.NpcName?.En ?? grp.NpcName?.Jp ?? `NPC ${grp.NpcId ?? '?'}`;
+            const npcId   = grp.NpcId ?? null;
+            const msgs = (grp.MsgData ?? []).map(m => ({
+                en: m.Message?.En ?? '',
+                jp: m.Message?.Jp ?? '',
+            })).filter(m => m.en || m.jp);
+            _mssGroupMap.set(grp.GroupSerial, { npcName, npcId, msgs });
+        }
+    }
+    syncOrderChip();
+
+    // Auto-populate quest comment from QTD Name entry if not already set
+    if (_quest && !_quest.comment) {
+        for (const [fname, data] of fileEntries) {
+            if (!fname.includes('.qtd.')) continue;
+            const nameEntry = (data.QuestTextDataList ?? []).find(e => e.TypeName === 'QUEST_TEXT_TYPE_NAME');
+            const name = nameEntry?.Message?.En || nameEntry?.Message?.Jp;
+            if (name) {
+                _quest.comment = name;
+                persistQuest();
+                syncMetaCard();
+                questTitleDisplay.textContent = name;
+                break;
+            }
+        }
+    }
 
     const NODE_W   = 175;
     const NODE_GAP = 12;
@@ -2919,6 +3473,412 @@ function openSourceFilesSpider(files) {
         if (fname.includes('.fsm.')) openFsmGraph(fname, data, color, null);
         else openSourceFileDetail(null, fname, data, color);
     });
+}
+
+// ── Quest index + picker (for auxiliary viewers) ──────────────────────────────
+
+async function getAuxQuestIndex() {
+    if (_auxQuestIndex !== null) return _auxQuestIndex;
+    if (!_clientHandle) return (_auxQuestIndex = []);
+    const entries = [];
+    try {
+        const questDir = await _clientHandle.getDirectoryHandle('quest');
+        for await (const [name, entry] of questDir.entries()) {
+            if (entry.kind !== 'directory') continue;
+            const m = name.match(/^q(\d+)$/);
+            if (m) entries.push({ id: parseInt(m[1], 10) });
+        }
+        entries.sort((a, b) => a.id - b.id);
+    } catch (_) {}
+    return (_auxQuestIndex = entries);
+}
+
+async function loadAuxQuestName(id) {
+    if (_auxQuestNames.has(id)) return _auxQuestNames.get(id);
+    if (!_clientHandle) return null;
+    const padded = String(id).padStart(8, '0');
+    try {
+        let d = _clientHandle;
+        d = await d.getDirectoryHandle('quest');
+        d = await d.getDirectoryHandle(`q${padded}`);
+        d = await d.getDirectoryHandle('quest');
+        d = await d.getDirectoryHandle(padded);
+        for await (const [fname, fentry] of d.entries()) {
+            if (fentry.kind !== 'file' || !fname.includes('.qtd.') || !fname.endsWith('.json')) continue;
+            const text = await (await fentry.getFile()).text();
+            const data = JSON.parse(text);
+            const nameEntry = (data.QuestTextDataList ?? []).find(e => e.TypeName === 'QUEST_TEXT_TYPE_NAME');
+            const name = nameEntry?.Message?.En || nameEntry?.Message?.Jp || null;
+            _auxQuestNames.set(id, name);
+            return name;
+        }
+    } catch (_) {}
+    _auxQuestNames.set(id, null);
+    return null;
+}
+
+// Quest ID fuzzy picker — similar to buildMsgPicker but for quest IDs from the client dir
+function buildQuestPicker(currentId, onChange) {
+    const wrap = document.createElement('div');
+    wrap.className = 'quest-picker';
+
+    const inputVal  = currentId != null ? String(currentId) : '';
+    const paddedVal = currentId != null ? `q${String(currentId).padStart(8, '0')}` : '';
+    wrap.innerHTML = `
+        <div class="quest-picker-inner">
+            <input type="text" class="quest-picker-input prop-input"
+                   value="${escAttr(inputVal)}"
+                   placeholder="${_clientHandle ? 'Quest ID or name…' : 'Quest ID…'}"
+                   autocomplete="off" spellcheck="false">
+            ${paddedVal ? `<span class="msg-serial-badge">${escHtml(paddedVal)}</span>` : ''}
+        </div>`;
+
+    const input = wrap.querySelector('.quest-picker-input');
+    const inner = wrap.querySelector('.quest-picker-inner');
+
+    // Dropdown lives on document.body to escape the card's overflow:hidden and
+    // the world transform that would break position:fixed inside it.
+    const dropdown = document.createElement('div');
+    dropdown.className = 'msg-picker-dropdown quest-picker-dropdown';
+    dropdown.style.display = 'none';
+
+    function closeDropdown() {
+        dropdown.style.display = 'none';
+        dropdown.remove();
+    }
+
+    function updateBadge(id) {
+        inner.querySelector('.msg-serial-badge')?.remove();
+        if (id != null) {
+            const badge = document.createElement('span');
+            badge.className = 'msg-serial-badge';
+            badge.textContent = `q${String(id).padStart(8, '0')}`;
+            input.after(badge);
+        }
+    }
+
+    function setSelected(id) {
+        input.value = id != null ? String(id) : '';
+        updateBadge(id);
+        closeDropdown();
+        onChange(id);
+    }
+
+    async function populate(query) {
+        if (!_clientHandle) { closeDropdown(); return; }
+        const index = await getAuxQuestIndex();
+        const raw      = (query ?? '').trim();
+        const hasQPfx  = /^q/i.test(raw);
+        const q        = raw.replace(/^q/i, '');
+        const ql       = q.toLowerCase();
+
+        let matches;
+        if (!q) {
+            matches = index.slice(0, 30);
+        } else {
+            matches = [];
+            for (const entry of index) {
+                const padded  = String(entry.id).padStart(8, '0');
+                // With 'q' prefix → startsWith (user is targeting the q-notation directly)
+                // Without prefix  → substring on padded or raw id, plus name search
+                const idMatch = hasQPfx
+                    ? padded.startsWith(q)
+                    : padded.includes(q) || String(entry.id).includes(q);
+                const name    = _auxQuestNames.get(entry.id);
+                const nmMatch = !hasQPfx && name != null && name.toLowerCase().includes(ql);
+                if (idMatch || nmMatch) matches.push(entry);
+                if (matches.length >= 40) break;
+            }
+        }
+
+        if (!matches.length) { closeDropdown(); return; }
+
+        dropdown.innerHTML = '';
+        for (const entry of matches) {
+            const padded = String(entry.id).padStart(8, '0');
+            const name   = _auxQuestNames.get(entry.id) ?? null;
+            const item = document.createElement('div');
+            item.className = 'msg-option quest-opt';
+            item.dataset.id = entry.id;
+            item.innerHTML = `
+                <div class="msg-opt-hdr">
+                    <span class="msg-opt-serial">q${escHtml(padded)}</span>
+                    ${name ? `<span class="msg-opt-name">${escHtml(name)}</span>` : ''}
+                </div>`;
+            item.addEventListener('mousedown', e => { e.preventDefault(); setSelected(entry.id); });
+            dropdown.appendChild(item);
+        }
+
+        // Position below the input (fixed to viewport)
+        const rect = input.getBoundingClientRect();
+        dropdown.style.left  = `${rect.left}px`;
+        dropdown.style.top   = `${rect.bottom + 2}px`;
+        dropdown.style.width = `${rect.width}px`;
+        dropdown.style.display = 'block';
+        if (!dropdown.parentNode) document.body.appendChild(dropdown);
+
+        // Lazily load names for visible items
+        for (const entry of matches) {
+            if (!_auxQuestNames.has(entry.id)) {
+                loadAuxQuestName(entry.id).then(name => {
+                    if (name == null) return;
+                    const item = dropdown.querySelector(`.quest-opt[data-id="${entry.id}"]`);
+                    if (!item) return;
+                    const hdr = item.querySelector('.msg-opt-hdr');
+                    if (hdr && !hdr.querySelector('.msg-opt-name')) {
+                        const span = document.createElement('span');
+                        span.className = 'msg-opt-name';
+                        span.textContent = name;
+                        hdr.appendChild(span);
+                    }
+                }).catch(() => {});
+            }
+        }
+    }
+
+    input.addEventListener('focus', () => populate(input.value));
+    input.addEventListener('input', () => populate(input.value));
+    input.addEventListener('blur', () => {
+        setTimeout(() => closeDropdown(), 160);
+        const raw   = input.value.trim();
+        const asNum = parseInt(raw);
+        if (raw !== '' && !isNaN(asNum) && asNum > 0) setSelected(asNum);
+        else if (raw === '') setSelected(null);
+    });
+
+    // Clean up dropdown when the picker is removed from DOM
+    const obs = new MutationObserver(() => {
+        if (!wrap.isConnected) { closeDropdown(); obs.disconnect(); }
+    });
+    obs.observe(document.body, { childList: true, subtree: true });
+
+    return wrap;
+}
+
+// ── Auxiliary Quest Viewers ────────────────────────────────────────────────────
+
+function auxViewersKey() {
+    return `ddon-aux-viewers-${_quest?.quest_id ?? 'default'}`;
+}
+
+function loadAuxViewers() {
+    try { _auxViewers = JSON.parse(localStorage.getItem(auxViewersKey()) ?? '[]'); }
+    catch (_) { _auxViewers = []; }
+}
+
+function saveAuxViewers() {
+    try { localStorage.setItem(auxViewersKey(), JSON.stringify(_auxViewers)); } catch (_) {}
+}
+
+function renderAllAuxViewers() {
+    world.querySelectorAll('.aux-viewer-wrap').forEach(el => el.remove());
+    for (const viewer of _auxViewers) renderAuxViewer(viewer);
+}
+
+function renderAuxViewer(viewer) {
+    world.querySelector(`.aux-viewer-wrap[data-id="${viewer.id}"]`)?.remove();
+
+    const NODE_W   = 175;
+    const CONN_GAP = 36;
+
+    // The viewer.x/y is the world-space position of the left edge of the source card.
+    // Container extends further left to make room for spider nodes.
+    const containerLeft = viewer.x - (NODE_W + CONN_GAP * 2);
+    const containerTop  = viewer.y;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'aux-viewer-wrap';
+    wrap.dataset.id = viewer.id;
+    wrap.style.cssText = `position:absolute;left:${containerLeft}px;top:${containerTop}px;overflow:visible;pointer-events:none;`;
+
+    // Source card
+    const card = document.createElement('div');
+    card.className = 'src-files-card aux-src-card' + (_clientHandle ? ' src-configured' : '');
+    card.style.cssText = `position:absolute;left:${NODE_W + CONN_GAP * 2}px;top:0;width:${SRC_CARD_W}px;pointer-events:all;`;
+
+    const hasClient = !!_clientHandle;
+    const questIdVal = viewer.questId ?? null;
+    const padded = questIdVal != null ? String(questIdVal).padStart(8, '0') : '';
+    card.innerHTML = `
+        <div class="src-card-header aux-drag-handle">
+            <span class="src-card-icon">📁</span>
+            <div class="src-card-title">
+                <div class="src-card-title-main">AUX VIEWER</div>
+                <div class="src-card-title-sub aux-subtitle">${padded ? `q${escHtml(padded)}` : 'QUEST DATA'}</div>
+            </div>
+            <button class="aux-close-btn" title="Remove viewer">✕</button>
+        </div>
+        <div class="src-card-body aux-card-body"></div>`;
+
+    // Drag
+    const dragHandle = card.querySelector('.aux-drag-handle');
+    dragHandle.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        e.stopPropagation();
+        e.preventDefault();
+        const startX = e.clientX, startY = e.clientY;
+        const startLeft = parseFloat(wrap.style.left);
+        const startTop  = parseFloat(wrap.style.top);
+        let moved = false;
+        dragHandle.style.cursor = 'grabbing';
+        const mv = ev => {
+            moved = true;
+            wrap.style.left = `${startLeft + (ev.clientX - startX) / _cam.z}px`;
+            wrap.style.top  = `${startTop  + (ev.clientY - startY) / _cam.z}px`;
+        };
+        const up = () => {
+            document.removeEventListener('mousemove', mv);
+            document.removeEventListener('mouseup', up);
+            dragHandle.style.cursor = '';
+            if (moved) {
+                viewer.x = parseFloat(wrap.style.left) + NODE_W + CONN_GAP * 2;
+                viewer.y = parseFloat(wrap.style.top);
+                saveAuxViewers();
+                _suppressNextDocClick = true;
+                setTimeout(() => { _suppressNextDocClick = false; }, 0);
+            }
+        };
+        document.addEventListener('mousemove', mv);
+        document.addEventListener('mouseup', up);
+    });
+
+    // Close
+    card.querySelector('.aux-close-btn').addEventListener('click', e => {
+        e.stopPropagation();
+        removeAuxViewer(viewer.id);
+    });
+
+    // Quest picker in card body
+    const body = card.querySelector('.aux-card-body');
+    if (hasClient) {
+        const picker = buildQuestPicker(questIdVal, id => {
+            if (id != null && id > 0) {
+                viewer.questId = id;
+                saveAuxViewers();
+                // Update subtitle
+                const sub = card.querySelector('.aux-subtitle');
+                if (sub) sub.textContent = `q${String(id).padStart(8, '0')}`;
+                loadAuxViewerFiles(viewer, wrap, card);
+            }
+        });
+        body.appendChild(picker);
+    } else {
+        body.innerHTML = `<span style="font-size:9px;color:var(--text2)">Configure Source Files directory first.</span>`;
+    }
+
+    wrap.appendChild(card);
+    world.appendChild(wrap);
+
+    // Auto-load files if we have both a questId and a client handle
+    if (hasClient && viewer.questId) {
+        loadAuxViewerFiles(viewer, wrap, card).catch(() => {});
+    }
+}
+
+async function loadAuxViewerFiles(viewer, wrap, card) {
+    if (!_clientHandle || !viewer.questId) return;
+    const sub = card.querySelector('.src-card-title-sub');
+    if (sub) sub.textContent = 'Loading…';
+    const files = await readQuestSourceFiles(viewer.questId);
+    const padded = String(viewer.questId).padStart(8, '0');
+    if (!files) {
+        if (sub) sub.textContent = `q${padded} – not found`;
+        return;
+    }
+    if (sub) sub.textContent = `q${padded}`;
+    wrap.querySelector('.aux-spider')?.remove();
+    openAuxSpider(viewer, wrap, card, files);
+}
+
+function openAuxSpider(viewer, wrap, card, files) {
+    const fileEntries = Object.entries(files).sort(([a], [b]) => a.localeCompare(b));
+    if (!fileEntries.length) return;
+
+    const NODE_W   = 175;
+    const NODE_GAP = 12;
+    const CONN_GAP = 36;
+    const NODE_H_EST = 62;
+
+    const cardH = card.offsetHeight || 140;
+    const cardCenterY = cardH / 2;
+    const totalH = fileEntries.length * (NODE_H_EST + NODE_GAP) - NODE_GAP;
+    const nodesTop = cardCenterY - totalH / 2;
+    const containerTop = Math.min(nodesTop, 0) - 10;
+
+    const container = document.createElement('div');
+    container.className = 'aux-spider';
+    container.style.cssText = `position:absolute;top:${containerTop}px;left:0;pointer-events:none;overflow:visible;`;
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', NODE_W + CONN_GAP * 2 + 4);
+    svg.setAttribute('height', 10);
+    svg.style.cssText = `position:absolute;top:0;left:0;overflow:visible;pointer-events:none;`;
+
+    const FILE_COLORS = ['#52b8e8','#52e052','#e89852','#b852e8','#52e8c8','#e85252','#e0d852','#e852a8'];
+
+    const hubX = NODE_W + CONN_GAP * 2;
+    const hubY = cardCenterY - containerTop;
+
+    fileEntries.forEach(([fname, data], i) => {
+        const color = FILE_COLORS[i % FILE_COLORS.length];
+        const nodeTopLocal = (nodesTop + i * (NODE_H_EST + NODE_GAP)) - containerTop;
+        const nodeMidYLocal = nodeTopLocal + NODE_H_EST / 2;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const cx1 = NODE_W + CONN_GAP, cx2 = hubX - CONN_GAP;
+        path.setAttribute('d', `M${NODE_W},${nodeMidYLocal} C${cx1},${nodeMidYLocal} ${cx2},${hubY} ${hubX},${hubY}`);
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', color);
+        path.setAttribute('stroke-width', '1.5');
+        path.setAttribute('stroke-opacity', '0.5');
+        svg.appendChild(path);
+
+        let typeBadge, summary;
+        if (fname.includes('.qst.'))       { typeBadge = 'QST'; const n = (data.QuestStageList ?? []).reduce((s,st) => s+(st.QuestGrp?.length??0),0); summary = `${n} group${n!==1?'s':''}`; }
+        else if (fname.includes('.mss.'))  { typeBadge = 'MSS'; const n = (data.NativeMsgGroupArray ?? []).length; summary = `${n} NPC group${n!==1?'s':''}`; }
+        else if (fname.includes('.qtd.'))  { typeBadge = 'QTD'; const n = (data.QuestTextDataList ?? []).length; summary = `${n} text entr${n!==1?'ies':'y'}`; }
+        else if (fname.includes('.qmi.'))  { typeBadge = 'QMI'; const n = (data.InfoList ?? []).length; summary = `${n} marker${n!==1?'s':''}`; }
+        else if (fname.includes('.fmi.'))  { typeBadge = 'FMI'; const n = (data.InfoList ?? []).length; summary = `${n} marker${n!==1?'s':''}`; }
+        else if (fname.includes('.fsm.'))  { typeBadge = 'FSM'; summary = 'NPC walk FSM'; }
+        else if (fname.includes('.gmd.'))  { typeBadge = 'GMD'; const n = (data.Indices ?? []).length; summary = `${n} message${n!==1?'s':''}`; }
+        else { typeBadge = fname.split('.').slice(-2,-1)[0]?.toUpperCase() ?? 'FILE'; summary = ''; }
+
+        const shortName = fname.replace(/^(?:npc\/)?q\d+_?/, '').replace(/\.json$/, '') || fname;
+
+        const node = document.createElement('div');
+        node.className = 'src-file-node';
+        node.style.cssText = `position:absolute;left:0;top:${nodeTopLocal}px;width:${NODE_W}px;--sf-color:${color};pointer-events:all;cursor:pointer;`;
+        node.innerHTML = `
+            <div class="src-file-node-name" style="color:${color}">
+                <span class="src-file-type-badge" style="background:${color}20;color:${color}">${escHtml(typeBadge)}</span>
+                ${escHtml(shortName)}
+            </div>
+            <div class="src-file-node-sub">${escHtml(fname)}</div>
+            <div class="src-file-node-meta">${escHtml(summary)}</div>`;
+        node.addEventListener('click', e => {
+            e.stopPropagation();
+            if (fname.includes('.fsm.')) openFsmGraph(fname, data, color, node);
+            else openSourceFileDetail(node, fname, data, color);
+        });
+        container.appendChild(node);
+    });
+
+    container.appendChild(svg);
+    wrap.appendChild(container);
+}
+
+function addAuxViewer(worldX, worldY) {
+    const id = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+    const viewer = { id, questId: null, x: worldX, y: worldY };
+    _auxViewers.push(viewer);
+    saveAuxViewers();
+    renderAuxViewer(viewer);
+}
+
+function removeAuxViewer(id) {
+    _auxViewers = _auxViewers.filter(v => v.id !== id);
+    saveAuxViewers();
+    world.querySelector(`.aux-viewer-wrap[data-id="${id}"]`)?.remove();
 }
 
 function attachResize(panel, minW = 260, minH = 180, onResized = null) {
@@ -3278,7 +4238,6 @@ function openFsmGraph(fname, data, color, anchorEl) {
         pinBtn.classList.add('src-detail-pin-active');
         pinBtn.title = 'Unpin';
     }
-    const wr = canvasWrap.getBoundingClientRect();
     attachResize(panel, 400, 300, () => fsmSave());
     world.appendChild(panel);
 
@@ -3793,7 +4752,7 @@ function buildSpiderOnCanvas(gi, g, groupData) {
         const ei        = posToEi.get(posIdx);
         const hasEnemy  = ei != null;
         const en        = hasEnemy ? enemies[ei] : null;
-        const name      = en ? (emName(en.enemy_id) || en.enemy_id || '') : '';
+        const name      = en ? (enDisplayName(en) || '') : '';
 
         const node = document.createElement('div');
         node.className = [
@@ -3860,7 +4819,7 @@ function openSpawnNodeMenu(nodeEl, posIdx, spawnGrp, spawns, gi, g, isManual, po
     const ei       = posToEi.get(posIdx);
     const hasEnemy = ei != null;
     const en       = hasEnemy ? enemies[ei] : null;
-    const name     = en ? (emName(en.enemy_id) || en.enemy_id || `Enemy ${ei}`) : '';
+    const name     = en ? (enDisplayName(en) || en.enemy_id || `Enemy ${ei}`) : '';
 
     // Positions in the same spawn set
     const sgPositions = spawns.filter(s => s.SpawnGroup === spawnGrp).map(s => s.posIdx);
@@ -3869,7 +4828,7 @@ function openSpawnNodeMenu(nodeEl, posIdx, spawnGrp, spawns, gi, g, isManual, po
     const menu = document.createElement('div');
     menu.className = 'eg-spawn-menu';
 
-    const copiedName = _copiedEnemy ? (emName(_copiedEnemy.enemy_id) || _copiedEnemy.enemy_id || 'Enemy') : null;
+    const copiedName = _copiedEnemy ? (enDisplayName(_copiedEnemy) || _copiedEnemy.enemy_id || 'Enemy') : null;
     const hdr = hasEnemy ? `[${posIdx}] ${name}` : `Assign to spawn [${posIdx}]`;
     menu.innerHTML = `
         <div class="eg-spawn-menu-hdr">${escHtml(hdr)}</div>
@@ -3904,6 +4863,11 @@ function openSpawnNodeMenu(nodeEl, posIdx, spawnGrp, spawns, gi, g, isManual, po
     if (hasEnemy) {
         menu.querySelector('[data-act="edit"]')?.addEventListener('click', () => {
             menu.remove();
+            // Ensure the enemy group prop panel is showing (may have meta selected)
+            if (_selection?.enemyGroup !== gi) {
+                _selection = { enemyGroup: gi };
+                renderPropPanel();
+            }
             // Scroll prop panel to this enemy item
             const epItem = document.querySelector(`.ep-enemy-item[data-ei="${ei}"]`);
             if (epItem) {
@@ -4168,6 +5132,13 @@ function buildBlockNode(block, pi, bi) {
     if (block.comment) {
         body.innerHTML += `<div class="block-comment-line">${escHtml(block.comment)}</div>`;
     }
+    // Wire message preview chips in the block summary
+    body.querySelectorAll('.msg-preview-chip').forEach(chip => {
+        chip.addEventListener('click', e => {
+            e.stopPropagation();
+            showMsgPreview(chip, parseInt(chip.dataset.serial));
+        });
+    });
     el.appendChild(body);
 
     // Footer
@@ -4177,7 +5148,6 @@ function buildBlockNode(block, pi, bi) {
     const chkCount   = (block.check_flags || []).length + (block.set_flags || []).length;
     const checkCmds  = (block.check_commands || []).length;
     const resultCmds = (block.result_commands || []).length;
-    const totalBlocks = _quest ? (_quest.processes[pi]?.blocks?.length ?? 0) : 0;
     footer.innerHTML =
         (flagCount  ? `<span class="block-cmd-badge">🚩 ${flagCount}</span>` : '') +
         (chkCount   ? `<span class="block-cmd-badge">✓ ${chkCount}</span>`  : '') +
@@ -4609,14 +5579,39 @@ function renderMetaPropPanel() {
                     <option value="">(none)</option>
                     ${AREA_IDS.map(([val, label]) => `<option value="${val}" ${val===q.area_id?'selected':''}>${escHtml(label)}</option>`).join('')}
                 </select></div>
+            ${['Tutorial','Substory'].includes(q.type) ? `
+            <div class="prop-row"><label class="prop-label">Stage</label>
+                <span id="mp-stage-picker-mount" data-val="${q.stage_id?.id ?? ''}" style="flex:1"></span>
+            </div>` : ''}
+            ${q.type === 'World' ? `
             <div class="prop-row"><label class="prop-label">News Image</label>
                 <select class="prop-select" id="mp-news-image">
                     <option value="">(none)</option>
                     ${newsImages.map(id => `<option value="${id}" ${id===q.news_image?'selected':''}>${id}</option>`).join('')}
+                </select></div>` : ''}
+            ${q.type === 'WildHunt' ? `
+            <div class="prop-row"><label class="prop-label">Order Background</label>
+                <select class="prop-select" id="mp-order-bg-id">
+                    <option value="">(none)</option>
+                    ${wildHuntImages.map(id => `<option value="${id}" ${id===q.order_background_id?'selected':''}>${id}</option>`).join('')}
+                </select>
+                ${q.order_background_id != null && wildHuntImages.includes(q.order_background_id) ? `<button class="img-lightbox-btn" id="mp-wh-lightbox" title="View full image">🔍</button>` : ''}
+            </div>` : ''}
+            ${q.type === 'Substory' ? (() => {
+                const grp = SUBSTORY_GROUPS.find(g => g.id === q.substory_group_id) ?? SUBSTORY_GROUPS[0];
+                return `
+            <div class="prop-row"><label class="prop-label">Group</label>
+                <select class="prop-select" id="mp-substory-group">
+                    ${SUBSTORY_GROUPS.map(g => `<option value="${g.id}" ${g.id===q.substory_group_id?'selected':''}>${escHtml(g.name)} #${g.npcId}</option>`).join('')}
                 </select></div>
-            <img id="mp-news-preview" class="prop-news-preview${q.news_image != null && newsImages.includes(q.news_image) ? '' : ' prop-news-hidden'}"
-                src="${q.news_image != null && newsImages.includes(q.news_image) ? newsImagePath(q.news_image) : ''}"
-                alt="News preview">
+            <div class="prop-row"><label class="prop-label">Sequence</label>
+                <select class="prop-select" id="mp-substory-seq">
+                    ${grp.seqs.map(s => `<option value="${s}" ${s===q.substory_sequence_num?'selected':''}>seq ${s}</option>`).join('')}
+                </select></div>`;
+            })() : ''}
+            ${q.type === 'Main' ? `<div class="prop-row" style="opacity:0.6;font-size:11px;color:var(--text2)">Image auto-derived from Quest ID</div>` : ''}
+            <img id="mp-img-preview" class="prop-news-preview${questImagePath(q) ? '' : ' prop-news-hidden'}"
+                src="${questImagePath(q) ?? ''}" alt="Image preview">
         </div>
         <div class="prop-section">
             <div class="prop-section-title">Flags</div>
@@ -4678,20 +5673,60 @@ function renderMetaPropPanel() {
     wire('#mp-min-rank',    () => { q.minimum_item_rank = num('#mp-min-rank') ?? 0; syncMetaCard(); });
     wire('#mp-next-quest',  () => { const v = num('#mp-next-quest'); v != null ? q.next_quest = v : delete q.next_quest; syncMetaCard(); });
     wire('#mp-area-id',     () => { q.area_id        = propBody.querySelector('#mp-area-id').value || undefined; syncMetaCard(); });
-    wire('#mp-news-image',  () => {
+    const mpStageMnt = propBody.querySelector('#mp-stage-picker-mount');
+    if (mpStageMnt) {
+        const currentId = mpStageMnt.dataset.val !== '' ? parseInt(mpStageMnt.dataset.val) : undefined;
+        mpStageMnt.replaceWith(buildStagePicker(currentId, newId => {
+            if (!q.stage_id) q.stage_id = {};
+            q.stage_id.id = newId;
+            syncMetaCard(); persistQuest();
+        }));
+    }
+    // Ensure substory defaults are set the moment the panel opens, then sync the canvas card
+    if (q.type === 'Substory') {
+        let needsSync = false;
+        if (q.substory_group_id == null) { q.substory_group_id = SUBSTORY_GROUPS[0].id; needsSync = true; }
+        if (q.substory_sequence_num == null) { q.substory_sequence_num = (SUBSTORY_GROUPS.find(g => g.id === q.substory_group_id) ?? SUBSTORY_GROUPS[0]).seqs[0] ?? 0; needsSync = true; }
+        if (needsSync) syncMetaCard();
+    }
+
+    function updateImgPreview() {
+        const preview = propBody.querySelector('#mp-img-preview');
+        if (!preview) return;
+        const src = questImagePath(q);
+        if (src) { preview.src = src; preview.classList.remove('prop-news-hidden'); }
+        else      { preview.src = ''; preview.classList.add('prop-news-hidden'); }
+    }
+    wire('#mp-news-image', () => {
         const sel = propBody.querySelector('#mp-news-image');
         const val = sel.value !== '' ? parseInt(sel.value) : undefined;
         if (val != null) q.news_image = val; else delete q.news_image;
-        const preview = propBody.querySelector('#mp-news-preview');
-        if (preview) {
-            if (val != null && newsImages.includes(val)) {
-                preview.src = newsImagePath(val);
-                preview.classList.remove('prop-news-hidden');
-            } else {
-                preview.src = '';
-                preview.classList.add('prop-news-hidden');
-            }
-        }
+        updateImgPreview();
+        syncMetaCard();
+    });
+    wire('#mp-order-bg-id', () => {
+        const val = propBody.querySelector('#mp-order-bg-id')?.value;
+        q.order_background_id = val !== '' && val != null ? parseInt(val) : undefined;
+        updateImgPreview();
+        syncMetaCard();
+        renderMetaPropPanel(); // refresh lightbox chip visibility
+    });
+    propBody.querySelector('#mp-wh-lightbox')?.addEventListener('click', () => {
+        const src = questImagePath(q);
+        if (src) openImgLightbox(src);
+    });
+    propBody.querySelector('#mp-substory-group')?.addEventListener('change', () => {
+        const sel = propBody.querySelector('#mp-substory-group');
+        q.substory_group_id = parseInt(sel.value);
+        const grp = SUBSTORY_GROUPS.find(g => g.id === q.substory_group_id);
+        q.substory_sequence_num = grp?.seqs[0] ?? 0; // default to first seq of new group
+        renderPropPanel();
+        syncMetaCard();
+    });
+    wire('#mp-substory-seq', () => {
+        const sel = propBody.querySelector('#mp-substory-seq');
+        q.substory_sequence_num = sel ? parseInt(sel.value) : undefined;
+        updateImgPreview();
         syncMetaCard();
     });
 
@@ -4764,6 +5799,7 @@ function renderMetaPropPanel() {
         q.rewards.push(newRw);
         renderMetaPropPanel();
         persistQuest();
+        syncMetaCard();
     });
 
     rwList?.querySelectorAll('[data-del-rw]').forEach(btn => {
@@ -4771,6 +5807,7 @@ function renderMetaPropPanel() {
             q.rewards?.splice(parseInt(btn.dataset.delRw), 1);
             renderMetaPropPanel();
             persistQuest();
+            syncMetaCard();
         });
     });
 
@@ -4786,6 +5823,7 @@ function renderMetaPropPanel() {
             q.rewards[i] = newRw;
             renderMetaPropPanel();
             persistQuest();
+            syncMetaCard();
         });
     });
 
@@ -4797,6 +5835,7 @@ function renderMetaPropPanel() {
             if (field === 'wallet_type') q.rewards[i][field] = inp.value;
             else q.rewards[i][field] = parseInt(inp.value) || 0;
             persistQuest();
+            syncMetaCard();
         });
     });
 
@@ -4807,6 +5846,7 @@ function renderMetaPropPanel() {
             q.rewards[i].loot_pool.push({ item_id: 0, num: 1 });
             renderMetaPropPanel();
             persistQuest();
+            syncMetaCard();
         });
     });
 
@@ -4817,6 +5857,7 @@ function renderMetaPropPanel() {
             q.rewards?.[i]?.loot_pool?.splice(ii, 1);
             renderMetaPropPanel();
             persistQuest();
+            syncMetaCard();
         });
     });
 
@@ -4899,30 +5940,52 @@ function syncMetaCard() {
             ((q.enabled ?? true) === false ? `<span class="meta-card-disabled-chip" title="Quest is disabled — will not appear in-game">⛔ Disabled</span>` : '') +
             `<span class="meta-card-type">${q.type ?? ''}</span>`;
         card.querySelector('.meta-card-name').textContent = q.comment ?? '(unnamed)';
+        // Portrait (Substory only)
+        const identityEl = card.querySelector('.meta-card-identity');
+        if (identityEl) {
+            let portrait = identityEl.querySelector('.meta-card-portrait');
+            const portraitSrc = q.type === 'Substory' && q.substory_group_id != null
+                ? substoryPortraitPath(q.substory_group_id) : null;
+            if (portraitSrc) {
+                if (!portrait) {
+                    portrait = document.createElement('img');
+                    portrait.className = 'meta-card-portrait';
+                    portrait.alt = 'NPC portrait';
+                    identityEl.appendChild(portrait);
+                }
+                portrait.src = portraitSrc;
+            } else if (portrait) {
+                portrait.remove();
+            }
+        }
         card.querySelector('.meta-card-details').innerHTML =
             (q.base_level       != null ? `<span>Lv ${q.base_level}</span>` : '') +
             (q.minimum_item_rank > 0    ? `<span>IR ${q.minimum_item_rank}+</span>` : '') +
             (q.area_id          ? `<span>${escHtml(areaIdLabel(q.area_id))}</span>` : '') +
-            (q.next_quest    != null ? `<span>→ q${String(q.next_quest).padStart(8,'0')}</span>` : '');
+            (q.next_quest ? `<span>→ q${String(q.next_quest).padStart(8,'0')}</span>` : '');
         // Update order conditions and rewards chips
         const body = card.querySelector('.meta-card-body');
-        const imgEl2 = card.querySelector('.meta-card-news-img');
+        const wrap0 = card.querySelector('.meta-card-img-wrap');
         ['meta-card-oc', 'meta-card-rewards', 'meta-card-cr'].forEach(cls => card.querySelector(`.${cls}`)?.remove());
         const tmpOc = document.createElement('template'); tmpOc.innerHTML = metaCardOcHtml(q) + metaCardRewardsHtml(q) + metaCardCrHtml(q);
-        [...tmpOc.content.childNodes].forEach(n => body.insertBefore(n, imgEl2 || null));
-        // Update news image
-        let imgEl = card.querySelector('.meta-card-news-img');
-        const hasImg = q.news_image != null && newsImages.includes(q.news_image);
-        if (hasImg) {
-            if (!imgEl) {
-                imgEl = document.createElement('img');
-                imgEl.className = 'meta-card-news-img';
-                imgEl.alt = `News ${q.news_image}`;
-                card.querySelector('.meta-card-body').appendChild(imgEl);
+        [...tmpOc.content.childNodes].forEach(n => body.insertBefore(n, wrap0 || null));
+        // Update quest image
+        const imgSrc = questImagePath(q);
+        let wrap = card.querySelector('.meta-card-img-wrap');
+        if (imgSrc) {
+            if (!wrap) {
+                wrap = document.createElement('div');
+                wrap.className = 'meta-card-img-wrap';
+                wrap.style.position = 'relative';
+                wrap.innerHTML = `<img class="meta-card-news-img" alt="Quest image"><button class="meta-card-img-chip">🔍 View</button>`;
+                body.appendChild(wrap);
             }
-            imgEl.src = newsImagePath(q.news_image);
-        } else if (imgEl) {
-            imgEl.remove();
+            const imgEl = wrap.querySelector('.meta-card-news-img');
+            imgEl.className = 'meta-card-news-img' + (q.type === 'WildHunt' ? ' meta-card-news-img--wildhunt' : '');
+            imgEl.src = imgSrc;
+            wrap.querySelector('.meta-card-img-chip').onclick = e => { e.stopPropagation(); openImgLightbox(imgSrc); };
+        } else if (wrap) {
+            wrap.remove();
         }
     }
     questIdDisplay.textContent      = `Quest ${_quest.quest_id ?? '???'}`;
@@ -4931,34 +5994,386 @@ function syncMetaCard() {
     persistQuest();
 }
 
+// ── Named param stats inline (compact table shown under the picker button) ──────
+function buildNamedParamStatsInline(container, p) {
+    if (!p || p.id === 0) { container.innerHTML = ''; container.style.display = 'none'; return; }
+    container.style.display = '';
+    const typeName = p.type.replace('NAMED_TYPE_', '');
+
+    const statRow = (label, val) => {
+        if (val == null || val === 100) return '';
+        const cls = val > 100 ? 'np-high' : 'np-low';
+        return `<span class="nsi-chip ${cls}" title="${label}">${label} ${val}%</span>`;
+    };
+    const chips = [
+        statRow('HP',    p.hp),
+        statRow('AtkP',  p.atkP),   statRow('AtkM',  p.atkM),
+        statRow('DefP',  p.defP),   statRow('DefM',  p.defM),
+        statRow('Exp',   p.exp),    statRow('Power', p.power),
+    ].filter(Boolean).join('');
+
+    container.innerHTML =
+        `<div class="ep-named-type">${typeName} · #${p.id}</div>` +
+        (chips ? `<div class="ep-named-chips">${chips}</div>` : '');
+}
+
+// ── Named param picker modal ──────────────────────────────────────────────────
+function openNamedParamPicker(onSelect, currentId, baseEmName) {
+    const modal   = document.getElementById('qb-named-param-modal');
+    if (!modal) return;
+
+    const searchEl   = modal.querySelector('#qb-np-search');
+    const listEl     = modal.querySelector('#qb-np-list');
+    const previewEl  = modal.querySelector('#qb-np-preview');
+    const toggleBtn  = modal.querySelector('#qb-np-stat-toggle');
+
+    // ── preview pane ──────────────────────────────────────────────────────────
+    function renderPreview(p) {
+        if (!p || p.id === 0) {
+            previewEl.innerHTML = '<div class="np-preview-empty">Hover a param to preview</div>';
+            return;
+        }
+        const typeName = p.type.replace('NAMED_TYPE_', '');
+        const combinedHtml = namedParamCombinedHtml(p, baseEmName);
+        const origNote = (p.type === 'NAMED_TYPE_REPLACE' && baseEmName)
+            ? `<div style="font-size:10px;color:var(--text2);margin-top:1px">replaces: ${escHtml(baseEmName)}</div>` : '';
+        const pct = v => v != null ? `${v}%` : '—';
+        const row = (label, val) => {
+            if (val == null) return '';
+            const cls = val > 100 ? ' class="np-high"' : val < 100 ? ' class="np-low"' : '';
+            return `<tr><td>${label}</td><td${cls}>${pct(val)}</td></tr>`;
+        };
+        const sec = (title, ...rows) => {
+            const content = rows.join('');
+            if (!content) return '';
+            return `<tr class="np-stat-sec"><td colspan="2">${title}</td></tr>${content}`;
+        };
+        previewEl.innerHTML =
+            `<div class="np-preview-combined">${combinedHtml}</div>` +
+            origNote +
+            `<div class="np-preview-type">${typeName} · ID ${p.id}` +
+            (p.jp ? ` · <span style="font-size:10px;opacity:0.7">${escHtml(p.jp)}</span>` : '') +
+            `</div>` +
+            `<table class="np-stat-table">` +
+            sec('HP',       row('HP Rate', p.hp), row('HP Sub', p.hpSub)) +
+            sec('Attack',   row('Base Phys', p.atkP), row('Base Magic', p.atkM),
+                            row('Wep Phys', p.atkWepP), row('Wep Magic', p.atkWepM)) +
+            sec('Defence',  row('Base Phys', p.defP), row('Base Magic', p.defM),
+                            row('Wep Phys', p.defWepP), row('Wep Magic', p.defWepM),
+                            row('Guard Base', p.guardBase), row('Guard Wep', p.guardWep)) +
+            sec('Other',    row('Ailment', p.ailment), row('Experience', p.exp), row('Power', p.power)) +
+            sec('Endurance', row('Blow Main', p.blowMain), row('Blow Sub', p.blowSub),
+                             row('Down Main', p.downMain), row('OCD', p.ocd),
+                             row('Shake Main', p.shakeMain), row('Shrink Main', p.shrinkMain),
+                             row('Shrink Sub', p.shrinkSub)) +
+            `</table>`;
+    }
+
+    // ── list item HTML ────────────────────────────────────────────────────────
+    function itemHtml(p, active) {
+        const tag  = p.type === 'NAMED_TYPE_PREFIX'  ? 'Pfx'
+                   : p.type === 'NAMED_TYPE_REPLACE'  ? 'Rep'
+                   : p.type === 'NAMED_TYPE_SUFFIX'   ? 'Sfx'
+                   : '';
+        const displayHtml = namedParamCombinedHtml(p, baseEmName) || `<span style="color:var(--text2)">(stat-only)</span>`;
+        return `<div class="np-item${active ? ' np-active' : ''}" data-id="${p.id}">` +
+            `<span class="np-item-name">${displayHtml}</span>` +
+            `<span class="np-item-meta">${tag ? `<span class="np-type-badge">${tag}</span> ` : ''}#${p.id}</span>` +
+            `</div>`;
+    }
+
+    // ── list rendering ────────────────────────────────────────────────────────
+    function renderList(query) {
+        const q          = query.trim().toLowerCase();
+        const showStat   = toggleBtn.classList.contains('active');
+        const noneEntry  = { id: 0, name: '(None)', type: 'NAMED_TYPE_NONE' };
+
+        const filtered = namedParamList.filter(p => {
+            const hasName = !!p.name?.trim();
+            if (!showStat && !hasName) return false;
+            if (!q) return true;
+            if (String(p.id).includes(q)) return true;
+            if (p.name?.toLowerCase().includes(q)) return true;
+            if (p.jp?.toLowerCase().includes(q)) return true;
+            const combined = namedParamDisplayName(p, baseEmName);
+            if (combined?.toLowerCase().includes(q)) return true;
+            return false;
+        }).slice(0, 200);
+
+        const showNone = !q || '0'.includes(q) || 'none'.includes(q);
+        const results  = showNone ? [noneEntry, ...filtered] : filtered;
+
+        if (!results.length) { listEl.innerHTML = '<div class="np-empty">No results.</div>'; return; }
+
+        if (!q && showStat) {
+            // Divide into named vs stat-only sections
+            const named    = filtered.filter(p =>  p.name?.trim());
+            const statOnly = filtered.filter(p => !p.name?.trim());
+            const divider  = (label, count) =>
+                `<div class="np-section-divider">${label} <span class="np-section-count">${count}</span></div>`;
+            listEl.innerHTML =
+                itemHtml(noneEntry, currentId === 0) +
+                divider('Named', named.length) +
+                named.map(p => itemHtml(p, p.id === currentId)).join('') +
+                (statOnly.length ? divider('Stat-only', statOnly.length) +
+                    statOnly.map(p => itemHtml(p, p.id === currentId)).join('') : '');
+        } else {
+            listEl.innerHTML = results.map(p => itemHtml(p, p.id === currentId)).join('');
+        }
+
+        listEl.querySelectorAll('.np-item').forEach(el => {
+            el.addEventListener('mouseenter', () => renderPreview(namedParamsById.get(parseInt(el.dataset.id))));
+            el.addEventListener('click', () => {
+                const id = parseInt(el.dataset.id);
+                modal.classList.remove('open');
+                onSelect(id);
+            });
+        });
+    }
+
+    // Re-init on each open (abort previous listeners)
+    if (modal._abortCtrl) modal._abortCtrl.abort();
+    modal._abortCtrl = new AbortController();
+    const sig = modal._abortCtrl.signal;
+    searchEl.addEventListener('input', () => renderList(searchEl.value), { signal: sig });
+    toggleBtn.addEventListener('click', () => {
+        const on = toggleBtn.classList.toggle('active');
+        toggleBtn.textContent = on ? 'Stat-only: On' : 'Stat-only: Off';
+        renderList(searchEl.value);
+    }, { signal: sig });
+
+    searchEl.value = '';
+    toggleBtn.classList.remove('active');
+    toggleBtn.textContent = 'Stat-only: Off';
+    renderPreview(namedParamsById.get(currentId) ?? null);
+    renderList('');
+    modal.classList.add('open');
+    setTimeout(() => searchEl.focus(), 50);
+}
+
+// ── Enemy advanced section (DOM, built after innerHTML so we can use resource lookups) ──
+function buildEnemyAdvancedSection(en) {
+    const details = document.createElement('details');
+    details.className = 'ep-advanced';
+
+    const summary = document.createElement('summary');
+    summary.textContent = 'Advanced';
+    details.appendChild(summary);
+
+    // Grid container — same 2-col layout as cmd-params
+    const grid = document.createElement('div');
+    grid.className = 'cmd-params ep-advanced-body';
+    details.appendChild(grid);
+
+    const emKey = emNameKey(en.enemy_id);
+
+    // Helper: full-width section divider
+    const addSection = label => {
+        const h = document.createElement('div');
+        h.className = 'ep-adv-section';
+        h.textContent = label;
+        grid.appendChild(h);
+    };
+    // Helper: one grid cell (cmd-param)
+    const cell = (label, ctrl, spanFull, title) => {
+        const p = document.createElement('div');
+        p.className = 'cmd-param';
+        if (spanFull) p.style.gridColumn = '1/-1';
+        const lbl = document.createElement('span');
+        lbl.className = 'cmd-param-label';
+        lbl.textContent = label;
+        if (title) lbl.title = title;
+        p.appendChild(lbl);
+        if (Array.isArray(ctrl)) ctrl.forEach(c => p.appendChild(c));
+        else p.appendChild(ctrl);
+        grid.appendChild(p);
+        return p;
+    };
+    const numInput = (field, value) => {
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.className = 'prop-input';
+        inp.dataset.epNum = field;
+        inp.value = value ?? '';
+        inp.min = '0';
+        return inp;
+    };
+    const selectInput = (field, options, curVal) => {
+        const sel = document.createElement('select');
+        sel.className = 'prop-select';
+        sel.dataset.epNum = field;
+        options.forEach(({value, label}) => {
+            const opt = document.createElement('option');
+            opt.value = value ?? '';
+            opt.textContent = label;
+            if ((value == null && curVal == null) || String(value) === String(curVal)) opt.selected = true;
+            sel.appendChild(opt);
+        });
+        return sel;
+    };
+    const checkLabel = (field, checked, label, title) => {
+        const lbl = document.createElement('label');
+        lbl.className = 'ep-flag';
+        if (title) lbl.title = title;
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.dataset.epBool = field;
+        if (checked) cb.checked = true;
+        lbl.appendChild(cb);
+        lbl.appendChild(document.createTextNode(' ' + label));
+        return lbl;
+    };
+    const flagCell = (label, ...flags) => {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:2px';
+        flags.forEach(f => wrap.appendChild(f));
+        cell(label, wrap, true);
+    };
+
+    // ── Appearance ────────────────────────────────────────────────────────────
+    addSection('Appearance');
+
+    cell('Variant', selectInput('infection_type', [
+        {value: null, label: '0 — None'},
+        {value: 1,    label: '1 — Infected'},
+        {value: 2,    label: '2 — Severely Infected'},
+        {value: 3,    label: '3 — War-Ready'},
+    ], en.infection_type));
+
+    // Montage Fix — select with known indices when available
+    (() => {
+        const mi    = emKey ? (emMontageInfo[emKey] ?? null) : null;
+        const cur   = en.montage_fix_no ?? 0;
+        const notes = (emKey && mi) ? (montageNotes[emKey] ?? {}) : {};
+        let ctrl;
+        if (mi && mi.length > 0) {
+            const allVals = mi.includes(cur) ? mi : [...mi, cur];
+            ctrl = selectInput('montage_fix_no',
+                allVals.map(v => ({value: v, label: v + (notes[String(v)] ? ` — ${notes[String(v)]}` : '')})),
+                cur);
+            cell('Montage Fix', ctrl, false, `Valid indices from enemy .dme: ${mi.join(', ')}`);
+        } else {
+            ctrl = numInput('montage_fix_no', en.montage_fix_no);
+            if (mi !== null) ctrl.title = 'No montage variants recorded for this enemy';
+            cell('Montage Fix', ctrl);
+        }
+    })();
+
+    cell('Scale %', numInput('scale', en.scale ?? 100));
+
+    // ── Behaviour ─────────────────────────────────────────────────────────────
+    addSection('Behaviour');
+
+    // Hm Preset — read-only info derived from enemy type
+    (() => {
+        const ep  = emKey ? hmPresetsByEmCode.get(emKey) : null;
+        const txt = ep ? `${ep.id}${ep.name ? ' — ' + ep.name : ''}` : '—';
+        const span = document.createElement('span');
+        span.textContent = txt;
+        span.style.cssText = 'font-size:11px;color:var(--text2);align-self:center';
+        cell('Hm Preset', span, false, 'Derived from enemy type — set automatically by server');
+    })();
+
+    // Think Table — select over observed range when known
+    (() => {
+        const ti    = emKey ? (emThinkInfo[emKey] ?? null) : null;
+        const cur   = en.start_think_tbl_no ?? 0;
+        const notes = ti ? (thinkTableNotes[ti.res] ?? {}) : {};
+        if (ti) {
+            const indices = Array.from({length: ti.max + 1}, (_, i) => i);
+            if (!indices.includes(cur)) indices.push(cur);
+            const ctrl = selectInput('start_think_tbl_no',
+                indices.map(i => ({value: i, label: i + (notes[i] ? ` — ${notes[i]}` : '')})),
+                cur);
+            const resSpan = document.createElement('span');
+            resSpan.textContent = ti.res;
+            resSpan.style.cssText = 'font-size:9px;color:var(--text2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+            resSpan.title = ti.res;
+            const p = cell('Think Tbl', ctrl, false, `${ti.res} (range 0–${ti.max})`);
+            p.appendChild(resSpan);
+        } else {
+            cell('Think Tbl', numInput('start_think_tbl_no', en.start_think_tbl_no));
+        }
+    })();
+
+    cell('Set Type', selectInput('set_type', [
+        {value: null, label: 'Auto'},
+        {value: 0,    label: '0 — Normal'},
+        {value: 1,    label: '1 — (Unknown)'},
+        {value: 2,    label: '2 — Gather Spawn'},
+        {value: 3,    label: '3 — Network Spawn'},
+    ], en.set_type));
+
+    flagCell('Manual Set',
+        checkLabel('is_manual_set', en.is_manual_set, 'Manual Set',
+            'Spawns dormant (mIsWaitting=true), activated by a SummonSet FSM action'));
+
+    // ── Boss ──────────────────────────────────────────────────────────────────
+    addSection('Boss');
+    cell('Raid Boss ID', numInput('raid_boss_id', en.raid_boss_id));
+    cell('Target Type', selectInput('enemy_target_types_id', [
+        {value: null, label: 'Auto (from Required)'},
+        {value: 1,    label: '1 — None'},
+        {value: 2,    label: '2 — #2'},
+        {value: 3,    label: '3 — #3'},
+        {value: 4,    label: '4 — #4'},
+        {value: 6,    label: '6 — Area Boss'},
+        {value: 7,    label: '7 — Stage Boss'},
+    ], en.enemy_target_types_id));
+    flagCell('Boss Flags',
+        checkLabel('is_boss_bgm',   en.is_boss_bgm,   'BGM'),
+        checkLabel('is_boss_gauge', en.is_boss_gauge,  'Gauge'),
+        checkLabel('is_area_boss',  en.is_area_boss,   'Area Boss'));
+
+    // ── Repop ─────────────────────────────────────────────────────────────────
+    addSection('Repop');
+    cell('Wait (s)',  numInput('repop_wait_second', en.repop_wait_second ?? 0));
+    cell('Num',       numInput('repop_num',   en.repop_num));
+    cell('Count',     numInput('repop_count', en.repop_count));
+
+    // ── Timing ────────────────────────────────────────────────────────────────
+    addSection('Timing');
+    (() => {
+        const startInp = numInput('spawn_time_start', en.spawn_time_start);
+        startInp.placeholder = 'ms';
+        const endInp = numInput('spawn_time_end', en.spawn_time_end);
+        endInp.placeholder = 'ms';
+        cell('Spawn Start', startInp);
+        cell('Spawn End',   endInp);
+    })();
+
+    return details;
+}
+
 // ── Enemy Group Prop Panel ────────────────────────────────────────────────────
 function buildEnemyItemHtml(en, ei, isManual) {
-    const name       = emName(en.enemy_id);
+    const base       = emName(en.enemy_id) || en.enemy_id || '';
+    const np         = en.named_enemy_params_id ? namedParamsById.get(en.named_enemy_params_id) : null;
+    const nameHtml   = namedParamCombinedHtml(np, base);
     const useAutoExp = en.exp_scheme === 'automatic' || en.exp_scheme === 'exm';
     return `<div class="cmd-item ep-enemy-item" data-ei="${ei}">
         <div class="cmd-item-header">
             <span class="ep-ei-badge">#${ei}</span>
-            <span class="ep-em-label">${escHtml(name)}</span>
+            <span class="ep-em-label">${nameHtml}</span>
             <button class="cmd-delete-btn ep-del-enemy" data-del-ei="${ei}" title="Remove enemy">✕</button>
         </div>
         <div class="cmd-params">
-            <div class="cmd-param">
+            <div class="cmd-param" style="grid-column:1/-1">
                 <span class="cmd-param-label">Enemy ID</span>
-                <div style="flex:1;display:flex;flex-direction:column;gap:2px">
-                    <input type="text" class="prop-input" data-ep="enemy_id"
-                           value="${escAttr(en.enemy_id ?? '')}" placeholder="0x010101"
-                           style="font-family:monospace;font-size:11px"
-                           title="${escAttr(name)}">
-                    <span class="ep-em-name">${escHtml(name)}</span>
-                </div>
+                <div class="ep-em-picker-mount" data-val="${escAttr(en.enemy_id ?? '')}" style="flex:1"></div>
             </div>
-            <div class="cmd-param">
+            <div class="ep-named-param-mount" style="grid-column:1/-1"></div>
+            <div class="cmd-param" style="grid-column:1/-1">
                 <span class="cmd-param-label">Comment</span>
                 <input type="text" class="prop-input" data-ep="comment" value="${escAttr(en.comment ?? '')}" placeholder="optional">
             </div>
             <div class="cmd-param">
                 <span class="cmd-param-label">Level</span>
                 <input type="number" class="prop-input" data-ep-num="level" value="${en.level ?? 1}" min="1" max="200" style="width:56px;flex:none">
+            </div>
+            <div class="cmd-param">
+                <span class="cmd-param-label">PP (Play Points)</span>
+                <input type="number" class="prop-input" data-ep-num="pp" value="${en.pp ?? ''}" min="0" placeholder="0" title="Post-cap experience for end-game progression">
             </div>
             <div class="cmd-param">
                 <span class="cmd-param-label">Exp Scheme</span>
@@ -4972,49 +6387,26 @@ function buildEnemyItemHtml(en, ei, isManual) {
                 <span class="cmd-param-label">EXP</span>
                 <input type="number" class="prop-input" data-ep-num="exp" value="${en.exp ?? 0}" min="0">
             </div>
+            <div class="cmd-param">
+                <span class="cmd-param-label">Blood Orbs</span>
+                <input type="number" class="prop-input" data-ep-num="blood_orbs" value="${en.blood_orbs ?? ''}" min="0" placeholder="0">
+            </div>
+            <div class="cmd-param">
+                <span class="cmd-param-label">High Orbs</span>
+                <input type="number" class="prop-input" data-ep-num="high_orbs" value="${en.high_orbs ?? ''}" min="0" placeholder="0">
+            </div>
             ${isManual ? `<div class="cmd-param">
                 <span class="cmd-param-label">Index</span>
                 <input type="number" class="prop-input" data-ep-num="index" value="${en.index ?? 0}" min="0" max="255" style="width:56px;flex:none">
             </div>` : ''}
-            <div class="cmd-param">
+            <div class="cmd-param" style="grid-column:1/-1">
                 <span class="cmd-param-label">Flags</span>
                 <div style="display:flex;flex-direction:row;align-items:center;gap:12px;margin-top:2px">
                     <label class="ep-flag"><input type="checkbox" data-ep-bool="is_boss" ${en.is_boss ? 'checked' : ''}> Boss</label>
                     <label class="ep-flag"><input type="checkbox" data-ep-bool="is_required" ${en.is_required !== false ? 'checked' : ''}> Required</label>
                 </div>
             </div>
-            <details class="ep-advanced">
-                <summary>Advanced</summary>
-                <div class="ep-advanced-body">
-                    <div class="cmd-param">
-                        <span class="cmd-param-label">Scale</span>
-                        <input type="number" class="prop-input" data-ep-num="scale" value="${en.scale ?? 100}" min="1" style="width:56px;flex:none">
-                    </div>
-                    <div class="cmd-param">
-                        <span class="cmd-param-label">Named Params ID</span>
-                        <input type="number" class="prop-input" data-ep-num="named_enemy_params_id" value="${en.named_enemy_params_id ?? ''}">
-                    </div>
-                    <div class="cmd-param">
-                        <span class="cmd-param-label">Repop Wait (s)</span>
-                        <input type="number" class="prop-input" data-ep-num="repop_wait_second" value="${en.repop_wait_second ?? 0}" min="0">
-                    </div>
-                    <div class="cmd-param">
-                        <span class="cmd-param-label">Repop Count</span>
-                        <input type="number" class="prop-input" data-ep-num="repop_count" value="${en.repop_count ?? ''}">
-                    </div>
-                    <div class="cmd-param">
-                        <span class="cmd-param-label">Think Tbl No</span>
-                        <input type="number" class="prop-input" data-ep-num="start_think_tbl_no" value="${en.start_think_tbl_no ?? ''}">
-                    </div>
-                    <div class="cmd-param">
-                        <span class="cmd-param-label">More</span>
-                        <div style="display:flex;flex-direction:row;align-items:center;gap:12px;margin-top:2px">
-                            <label class="ep-flag"><input type="checkbox" data-ep-bool="is_boss_bgm" ${en.is_boss_bgm ? 'checked' : ''}> BGM</label>
-                            <label class="ep-flag"><input type="checkbox" data-ep-bool="is_boss_gauge" ${en.is_boss_gauge ? 'checked' : ''}> Gauge</label>
-                        </div>
-                    </div>
-                </div>
-            </details>
+            <div class="ep-advanced-mount" style="grid-column:1/-1"></div>
         </div>
     </div>`;
 }
@@ -5026,6 +6418,75 @@ function spawnNodeForEnemy(g, ei) {
         : (g.starting_index ?? 0) + ei;
     if (posIdx == null) return null;
     return document.querySelector(`#eg-spider .eg-spawn-node[data-posidx="${posIdx}"]`);
+}
+
+// Wire the data-ep-num and data-ep-bool controls inside a (re)built advanced section.
+// Called once on initial build and again whenever the advanced section is rebuilt
+// (i.e. when the enemy ID changes and think/montage info must update).
+function wireEnemyItemAdvanced(advEl, en) {
+    advEl.querySelectorAll('[data-ep-num]').forEach(inp => {
+        inp.addEventListener('change', () => {
+            const field = inp.dataset.epNum;
+            const val = inp.value !== '' ? parseInt(inp.value) : undefined;
+            if (val == null || isNaN(val)) delete en[field];
+            else en[field] = val;
+            persistQuest();
+        });
+    });
+    advEl.querySelectorAll('[data-ep-bool]').forEach(cb => {
+        cb.addEventListener('change', () => {
+            const field = cb.dataset.epBool;
+            if (cb.checked) en[field] = true;
+            else delete en[field];
+            syncEgCard();
+            persistQuest();
+        });
+    });
+}
+
+function mountNamedParamWidget(mountEl, en) {
+    const curId    = en.named_enemy_params_id ?? 0;
+    const curParam = curId ? namedParamsById.get(curId) : null;
+    const baseEmName = () => emName(en.enemy_id) || null;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'cmd-param';
+
+    const lbl = document.createElement('span');
+    lbl.className = 'cmd-param-label';
+    lbl.textContent = 'Named Param';
+    wrap.appendChild(lbl);
+
+    const inner = document.createElement('div');
+    inner.style.cssText = 'display:flex;flex-direction:column;gap:3px;flex:1';
+
+    const btn = document.createElement('button');
+    btn.className = 'ep-named-btn';
+    btn.dataset.namedId = curId;
+    btn.textContent = namedParamLabel(curParam ?? (curId ? {id: curId} : null));
+
+    const statsDiv = document.createElement('div');
+    statsDiv.className = 'ep-named-stats';
+    buildNamedParamStatsInline(statsDiv, curParam);
+
+    inner.appendChild(btn);
+    inner.appendChild(statsDiv);
+    wrap.appendChild(inner);
+    mountEl.replaceWith(wrap);
+
+    btn.addEventListener('click', () => {
+        openNamedParamPicker(newId => {
+            const p = namedParamsById.get(newId) ?? null;
+            en.named_enemy_params_id = newId || undefined;
+            btn.dataset.namedId = newId;
+            btn.textContent = namedParamLabel(p ?? (newId ? {id: newId} : null));
+            buildNamedParamStatsInline(statsDiv, p);
+            const header = btn.closest('.ep-enemy-item')?.querySelector('.ep-em-label');
+            if (header) header.innerHTML = namedParamCombinedHtml(p || null, emName(en.enemy_id) || en.enemy_id || '');
+            syncEgCard();
+            persistQuest();
+        }, en.named_enemy_params_id ?? 0, baseEmName());
+    });
 }
 
 function wireEnemyItem(item, g, gi) {
@@ -5042,6 +6503,31 @@ function wireEnemyItem(item, g, gi) {
         spawnNodeForEnemy(g, ei)?.classList.remove('eg-spawn-panel-lit');
     });
 
+    // Enemy picker (replaces raw hex input)
+    const emMount = item.querySelector('.ep-em-picker-mount');
+    if (emMount) {
+        emMount.replaceWith(buildEmPicker(en.enemy_id, hexId => {
+            en.enemy_id = hexId;
+            const lbl = item.querySelector('.ep-em-label');
+            const np2 = en.named_enemy_params_id ? namedParamsById.get(en.named_enemy_params_id) : null;
+            if (lbl) lbl.innerHTML = namedParamCombinedHtml(np2, emName(hexId) || hexId || '');
+            const npStats = item.querySelector('.ep-named-stats');
+            if (npStats) buildNamedParamStatsInline(npStats, np2);
+            // Rebuild advanced section so think/montage/hmpreset reflect new enemy
+            const oldAdv = item.querySelector('.ep-advanced');
+            if (oldAdv) {
+                const newAdv = buildEnemyAdvancedSection(en);
+                oldAdv.replaceWith(newAdv);
+                wireEnemyItemAdvanced(newAdv, en);
+            }
+            syncEgCard();
+            persistQuest();
+        }));
+    }
+
+    const npMount = item.querySelector('.ep-named-param-mount');
+    if (npMount) mountNamedParamWidget(npMount, en);
+
     item.querySelectorAll('[data-ep]').forEach(inp => {
         inp.addEventListener('change', () => {
             const field = inp.dataset.ep;
@@ -5050,13 +6536,6 @@ function wireEnemyItem(item, g, gi) {
                 else { delete en.exp_scheme; if (en.exp == null) en.exp = 0; }
                 const expRow = item.querySelector('.ep-exp-row');
                 if (expRow) expRow.style.display = (inp.value === 'automatic' || inp.value === 'exm') ? 'none' : '';
-            } else if (field === 'enemy_id') {
-                en.enemy_id = inp.value;
-                const n = emName(inp.value);
-                inp.title = n;
-                item.querySelector('.ep-em-name').textContent = n;
-                item.querySelector('.ep-em-label').textContent = n;
-                syncEgCard();
             } else if (field === 'comment') {
                 en.comment = inp.value || undefined;
             }
@@ -5071,7 +6550,7 @@ function wireEnemyItem(item, g, gi) {
             if (val == null || isNaN(val)) delete en[field];
             else en[field] = val;
             persistQuest();
-            if (field === 'index') openEnemyGroupSpider(gi); // refresh spider when spawn index changes
+            if (field === 'index') openEnemyGroupSpider(gi);
         });
     });
 
@@ -5079,7 +6558,7 @@ function wireEnemyItem(item, g, gi) {
         cb.addEventListener('change', () => {
             const field = cb.dataset.epBool;
             if (field === 'is_required') {
-                if (cb.checked) delete en.is_required; // default true, omit when true
+                if (cb.checked) delete en.is_required;
                 else en.is_required = false;
             } else {
                 if (cb.checked) en[field] = true;
@@ -5097,6 +6576,15 @@ function wireEnemyItem(item, g, gi) {
         persistQuest();
         openEnemyGroupSpider(gi);
     });
+
+    // Advanced section — mounted last so the querySelectorAll loops above don't
+    // double-wire it; wireEnemyItemAdvanced handles its own listeners.
+    const advMount = item.querySelector('.ep-advanced-mount');
+    if (advMount) {
+        const adv = buildEnemyAdvancedSection(en);
+        advMount.replaceWith(adv);
+        wireEnemyItemAdvanced(adv, en);
+    }
 }
 
 function renderEgPropPanel(gi) {
@@ -5232,11 +6720,6 @@ function renderPropPanel() {
     propHeaderSub.textContent = `P${pi} · #${bi}`;
     propDelete.style.display = '';
 
-    const procBlocks = _quest.processes[pi].blocks;
-    const isFirst    = bi === 0;
-    const isLast     = bi >= procBlocks.length - 1;
-    const numProcs   = _quest.processes.length;
-
     let html = '';
 
     // ── Block actions (reorder / move / copy-paste)
@@ -5313,9 +6796,8 @@ function renderPropPanel() {
     if (info.fields.includes('message_id')) {
         html += `<div class="prop-section">
             <div class="prop-section-title">Message</div>
-            <div class="prop-row">
-                <label class="prop-label">Message ID</label>
-                <input type="number" class="prop-input" id="pp-msg-id" value="${block.message_id ?? ''}">
+            <div class="prop-row"><label class="prop-label">Message ID</label>
+                <span id="pp-msg-picker-mount" data-val="${block.message_id ?? ''}" style="flex:1;min-width:0"></span>
             </div>
         </div>`;
     }
@@ -5598,11 +7080,17 @@ function renderPropPanel() {
 
 
 
-    // Message id
-    propBody.querySelector('#pp-msg-id')?.addEventListener('change', e => {
-        block.message_id = e.target.value !== '' ? parseInt(e.target.value) : undefined;
-        renderBlockNode(pi, bi);
-    });
+    // Message id picker
+    const msgPickerMount = propBody.querySelector('#pp-msg-picker-mount');
+    if (msgPickerMount) {
+        const currentSerial = msgPickerMount.dataset.val !== '' ? parseInt(msgPickerMount.dataset.val) : null;
+        const filterNpcId   = block.npc_id != null ? Number(block.npc_id) : null;
+        const picker = buildMsgPicker(currentSerial, serial => {
+            block.message_id = serial ?? undefined;
+            renderBlockNode(pi, bi);
+        }, filterNpcId);
+        msgPickerMount.replaceWith(picker);
+    }
 
     // Groups — chip toggles
     propBody.querySelectorAll('#pp-group-chips .eg-chip').forEach(chip => {
@@ -5685,7 +7173,9 @@ function renderPropPanel() {
             const fi   = parseInt(inp.closest('.flag-item').dataset.flag);
             const field = inp.dataset.field;
             if (!block.flags[fi]) return;
-            block.flags[fi][field] = field === 'value' ? parseInt(inp.value)||0 : inp.value;
+            const intFields = new Set(['value', 'quest_id']);
+            block.flags[fi][field] = intFields.has(field) ? (parseInt(inp.value) || 0) : inp.value;
+            if (field === 'type') renderPropPanel(); // show/hide quest_id field
         });
     });
 
@@ -5715,6 +7205,7 @@ function renderPropPanel() {
 }
 
 function buildFlagItemHtml(f, fi) {
+    const needsQuestId = f.type === 'WorldManageLayout' || f.type === 'WorldManageQuest';
     return `<div class="flag-item" data-flag="${fi}">
         <select data-field="type">
             ${FLAG_TYPES.map(t => `<option value="${t}" ${t===f.type?'selected':''}>${t}</option>`).join('')}
@@ -5723,6 +7214,7 @@ function buildFlagItemHtml(f, fi) {
             ${FLAG_ACTIONS.map(a => `<option value="${a}" ${a===f.action?'selected':''}>${a}</option>`).join('')}
         </select>
         <input type="number" data-field="value" value="${f.value ?? 0}" style="width:70px">
+        ${needsQuestId ? `<input type="number" data-field="quest_id" value="${f.quest_id ?? ''}" placeholder="Quest ID" style="width:80px" title="Quest ID">` : ''}
         ${f.comment != null ? `<input type="text" data-field="comment" value="${escAttr(f.comment)}" placeholder="comment" style="flex:1;min-width:60px">` : ''}
         <button class="flag-delete-btn" data-del-flag="${fi}" title="Remove">✕</button>
     </div>`;
@@ -5752,6 +7244,13 @@ function buildCmdItemHtml(cmd, ci, kind) {
         const val     = cmd[pk] ?? 0;
         const isStageParam = label === 'StageNo' || label === 'JumpStageNo';
         const isNpcParam   = NPC_PARAM_NAMES.has(label);
+        const isMsgParam   = MSG_PARAM_NAMES.has(label);
+        const mssEntry     = isMsgParam && _mssGroupMap ? _mssGroupMap.get(val) : null;
+        const chipHtml     = isMsgParam
+            ? (mssEntry
+                ? `<button class="msg-preview-chip" data-serial="${val}" title="${escAttr(mssEntry.npcName)}">💬 ${escHtml(mssEntry.npcName)}</button>`
+                : `<button class="msg-preview-chip msg-preview-chip--dim" data-serial="${val}" title="Load source files to preview">💬 #${val}</button>`)
+            : '';
         return `<div class="cmd-param">
             <span class="cmd-param-label">${escHtml(label)}</span>
             ${isStageParam
@@ -5759,6 +7258,7 @@ function buildCmdItemHtml(cmd, ci, kind) {
                 : isNpcParam
                     ? `<span class="cmd-npc-picker-mount" data-pk="${pk}" data-val="${escAttr(String(val))}"></span>`
                     : `<input type="number" data-pk="${pk}" value="${val}">`}
+            ${chipHtml}
         </div>`;
     }).join('');
 
@@ -5795,9 +7295,162 @@ function wireCmdItem(item, block, arrayKey) {
     item.querySelectorAll('input[data-pk]').forEach(inp => {
         inp.addEventListener('change', () => {
             cmd[inp.dataset.pk] = parseInt(inp.value) || 0;
+            // Refresh the msg preview chip if this param is a message reference
+            renderPropPanel();
+        });
+    });
+
+    // Message preview chips
+    item.querySelectorAll('.msg-preview-chip').forEach(chip => {
+        chip.addEventListener('click', e => {
+            e.stopPropagation();
+            showMsgPreview(chip, parseInt(chip.dataset.serial));
         });
     });
 }
+
+// ── MSS message preview popover ───────────────────────────────────────────────
+let _msgPreviewEl = null;
+
+function openImgLightbox(src) {
+    document.querySelector('.img-lightbox')?.remove();
+    const lb = document.createElement('div');
+    lb.className = 'img-lightbox';
+    lb.innerHTML = `
+        <div class="img-lightbox-backdrop"></div>
+        <div class="img-lightbox-frame">
+            <button class="img-lightbox-close" title="Close">✕</button>
+            <img class="img-lightbox-img" src="${escAttr(src)}" alt="Full image">
+        </div>`;
+    lb.querySelector('.img-lightbox-backdrop').addEventListener('click', () => lb.remove());
+    lb.querySelector('.img-lightbox-close').addEventListener('click', () => lb.remove());
+    lb.addEventListener('keydown', e => { if (e.key === 'Escape') lb.remove(); });
+    document.body.appendChild(lb);
+    lb.setAttribute('tabindex', '-1');
+    lb.focus();
+}
+
+function syncOrderChip(card) {
+    const c = (card ?? world.querySelector('.meta-card'))?.querySelector('.qtd-order-chip');
+    if (!c) return;
+    const entry = getQtdOrderEntry();
+    c.classList.toggle('msg-preview-chip--dim', !entry);
+    c.title = entry ? 'View order text' : 'Load source files to preview order text';
+}
+
+let _orderPopEl = null;
+
+function closeOrderPop() {
+    _orderPopEl?.remove();
+    _orderPopEl = null;
+}
+
+function showOrderTextPop(anchor) {
+    closeOrderPop();
+    const entry = getQtdOrderEntry();
+    const pop = document.createElement('div');
+    pop.className = 'msg-preview-pop';
+
+    if (!entry) {
+        pop.innerHTML = `
+            <div class="msg-preview-hdr">
+                <span class="msg-preview-npc">📋 Order Text</span>
+                <button class="msg-preview-close">✕</button>
+            </div>
+            <div class="msg-preview-body"><span style="color:var(--text2);font-style:italic">Load source files to see order text.</span></div>`;
+    } else {
+        pop.innerHTML = `
+            <div class="msg-preview-hdr">
+                <span class="msg-preview-npc">📋 Order Text</span>
+                <button class="msg-preview-close">✕</button>
+            </div>
+            <div class="msg-preview-body">
+                <div class="msg-preview-line">
+                    ${entry.en ? `<span class="msg-preview-en">${escHtml(entry.en)}</span>` : ''}
+                    ${entry.jp ? `<span class="msg-preview-jp">${escHtml(entry.jp)}</span>` : ''}
+                </div>
+            </div>`;
+    }
+
+    pop.querySelector('.msg-preview-close').addEventListener('click', closeOrderPop);
+    document.body.appendChild(pop);
+    _orderPopEl = pop;
+
+    const rect = anchor.getBoundingClientRect();
+    const popW = 320;
+    let left = rect.left;
+    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+    pop.style.left = `${Math.max(8, left)}px`;
+    pop.style.top  = `${rect.bottom + 4}px`;
+}
+
+function closeMsgPreview() {
+    _msgPreviewEl?.remove();
+    _msgPreviewEl = null;
+}
+
+function showMsgPreview(anchor, serial) {
+    closeMsgPreview();
+    const entry = _mssGroupMap?.get(serial);
+
+    const pop = document.createElement('div');
+    pop.className = 'msg-preview-pop';
+
+    if (!entry) {
+        pop.innerHTML = `
+            <div class="msg-preview-hdr">
+                <span class="msg-preview-npc">💬 serial:${serial}</span>
+                <button class="msg-preview-close">✕</button>
+            </div>
+            <div class="msg-preview-body"><span style="color:var(--text2);font-style:italic">${_mssGroupMap ? 'No MSS entry found for this serial.' : 'Load source files to see message text.'}</span></div>`;
+        pop.querySelector('.msg-preview-close').addEventListener('click', closeMsgPreview);
+        document.body.appendChild(pop);
+        _msgPreviewEl = pop;
+        const rect = anchor.getBoundingClientRect();
+        const popW = 280;
+        let left = rect.left;
+        if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+        pop.style.left = `${Math.max(8, left)}px`;
+        pop.style.top  = `${rect.bottom + 4}px`;
+        return;
+    }
+
+    const msgsHtml = entry.msgs.map(m =>
+        `<div class="msg-preview-line">
+            ${m.en ? `<span class="msg-preview-en">${escHtml(m.en)}</span>` : ''}
+            ${m.jp ? `<span class="msg-preview-jp">${escHtml(m.jp)}</span>` : ''}
+        </div>`
+    ).join('');
+
+    pop.innerHTML = `
+        <div class="msg-preview-hdr">
+            <span class="msg-preview-npc">🧑 ${escHtml(entry.npcName)}${entry.npcId != null ? ` <span class="msg-preview-npcid">#${entry.npcId}</span>` : ''}</span>
+            <span class="msg-preview-serial">serial:${serial}</span>
+            <button class="msg-preview-close">✕</button>
+        </div>
+        <div class="msg-preview-body">${msgsHtml || '<span style="color:var(--text2);font-style:italic">No messages</span>'}</div>`;
+
+    pop.querySelector('.msg-preview-close').addEventListener('click', closeMsgPreview);
+    document.body.appendChild(pop);
+    _msgPreviewEl = pop;
+
+    // Position below the chip, clamped to viewport
+    const rect = anchor.getBoundingClientRect();
+    const popW = 320;
+    let left = rect.left;
+    if (left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
+    pop.style.left = `${Math.max(8, left)}px`;
+    pop.style.top  = `${rect.bottom + 4}px`;
+}
+
+document.addEventListener('click', e => {
+    if (_msgPreviewEl && !_msgPreviewEl.contains(e.target) && !e.target.closest('.msg-preview-chip')) {
+        closeMsgPreview();
+    }
+    if (_orderPopEl && !_orderPopEl.contains(e.target) && !e.target.closest('.qtd-order-chip')) {
+        closeOrderPop();
+    }
+});
 
 // Re-render just one block node (lighter than full render)
 function renderBlockNode(pi, bi) {

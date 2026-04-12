@@ -219,7 +219,8 @@ let gridLayer        = L.layerGroup();   // off by default
 let territoryLayer   = L.layerGroup();   // off by default; territory rects when groups expand
 let stageLabelsLayer = L.layerGroup().addTo(leafletMap);  // area name text labels
 let gatherLayer       = L.layerGroup();   // off by default
-const _gatherMarkerByKey = new Map();    // "${stageNo}:${groupId}:${posId}" → L.marker
+const _gatherMarkerByKey   = new Map();    // "${stageNo}:${groupId}:${posId}" → L.marker
+const _gatherGroupMarkers  = new Map();    // "${stageNo}:${groupId}" → L.marker[]
 const _shopMarkerByNpcId = new Map();    // "${stageNo}:${npcId}" → L.marker
 let npcShopLayer        = L.layerGroup();   // off by default
 let specialShopLayer    = L.layerGroup();   // off by default
@@ -1699,16 +1700,18 @@ function buildGroupDetails(g) {
                                                 iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
                                                 iIsBloodOrbEnemy, iIsHighOrbEnemy,
                                                 iExp, iRepopNum, iRepopCount, iTargetType,
-                                                iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop } = _rawEnemySchemas;
+                                                iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop,
+                                                iLayerNo } = _rawEnemySchemas;
                                         const newRaw = new Array(_rawEnemyData.schemas.enemies.length).fill(null);
                                         newRaw[iStage]  = Number(pSid);
                                         newRaw[iGroup]  = Number(pGid);
                                         newRaw[iPI]     = Number(pPosIdx);
+                                        if (iLayerNo >= 0) newRaw[iLayerNo] = 0;
                                         if (iEnemyId >= 0) newRaw[iEnemyId] = hexId;
                                         newRaw[iLv]     = fields.lv;
                                         newRaw[iBlood]  = fields.bloodOrbs;
                                         newRaw[iHigh]   = fields.highOrbs;
-                                        newRaw[iSpawnTime] = fields.spawnTime;
+                                        newRaw[iSpawnTime] = fields.spawnTime ?? '00:00,23:59';
                                         newRaw[iDrops]  = fields.dropsTableId;
                                         if (iScale      >= 0) newRaw[iScale]      = fields.scale;
                                         if (iSubGroup   >= 0) newRaw[iSubGroup]   = fields.subGroupId;
@@ -2115,17 +2118,19 @@ function buildGroupDetails(g) {
                                             iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
                                             iIsBloodOrbEnemy, iIsHighOrbEnemy,
                                             iExp, iRepopNum, iRepopCount, iTargetType,
-                                            iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop } = _rawEnemySchemas;
+                                            iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop,
+                                            iLayerNo } = _rawEnemySchemas;
                                     const [sid, gid, pidx] = spawnKey.split(',');
                                     const newRaw = new Array(_rawEnemyData.schemas.enemies.length).fill(null);
                                     newRaw[iStage]     = Number(sid);
                                     newRaw[iGroup]     = Number(gid);
                                     newRaw[iPosIdx]    = Number(pidx);
+                                    if (iLayerNo >= 0) newRaw[iLayerNo] = 0;
                                     if (iEnemyId >= 0) newRaw[iEnemyId] = hexId;
                                     newRaw[iLv]        = cfg.lv;
                                     newRaw[iBlood]     = cfg.bloodOrbs;
                                     newRaw[iHigh]      = cfg.highOrbs;
-                                    newRaw[iSpawnTime] = cfg.spawnTime;
+                                    newRaw[iSpawnTime] = cfg.spawnTime ?? '00:00,23:59';
                                     newRaw[iDrops]     = cfg.dropsTableId;
                                     if (iScale      >= 0) newRaw[iScale]      = cfg.scale;
                                     if (iSubGroup   >= 0) newRaw[iSubGroup]   = _activeSubGroupId ?? 0;
@@ -2204,17 +2209,19 @@ function buildGroupDetails(g) {
                                         iSetType, iInfection, iIsBossG, iIsBossBGM, iIsAreaBoss,
                                         iIsBloodOrbEnemy, iIsHighOrbEnemy,
                                         iExp, iRepopNum, iRepopCount, iTargetType,
-                                        iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop } = _rawEnemySchemas;
+                                        iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop,
+                                        iLayerNo } = _rawEnemySchemas;
                                 const [sid, gid, pidx] = spawnKey.split(',');
                                 const newRaw = new Array(_rawEnemyData.schemas.enemies.length).fill(null);
                                 newRaw[iStage]    = Number(sid);
                                 newRaw[iGroup]    = Number(gid);
                                 newRaw[iPosIdx]   = Number(pidx);
+                                if (iLayerNo >= 0) newRaw[iLayerNo] = 0;
                                 newRaw[iEnemyId]  = hexId;
                                 newRaw[iLv]       = 1;
                                 newRaw[iBlood]    = 0;
                                 newRaw[iHigh]     = 0;
-                                newRaw[iSpawnTime]= null;
+                                newRaw[iSpawnTime]= '00:00,23:59';
                                 newRaw[iDrops]    = -1;
                                 if (iScale       >= 0) newRaw[iScale]       = 100;
                                 if (iSubGroup    >= 0) newRaw[iSubGroup]    = _activeSubGroupId ?? 0;
@@ -2535,6 +2542,32 @@ function _highlightSG(sgKey) {
 
 function _unhighlightSG() {
     _unhighlightTimer = setTimeout(_clearHighlight, 160);
+}
+
+// ── Gathering group hover highlight ──────────────────────────────────────────
+let _gatherHighlightTimer = null;
+let _gatherHighlightedSet = new Set();   // markers currently highlighted
+
+function _clearGatherHighlight() {
+    for (const m of _gatherHighlightedSet) {
+        const el = m.getElement()?.firstElementChild;
+        if (el) { el.style.outline = ''; el.style.outlineOffset = ''; el.style.boxShadow = '0 0 3px rgba(0,0,0,0.7)'; }
+    }
+    _gatherHighlightedSet.clear();
+}
+
+function _applyGatherHighlight(markers) {
+    clearTimeout(_gatherHighlightTimer);
+    _clearGatherHighlight();
+    for (const m of markers) {
+        const el = m.getElement()?.firstElementChild;
+        if (el) { el.style.outline = '2px solid #fff'; el.style.outlineOffset = '2px'; el.style.boxShadow = '0 0 6px 2px rgba(255,255,255,0.8)'; }
+        _gatherHighlightedSet.add(m);
+    }
+}
+
+function _unhighlightGather() {
+    _gatherHighlightTimer = setTimeout(_clearGatherHighlight, 160);
 }
 
 // ── Spawn aggro/link radius circles ───────────────────────────────────────────
@@ -3087,7 +3120,8 @@ const _enemySpawnPromise = getSrcUrl('ddon-src-spawns', _DEFAULT_SPAWNS_URL)
               iIsManualSet     = schemas.indexOf('IsManualSet'),
               iPPDrop          = schemas.indexOf('PPDrop'),
               iIsBloodOrbEnemy = schemas.indexOf('IsBloodOrbEnemy'),
-              iIsHighOrbEnemy  = schemas.indexOf('IsHighOrbEnemy');
+              iIsHighOrbEnemy  = schemas.indexOf('IsHighOrbEnemy'),
+              iLayerNo         = schemas.indexOf('LayerNo');
         // Store raw data and schema indices for write-back
         _rawEnemyData    = data;
         _rawEnemySchemas = {
@@ -3095,7 +3129,7 @@ const _enemySpawnPromise = getSrcUrl('ddon-src-spawns', _DEFAULT_SPAWNS_URL)
             iScale, iSubGroup, iNamed, iRaidBoss, iSetType, iInfection,
             iIsBossG, iIsBossBGM, iIsAreaBoss, iExp, iRepopNum, iRepopCount,
             iTargetType, iHmPreset, iStartThink, iMontage, iIsManualSet, iPPDrop,
-            iIsBloodOrbEnemy, iIsHighOrbEnemy,
+            iIsBloodOrbEnemy, iIsHighOrbEnemy, iLayerNo,
         };
         const dropsTables = {};
         _dropsTablesMap = new Map();
@@ -3338,6 +3372,7 @@ const GATHER_LABELS = {
 function loadGatherPoints(info, stid = null) {
     gatherLayer.clearLayers();
     _gatherMarkerByKey.clear();
+    _gatherGroupMarkers.clear();
     if (!info.stages?.length) return;
 
     const floorObbs     = info.floor_obbs ?? null;
@@ -3446,6 +3481,14 @@ function loadGatherPoints(info, stid = null) {
             .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -8] })
             .addTo(gatherLayer);
             _gatherMarkerByKey.set(`${stageNo}:${node.groupId}:${node.posId}`, marker);
+
+            // Group hover highlight: all nodes sharing the same groupId light up together.
+            const groupKey = `${stageNo}:${node.groupId}`;
+            if (!_gatherGroupMarkers.has(groupKey)) _gatherGroupMarkers.set(groupKey, []);
+            _gatherGroupMarkers.get(groupKey).push(marker);
+            marker._gatherGroupKey = groupKey;
+            marker.on('mouseover', function() { _applyGatherHighlight(_gatherGroupMarkers.get(this._gatherGroupKey) || []); });
+            marker.on('mouseout',  _unhighlightGather);
 
             // Drop target: drag items from the Items panel onto a gather node marker.
             // Guard against multiple 'add' events (layer toggled off/on repeatedly).
