@@ -3311,7 +3311,10 @@ const GATHER_COLORS = {
     CHEST_SILVER:          '#E0E0E0',  // silver
     CHEST_GOLD:            '#FFD700',  // gold
     CHEST_PURPLE:          '#CE93D8',  // purple
+    CHEST_PEARL:           '#B2EBF2',  // pearlescent — EXM reward
     CHEST_ROUND:           '#FFF59D',  // pale yellow — small round chest
+    CHEST_SEALED_BROWN:    '#A1887F',  // Chain Dungeon (EXM)
+    CHEST_SEALED_TEAL:     '#60807E',  // Chain Dungeon (EXM)
     CHEST_SEALED_ORANGE:   '#FF6F00',  // orange — BBM sealed
     CHEST_SEALED_PURPLE:   '#7B1FA2',  // purple — BBM sealed
     CHEST_SEALED_PEARL:    '#B2EBF2',  // pearlescent — EXM reward
@@ -3362,10 +3365,13 @@ const GATHER_LABELS = {
     CHEST_SILVER:          'Silver Chest',
     CHEST_GOLD:            'Gold Chest',
     CHEST_PURPLE:          'Purple Chest',
+    CHEST_PEARL:           'Pearlescent Chest',
     CHEST_ROUND:           'Small Round Chest',
+    CHEST_SEALED_BROWN:    'Sealed Chest (Brown)',
+    CHEST_SEALED_TEAL:     'Sealed Chest (Teal)',
     CHEST_SEALED_ORANGE:   'Sealed Chest (Orange)',
     CHEST_SEALED_PURPLE:   'Sealed Chest (Purple)',
-    CHEST_SEALED_PEARL:    'Pearlescent Chest',
+    CHEST_SEALED_PEARL:    'Sealed Chest (Pearlescent)',
     CHEST_UNKNOWN:         'Chest',
 };
 

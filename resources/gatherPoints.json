@@ -50673,6 +50673,15 @@
   ],
   "3110": [
     {
+      "type": "CHEST_SEALED_BROWN",
+      "groupId": 150,
+      "posId": 0,
+      "x": -8900.0,
+      "y": -1459.8,
+      "z": 14000.0,
+      "itemListId": 2059
+    },
+    {
       "type": "OM_GATHER_TWINKLE",
       "groupId": 151,
       "posId": 0,
@@ -50797,6 +50806,15 @@
       "y": -1500.0,
       "z": 13108.9,
       "itemListId": 2061
+    },
+    {
+      "type": "CHEST_SEALED_TEAL",
+      "groupId": 152,
+      "posId": 0,
+      "x": 8900.0,
+      "y": -1459.8,
+      "z": 14000.0,
+      "itemListId": 2060
     },
     {
       "type": "CHEST_BROWN",
@@ -52458,7 +52476,7 @@
       "itemListId": 2088
     },
     {
-      "type": "CHEST_UNKNOWN",
+      "type": "CHEST_BRONZE",
       "groupId": 250,
       "posId": 0,
       "x": -300.0,
@@ -52466,7 +52484,7 @@
       "z": -13640.0
     },
     {
-      "type": "CHEST_UNKNOWN",
+      "type": "CHEST_BRONZE",
       "groupId": 251,
       "posId": 0,
       "x": 0.0,
@@ -52474,12 +52492,20 @@
       "z": -13640.0
     },
     {
-      "type": "CHEST_UNKNOWN",
+      "type": "CHEST_BRONZE",
       "groupId": 252,
       "posId": 0,
       "x": 300.0,
       "y": -483.7,
       "z": -13640.0
+    },
+    {
+      "type": "CHEST_PEARL",
+      "groupId": 253,
+      "posId": 0,
+      "x": -651.6,
+      "y": -436.4,
+      "z": -14052.9
     }
   ],
   "3200": [
@@ -52699,7 +52725,7 @@
       "itemListId": 2105
     },
     {
-      "type": "CHEST_UNKNOWN",
+      "type": "CHEST_BRONZE",
       "groupId": 250,
       "posId": 0,
       "x": -300.0,
@@ -52707,7 +52733,7 @@
       "z": -10031.8
     },
     {
-      "type": "CHEST_UNKNOWN",
+      "type": "CHEST_BRONZE",
       "groupId": 251,
       "posId": 0,
       "x": 0.0,
@@ -52715,15 +52741,32 @@
       "z": -10031.8
     },
     {
-      "type": "CHEST_UNKNOWN",
+      "type": "CHEST_BRONZE",
       "groupId": 252,
       "posId": 0,
       "x": 300.0,
       "y": 4886.0,
       "z": -10031.8
+    },
+    {
+      "type": "CHEST_PEARL",
+      "groupId": 253,
+      "posId": 0,
+      "x": 608.5,
+      "y": 4889.4,
+      "z": -10467.0
     }
   ],
   "3211": [
+    {
+      "type": "CHEST_SEALED_BROWN",
+      "groupId": 150,
+      "posId": 0,
+      "x": 3500.0,
+      "y": 56.0,
+      "z": -11500.0,
+      "itemListId": 2107
+    },
     {
       "type": "OM_GATHER_TWINKLE",
       "groupId": 151,
@@ -52804,6 +52847,15 @@
       "y": 2400.0,
       "z": -6799.2,
       "itemListId": 2109
+    },
+    {
+      "type": "CHEST_SEALED_TEAL",
+      "groupId": 152,
+      "posId": 0,
+      "x": -4200.0,
+      "y": 51.9,
+      "z": -19900.0,
+      "itemListId": 2108
     },
     {
       "type": "CHEST_BROWN",
@@ -54126,6 +54178,15 @@
   ],
   "3310": [
     {
+      "type": "CHEST_SEALED_BROWN",
+      "groupId": 150,
+      "posId": 0,
+      "x": 0.0,
+      "y": -4390.0,
+      "z": 11401.5,
+      "itemListId": 2112
+    },
+    {
       "type": "OM_GATHER_TWINKLE",
       "groupId": 151,
       "posId": 0,
@@ -54223,6 +54284,15 @@
       "y": -3065.8,
       "z": 16337.5,
       "itemListId": 2114
+    },
+    {
+      "type": "CHEST_SEALED_TEAL",
+      "groupId": 152,
+      "posId": 0,
+      "x": 1793.3,
+      "y": 29.5,
+      "z": 15695.6,
+      "itemListId": 2113
     },
     {
       "type": "CHEST_BROWN",
@@ -55506,6 +55576,38 @@
       "y": 1555.1,
       "z": 12992.9,
       "itemListId": 2120
+    },
+    {
+      "type": "CHEST_BRONZE",
+      "groupId": 250,
+      "posId": 0,
+      "x": -1057.8,
+      "y": 1451.8,
+      "z": 14309.5
+    },
+    {
+      "type": "CHEST_BRONZE",
+      "groupId": 251,
+      "posId": 0,
+      "x": -1057.8,
+      "y": 1451.8,
+      "z": 13970.7
+    },
+    {
+      "type": "CHEST_BRONZE",
+      "groupId": 252,
+      "posId": 0,
+      "x": -1057.8,
+      "y": 1451.8,
+      "z": 13635.2
+    },
+    {
+      "type": "CHEST_PEARL",
+      "groupId": 253,
+      "posId": 0,
+      "x": -849.2,
+      "y": 1543.1,
+      "z": 12971.2
     }
   ],
   "3400": [
@@ -55535,6 +55637,15 @@
     }
   ],
   "3410": [
+    {
+      "type": "CHEST_SEALED_BROWN",
+      "groupId": 150,
+      "posId": 0,
+      "x": -5627.2,
+      "y": 1811.8,
+      "z": 12649.8,
+      "itemListId": 2122
+    },
     {
       "type": "OM_GATHER_TWINKLE",
       "groupId": 151,
@@ -55669,6 +55780,15 @@
       "y": 1778.2,
       "z": 15296.2,
       "itemListId": 2124
+    },
+    {
+      "type": "CHEST_SEALED_TEAL",
+      "groupId": 152,
+      "posId": 0,
+      "x": 14415.3,
+      "y": -452.7,
+      "z": 20420.8,
+      "itemListId": 2123
     },
     {
       "type": "CHEST_BROWN",
@@ -57630,6 +57750,38 @@
       "y": 63.1,
       "z": -306.3,
       "itemListId": 2130
+    },
+    {
+      "type": "CHEST_BRONZE",
+      "groupId": 250,
+      "posId": 0,
+      "x": -1013.4,
+      "y": 87.4,
+      "z": -301.2
+    },
+    {
+      "type": "CHEST_BRONZE",
+      "groupId": 251,
+      "posId": 0,
+      "x": -511.7,
+      "y": 87.4,
+      "z": -1190.4
+    },
+    {
+      "type": "CHEST_BRONZE",
+      "groupId": 252,
+      "posId": 0,
+      "x": 507.5,
+      "y": 87.4,
+      "z": -1170.7
+    },
+    {
+      "type": "CHEST_PEARL",
+      "groupId": 253,
+      "posId": 0,
+      "x": 999.9,
+      "y": 87.4,
+      "z": -388.1
     }
   ],
   "3600": [
