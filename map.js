@@ -7181,6 +7181,8 @@ function openNamedParamPicker(popupSection, baseEmName) {
                 const p  = namedParamsById.get(id);
                 if (hiddenInput) {
                     hiddenInput.value = id;
+                    // Fire a change event so watchEditChanges enables the Apply button
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
                     const btn = popupSection.querySelector('.se-named-picker-btn');
                     if (btn) { btn.textContent = namedParamLabel(p); btn.dataset.namedId = id; }
                     // Live-update the enemy name shown at the top of the popup
@@ -7382,6 +7384,8 @@ function openDropTablePicker(popupSection) {
                 const id = parseInt(item.dataset.id);
                 if (hiddenInput) {
                     hiddenInput.value = id;
+                    // Dispatch change event so watchEditChanges enables the Apply button
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
                     const dt = id >= 0 ? _dropsTablesMap.get(id) : null;
                     const label = dt ? dt.name : 'None';
                     const idBadge = id >= 0 ? ` (id:${id}, ${dt?.items?.length ?? 0} items)` : '';
@@ -7414,7 +7418,10 @@ function openDropTablePicker(popupSection) {
     const sig = modal._abortCtrl.signal;
     search.addEventListener('input', () => renderList(search.value), { signal: sig });
     document.getElementById('dt-picker-none').addEventListener('click', () => {
-        if (hiddenInput) { hiddenInput.value = -1; }
+        if (hiddenInput) {
+            hiddenInput.value = -1;
+            hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
         const labelEl = popupSection?.querySelector('.se-drops-label');
         if (labelEl) { labelEl.textContent = 'None'; labelEl.title = 'None'; }
         const editBtn = popupSection?.querySelector('.se-drops-edit-btn');
