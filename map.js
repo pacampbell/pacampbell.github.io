@@ -1022,11 +1022,20 @@ function buildSidebar(filter = '') {
     }
 }
 
+function debounce(fn, ms) {
+    let timer = null;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), ms);
+    };
+}
+
 const _mapSearchInput = document.getElementById('map-search');
 const _mapSearchClear = document.getElementById('map-search-clear');
+const _buildSidebarDebounced = debounce(value => buildSidebar(value), 150);
 _mapSearchInput.addEventListener('input', e => {
     _mapSearchClear.style.display = e.target.value ? 'block' : 'none';
-    buildSidebar(e.target.value);
+    _buildSidebarDebounced(e.target.value);
 });
 _mapSearchClear.addEventListener('click', () => {
     _mapSearchInput.value = '';
@@ -7688,9 +7697,10 @@ function _renderGlobalResults(matches, resultsEl) {
 
     toggle.addEventListener('click', openPanel);
     close.addEventListener('click', closePanel);
+    const _runSpotSearchDebounced = debounce(() => _runSpotSearch(), 200);
     input.addEventListener('input', () => {
         if (clearBtn) clearBtn.style.display = input.value ? 'block' : 'none';
-        _runSpotSearch();
+        _runSpotSearchDebounced();
     });
     if (clearBtn) {
         clearBtn.addEventListener('click', () => {
