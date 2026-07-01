@@ -43,6 +43,34 @@
             letter-spacing: 0.05em;
             color: #e94560;
             border-bottom: 1px solid #0f3460;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+        .sidebar-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            flex-shrink: 0;
+        }
+        #map-settings-btn,
+        #sidebar-collapse {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+        #map-settings-btn:hover,
+        #sidebar-collapse:hover { color: #ccc; }
+        .sidebar-preset-label {
+            color: #aaa;
+            font-weight: 600;
+            font-size: 0.85em;
+            letter-spacing: 0.02em;
         }
 
         #search-box {
@@ -71,8 +99,16 @@
 
         #map-list {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
             padding: 4px 0;
+        }
+
+        #sidebar-bottom {
+            flex-shrink: 0;
+            border-top: 1px solid #0f3460;
+            max-height: 55vh;
+            overflow-y: auto;
         }
 
         .map-group-header {
@@ -83,6 +119,95 @@
             text-transform: uppercase;
             color: #888;
         }
+
+        .map-world-section { border-bottom: 1px solid #0f3460; }
+        .map-world-section:last-child { border-bottom: none; }
+        .map-world-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 0.76rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #bbb;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+            background: #1a2848;
+        }
+        .map-world-header:hover { background: #203058; color: #ddd; }
+        .map-world-header .expand-arrow {
+            font-size: 0.6rem;
+            color: #888;
+            flex-shrink: 0;
+            transition: transform 0.15s;
+            width: 10px;
+            text-align: center;
+        }
+        .map-world-section.expanded .map-world-header .expand-arrow { transform: rotate(90deg); }
+        .map-world-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .map-world-body { display: none; }
+        .map-world-section.expanded .map-world-body { display: block; }
+        .map-world-body .map-area-section { border-bottom: 1px solid #122040; }
+        .map-world-body .map-area-section:last-child { border-bottom: none; }
+        .map-world-body .map-area-header {
+            padding-left: 22px;
+            position: static;
+            background: #16213e;
+            font-size: 0.68rem;
+            color: #888;
+        }
+        .map-world-body .map-area-header:hover { background: #1a2848; color: #aaa; }
+        .map-world-body .map-area-body .map-entry { padding-left: 34px; }
+        .map-world-body .map-area-body .map-subentry { padding-left: 48px; }
+
+        .map-area-section { border-bottom: 1px solid #0f3460; }
+        .map-area-section:last-child { border-bottom: none; }
+        .map-area-header {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            cursor: pointer;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #999;
+            user-select: none;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background: #16213e;
+        }
+        .map-area-header:hover { background: #1a2848; color: #ccc; }
+        .map-area-header .expand-arrow {
+            font-size: 0.6rem;
+            color: #888;
+            flex-shrink: 0;
+            transition: transform 0.15s;
+            width: 10px;
+            text-align: center;
+        }
+        .map-area-section.expanded .map-area-header .expand-arrow { transform: rotate(90deg); }
+        .map-area-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .map-area-count {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: #666;
+            background: #0f3460;
+            padding: 1px 6px;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        .map-area-body { display: none; padding-bottom: 4px; }
+        .map-area-section.expanded .map-area-body { display: block; }
+        .map-area-body .map-entry { padding-left: 22px; }
+        .map-area-body .map-subentry { padding-left: 36px; }
 
         .map-entry {
             padding: 5px 16px;
@@ -153,15 +278,6 @@
             font-size: 0.82rem;
         }
 
-        #layers-panel h3 {
-            font-size: 0.7rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: #888;
-            margin-bottom: 6px;
-        }
-
         #layers-panel .layer-list {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -178,6 +294,173 @@
 
         .layer-toggle input { cursor: pointer; accent-color: #e94560; }
 
+        /* ── Map point filters (POI categories) ── */
+        #poi-filter-section {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #0f3460;
+        }
+        .poi-filter-heading {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .poi-filter-list .layer-toggle {
+            font-size: 0.82rem;
+        }
+        .poi-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+        .poi-icon-img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            pointer-events: none;
+        }
+
+        /* ── Collapsible POI / mob filter sections ── */
+        .poi-section { border-top: 1px solid #0f3460; }
+        .poi-section:first-child { border-top: none; }
+        .poi-section-toggle {
+            width: 100%;
+            padding: 6px 0;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .poi-section-toggle:hover { color: #bbb; }
+        .poi-section-toggle .expand-arrow {
+            font-size: 0.6rem;
+            flex-shrink: 0;
+            width: 10px;
+            text-align: center;
+            transition: transform 0.15s;
+        }
+        .poi-section.expanded .poi-section-toggle .expand-arrow { transform: rotate(90deg); }
+        .poi-section-body { display: none; padding-bottom: 4px; }
+        .poi-section.expanded .poi-section-body { display: block; }
+        .poi-show-all.layer-toggle {
+            font-size: 0.82rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+        .mob-type-icon {
+            display: inline-flex;
+            width: 18px;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        /* ── Developer panel ── */
+        #dev-panel {
+            padding: 0 0 8px;
+            border-top: 1px solid #0f3460;
+            font-size: 0.82rem;
+        }
+        #dev-panel-toggle {
+            width: 100%;
+            padding: 8px 16px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #dev-panel-toggle:hover { color: #aaa; background: #1a2848; }
+        #dev-panel.expanded #dev-panel-toggle { color: #888; }
+        #dev-panel-toggle .expand-arrow {
+            font-size: 0.6rem;
+            color: #888;
+            flex-shrink: 0;
+            transition: transform 0.15s;
+            width: 10px;
+            text-align: center;
+        }
+        #dev-panel.expanded #dev-panel-toggle .expand-arrow { transform: rotate(90deg); }
+        #dev-panel-body { display: none; padding: 0 0 8px; }
+        #dev-panel.expanded #dev-panel-body { display: block; }
+        .dev-section { border-top: 1px solid #0f3460; }
+        .dev-section:first-child { border-top: none; }
+        .dev-section-toggle {
+            width: 100%;
+            padding: 6px 16px;
+            background: none;
+            border: none;
+            color: #666;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            cursor: pointer;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .dev-section-toggle:hover { color: #aaa; background: #1a2848; }
+        .dev-section.expanded .dev-section-toggle { color: #888; }
+        .dev-section-toggle .expand-arrow {
+            font-size: 0.55rem;
+            color: #888;
+            flex-shrink: 0;
+            transition: transform 0.15s;
+            width: 10px;
+            text-align: center;
+        }
+        .dev-section.expanded .dev-section-toggle .expand-arrow { transform: rotate(90deg); }
+        .dev-section-body { display: none; padding: 0 16px 4px; }
+        .dev-section.expanded .dev-section-body { display: block; }
+        .dev-option-list { display: flex; flex-direction: column; gap: 2px; }
+        .dev-btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .dev-action-btn {
+            flex: 1;
+            min-width: 0;
+            padding: 5px 8px;
+            background: #0f3460;
+            color: #ccd;
+            border: 1px solid #1a4a7a;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+        .dev-action-btn:hover { background: #1a4a7a; }
+        .dev-action-btn.active { color: #e94560; border-color: #e94560; }
+        #dev-panel .dev-help {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #0f3460;
+            font-size: 0.72rem;
+            color: #666;
+            line-height: 1.6;
+        }
+        #subgroup-bar { flex-wrap: wrap; gap: 3px; margin-top: 4px; align-items: center; }
+        body.dev-coords-on #coord-display { display: block; }
+
         /* ── Map container ── */
         #map-container {
             flex: 1;
@@ -189,6 +472,20 @@
             height: 100%;
             width: 100%;
             background: #0d0d1a;
+        }
+
+        #map-container.map-loading::after {
+            content: 'Loading map…';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(13, 13, 26, 0.72);
+            color: #888;
+            font-size: 0.85rem;
+            pointer-events: none;
+            z-index: 500;
         }
 
         #map-title {
@@ -256,6 +553,7 @@
         }
 
         #coord-display {
+            display: none;
             position: absolute;
             bottom: 8px;
             left: 8px;
@@ -487,6 +785,54 @@
             font-weight: normal;
         }
 
+        /* ── Day / night spawn filter (below zoom +/−) ── */
+        .leaflet-control-spawn-time a {
+            width: 30px;
+            font-size: 15px;
+            line-height: 26px !important;
+            text-align: center;
+        }
+        .leaflet-control-spawn-time a.spawn-time-all {
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: -0.2px;
+        }
+        .leaflet-control-spawn-time a.active {
+            background: #f4f4f4;
+            color: #222;
+        }
+
+        /* ── Mob type filter (below day / night) ── */
+        .leaflet-control-mob-type {
+            display: flex;
+            flex-wrap: wrap;
+            width: 62px;
+            background: #fff;
+        }
+        .leaflet-control-mob-type a {
+            width: 30px;
+            font-size: 14px;
+            line-height: 26px !important;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .leaflet-control-mob-type a.mob-type-regular {
+            font-size: 22px;
+            font-weight: 700;
+            line-height: 24px !important;
+        }
+        .leaflet-control-mob-type a.mob-type-dynamic {
+            font-size: 13px;
+        }
+        .leaflet-control-mob-type a:not(.active) {
+            opacity: 0.3;
+            background: #ddd;
+        }
+        .leaflet-control-mob-type a.active {
+            opacity: 1;
+            background: #fff;
+        }
+
         /* ── Sidebar collapse ── */
         #sidebar {
             transition: width 0.2s ease, min-width 0.2s ease;
@@ -509,7 +855,7 @@
         }
         #sidebar-toggle {
             position: absolute;
-            top: 130px;
+            top: 10px;
             left: 10px;
             z-index: 1001;
             width: 30px;
@@ -523,6 +869,7 @@
             text-align: center;
             cursor: pointer;
             display: none;
+            padding: 0;
         }
         #sidebar-toggle:hover { background: #0f3460; }
 
@@ -541,10 +888,11 @@
             border: 1px solid #0f3460;
             color: #bbb;
             border-radius: 4px;
-            width: 28px; height: 28px;
+            width: 44px; height: 44px;
             display: flex; align-items: center; justify-content: center;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 1.6rem;
+            line-height: 1;
         }
         #spot-panel-toggle:hover { background: #0f3460; }
         #spot-panel {
@@ -631,6 +979,113 @@
         }
         .spot-tab.active { background: #1a4a7a; color: #cde; }
         .spot-tab:hover:not(.active) { background: #112040; color: #99b; }
+        #spot-level-section {
+            display: none;
+            flex-direction: column;
+            padding: 0 8px 4px;
+            flex-shrink: 0;
+            border-bottom: 1px solid #0d1b35;
+        }
+        #spot-level-section.visible { display: flex; }
+        .spot-level-toggle {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+            padding: 4px 2px;
+            background: none;
+            border: none;
+            color: #778;
+            font-size: 0.72rem;
+            cursor: pointer;
+            text-align: left;
+        }
+        .spot-level-toggle:hover { color: #99b; }
+        .spot-level-chevron {
+            margin-left: auto;
+            font-size: 0.65rem;
+            transition: transform 0.15s ease;
+        }
+        #spot-level-section.expanded .spot-level-chevron { transform: rotate(90deg); }
+        .spot-level-badge {
+            font-size: 0.65rem;
+            color: #89c;
+            background: #0d1b35;
+            border: 1px solid #1a4a7a;
+            border-radius: 3px;
+            padding: 0 5px;
+            line-height: 1.5;
+        }
+        .spot-level-panel {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 2px 2px 6px 4px;
+        }
+        #spot-level-section.expanded .spot-level-panel { display: flex; }
+        .spot-level-field {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.72rem;
+            color: #778;
+        }
+        .spot-level-input {
+            width: 48px;
+            padding: 3px 5px;
+            background: #0d1b35;
+            border: 1px solid #1a4a7a;
+            border-radius: 3px;
+            color: #e0e0e0;
+            font-size: 0.78rem;
+            outline: none;
+        }
+        .spot-level-input:focus { border-color: #3a7aba; }
+        .spot-level-input::placeholder { color: #556; }
+        #spot-sort-section {
+            display: none;
+            flex-direction: column;
+            padding: 0 8px 4px;
+            flex-shrink: 0;
+            border-bottom: 1px solid #0d1b35;
+        }
+        #spot-sort-section.visible { display: flex; }
+        #spot-sort-panel {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 2px 2px 6px 4px;
+        }
+        #spot-sort-section.expanded #spot-sort-panel { display: flex; }
+        #spot-sort-label {
+            font-size: 0.72rem;
+            color: #889;
+            line-height: 1.35;
+        }
+        .spot-sort-btn {
+            padding: 4px 8px;
+            background: #0d1b35;
+            border: 1px solid #1a4a7a;
+            border-radius: 3px;
+            color: #aab;
+            font-size: 0.72rem;
+            cursor: pointer;
+            text-align: left;
+        }
+        .spot-sort-btn:hover { background: #1a3060; color: #cde; }
+        .spot-sort-btn.active {
+            border-color: #3a7aba;
+            color: #cde;
+            background: #1a3060;
+        }
+        .spot-hl-origin {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #6ec4ff;
+            border: 2px solid #fff;
+            box-shadow: 0 0 8px rgba(110, 196, 255, 0.85);
+        }
         #spot-scope-row {
             display: flex;
             border-bottom: 1px solid #0d1b35;
@@ -739,70 +1194,149 @@
 <div id="app">
     <div id="sidebar">
         <div id="sidebar-resize-handle"></div>
-        <h1>DDON Maps <button id="sidebar-collapse" title="Collapse sidebar" style="float:right;background:none;border:none;color:#888;font-size:1rem;cursor:pointer;padding:0 4px;line-height:1">◀</button><button id="settings-btn" title="Data source settings" style="float:right;background:none;border:none;color:#888;font-size:1rem;cursor:pointer;padding:0 4px;line-height:1">⚙</button><button id="edit-mode-btn" title="Toggle edit mode" style="float:right;background:none;border:none;color:#888;font-size:1rem;cursor:pointer;padding:0 4px;line-height:1">✎</button></h1>
+        <h1>
+            <span>DDON Maps<span id="sidebar-preset-label" class="sidebar-preset-label"></span></span>
+            <span class="sidebar-header-actions">
+                <button type="button" id="map-settings-btn" title="Data source settings">⚙</button>
+                <button type="button" id="sidebar-collapse" title="Collapse sidebar">◀</button>
+            </span>
+        </h1>
         <div id="search-box">
             <input type="text" id="map-search" placeholder="Search maps..." autocomplete="off" spellcheck="false" title="Search by name&#10;stageno=200  — match stage number&#10;stageid=2    — match internal stage ID&#10;area=cassardis — match quest area name">
             <button id="map-search-clear" title="Clear search">✕</button>
         </div>
         <div id="map-list"></div>
+        <div id="sidebar-bottom">
         <div id="layers-panel">
-            <h3>Layers</h3>
-            <label class="layer-toggle">
-                <input type="checkbox" id="layer-enemies" checked>
-                Enemy Spawns
-            </label>
-            <div id="subgroup-bar" style="display:none;flex-wrap:wrap;gap:3px;margin:2px 0 4px 20px;align-items:center"></div>
-            <div class="layer-list">
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-gather">
-                    Gathering Nodes
-                </label>
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-shops">
-                    Shops &amp; Appraisals
-                </label>
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-break-targets">
-                    Destroyable Objects
-                </label>
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-connections" checked>
-                    Connections
-                </label>
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-landmarks" checked>
-                    Landmarks
-                </label>
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-stage-labels" checked>
-                    Area Names
-                </label>
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-radii">
-                    Aggro/Link Radius
-                </label>
-
-                <label class="layer-toggle">
-                    <input type="checkbox" id="layer-grid">
-                    Grid
-                </label>
+            <div id="poi-filter-section">
+                <div class="poi-section expanded" id="mob-types-section" data-poi-section="mobTypes">
+                    <button type="button" class="poi-section-toggle" aria-expanded="true">
+                        <span class="expand-arrow">▶</span><span>Spawns</span>
+                    </button>
+                    <div class="poi-section-body">
+                        <label class="layer-toggle poi-show-all" title="Show or hide all mob types">
+                            <input type="checkbox" id="mob-types-show-all" checked>
+                            Show all
+                        </label>
+                        <div id="mob-type-filter-list" class="layer-list poi-filter-list"></div>
+                    </div>
+                </div>
+                <div class="poi-section expanded" id="locations-section" data-poi-section="locations">
+                    <button type="button" class="poi-section-toggle" aria-expanded="true">
+                        <span class="expand-arrow">▶</span><span>Locations</span>
+                    </button>
+                    <div class="poi-section-body">
+                        <label class="layer-toggle poi-show-all" title="Toggle all location markers">
+                            <input type="checkbox" id="poi-locations-show-all" checked>
+                            <span class="poi-icon"><img class="poi-icon-img" src="resources/mmapicon_slices/44.png" alt="" loading="lazy"></span>
+                            Pathways
+                        </label>
+                        <div id="poi-filter-locations" class="layer-list poi-filter-list"></div>
+                    </div>
+                </div>
+                <div class="poi-section expanded" id="gatherables-section" data-poi-section="gatherables">
+                    <button type="button" class="poi-section-toggle" aria-expanded="true">
+                        <span class="expand-arrow">▶</span><span>Gatherables</span>
+                    </button>
+                    <div class="poi-section-body">
+                        <label class="layer-toggle poi-show-all" title="Show or hide all gatherables">
+                            <input type="checkbox" id="poi-gatherables-show-all" checked>
+                            Show all
+                        </label>
+                        <div id="poi-filter-gatherables" class="layer-list poi-filter-list"></div>
+                    </div>
+                </div>
             </div>
             <div id="exits-panel" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #0f3460;">
                 <div style="font-size:0.7rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#888;margin-bottom:4px;">Exits</div>
                 <div id="exits-list"></div>
             </div>
-            <button id="btn-expand-collapse" style="
-                margin-top:8px;width:100%;padding:4px 0;
-                background:#0f3460;color:#e0e0e0;border:1px solid #1a4a7a;
-                border-radius:4px;font-size:0.78rem;cursor:pointer;
-            ">Expand All</button>
-            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #0f3460;font-size:0.75rem;color:#888;line-height:1.7">
-                Click chip to expand group<br>
-                Middle-click hull to collapse<br>
-                Click spawn to show:<br>
-                <span style="color:#ffd700">&#9679;</span> Aggro radius<br>
-                <span style="color:#ff7700">&#9675;</span> Link radius
+        </div>
+
+        <div id="dev-panel">
+            <button type="button" id="dev-panel-toggle" aria-expanded="false">
+                <span class="expand-arrow">▶</span><span>Developer</span>
+            </button>
+            <div id="dev-panel-body">
+                <div class="dev-section" data-dev-section="labels">
+                    <button type="button" class="dev-section-toggle" aria-expanded="false">
+                        <span class="expand-arrow">▶</span><span>Mob labels</span>
+                    </button>
+                    <div class="dev-section-body">
+                        <div class="dev-option-list">
+                            <label class="layer-toggle" title="Show group.index and spawn-set codes on hover">
+                                <input type="checkbox" id="dev-show-spawn-ids">
+                                Spawn IDs (7.4, SS:202)
+                            </label>
+                            <label class="layer-toggle" title="Show G317 on group chips (legacy mode)">
+                                <input type="checkbox" id="dev-show-group-ids">
+                                Group IDs (G317)
+                            </label>
+                            <label class="layer-toggle" title="Show position count on group chips (legacy mode)">
+                                <input type="checkbox" id="dev-show-group-counts">
+                                Group counts (16)
+                            </label>
+                            <label class="layer-toggle" title="Use expand/collapse group chips instead of showing all mobs directly">
+                                <input type="checkbox" id="dev-legacy-group-chips">
+                                Legacy group chips
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dev-section" data-dev-section="overlays">
+                    <button type="button" class="dev-section-toggle" aria-expanded="false">
+                        <span class="expand-arrow">▶</span><span>Overlays</span>
+                    </button>
+                    <div class="dev-section-body">
+                        <div class="dev-option-list">
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="layer-radii">
+                                Aggro / link radius
+                            </label>
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="layer-grid">
+                                Grid
+                            </label>
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="layer-territory">
+                                Territory bounds
+                            </label>
+                            <label class="layer-toggle">
+                                <input type="checkbox" id="dev-show-coords">
+                                Cursor coordinates
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dev-section" data-dev-section="waves">
+                    <button type="button" class="dev-section-toggle" aria-expanded="false">
+                        <span class="expand-arrow">▶</span><span>Spawn waves</span>
+                    </button>
+                    <div class="dev-section-body">
+                        <div id="subgroup-bar" style="display:none"></div>
+                    </div>
+                </div>
+
+                <div class="dev-section" data-dev-section="tools">
+                    <button type="button" class="dev-section-toggle" aria-expanded="false">
+                        <span class="expand-arrow">▶</span><span>Tools</span>
+                    </button>
+                    <div class="dev-section-body">
+                        <div class="dev-btn-row">
+                            <button type="button" id="edit-mode-btn" class="dev-action-btn" title="Toggle edit mode">✎ Edit</button>
+                        </div>
+                        <button type="button" id="btn-expand-collapse" class="dev-action-btn" style="width:100%;margin-top:6px">Expand all groups</button>
+                        <div class="dev-help">
+                            Legacy group chips: click chip to expand · middle-click hull to collapse<br>
+                            Aggro / link radius: click a spawn on the map<br>
+                            Alt+click map to log world coordinates
+                        </div>
+                    </div>
+                </div>
             </div>
+        </div>
         </div>
     </div>
 
@@ -829,6 +1363,32 @@
                 <button class="spot-tab active" data-filter="enemy">Enemies</button>
                 <button class="spot-tab" data-filter="gather">Gathering</button>
                 <button class="spot-tab" data-filter="item">Items</button>
+            </div>
+            <div id="spot-level-section" class="visible">
+                <button type="button" id="spot-level-toggle" class="spot-level-toggle" aria-expanded="false" title="Filter enemy results by level range">
+                    <span>Level range</span>
+                    <span id="spot-level-badge" class="spot-level-badge" hidden></span>
+                    <span class="spot-level-chevron" aria-hidden="true">▸</span>
+                </button>
+                <div id="spot-level-panel" class="spot-level-panel">
+                    <label class="spot-level-field" for="spot-min-level">Min
+                        <input type="number" id="spot-min-level" class="spot-level-input" min="1" max="999" step="1" placeholder="—" title="Minimum level (leave blank for no lower bound)">
+                    </label>
+                    <label class="spot-level-field" for="spot-max-level">Max
+                        <input type="number" id="spot-max-level" class="spot-level-input" min="1" max="999" step="1" placeholder="—" title="Maximum level (leave blank for no upper bound)">
+                    </label>
+                </div>
+            </div>
+            <div id="spot-sort-section" class="visible">
+                <button type="button" id="spot-sort-toggle" class="spot-level-toggle" aria-expanded="false" title="Choose where distance sorting starts from">
+                    <span>Sort from</span>
+                    <span id="spot-sort-badge" class="spot-level-badge">WDT</span>
+                    <span class="spot-level-chevron" aria-hidden="true">▸</span>
+                </button>
+                <div id="spot-sort-panel">
+                    <div id="spot-sort-label">White Dragon Temple</div>
+                    <button type="button" id="spot-sort-pick" class="spot-sort-btn">Set from map click…</button>
+                </div>
             </div>
             <div id="spot-scope-row">
                 <button class="spot-scope active" data-scope="local">This Stage</button>
@@ -881,6 +1441,23 @@
         font-size: 0.72rem;
         font-weight: 400;
         color: #666;
+    }
+    .src-preset-row { margin-bottom: 16px; }
+    .src-preset-select {
+        width: 100%;
+        padding: 6px 8px;
+        background: #0f3460;
+        border: 1px solid #1a4a7a;
+        border-radius: 4px;
+        color: #e0e0e0;
+        font-size: 0.8rem;
+    }
+    .src-preset-select:focus { outline: none; border-color: #4a90d9; }
+    .src-preset-note {
+        font-size: 0.72rem;
+        color: #aaa;
+        margin-top: 6px;
+        line-height: 1.5;
     }
     .src-row-inputs { display: flex; gap: 6px; }
     .src-url-input {
@@ -935,10 +1512,22 @@
         <button id="settings-close" style="background:none;border:none;color:#888;font-size:1.1rem;cursor:pointer;line-height:1;">✕</button>
     </div>
     <p style="font-size:0.75rem;color:#888;margin-bottom:10px;line-height:1.6;">
-        Override the URLs used to load live game data. Enter any <code style="color:#aaa">https://</code> URL or browse a local file.<br>
+        Pick a server preset for Rising or Revival data, or choose <strong style="color:#ccc;font-weight:600">Custom</strong> to enter any <code style="color:#aaa">https://</code> URL or browse a local file per source.<br>
         Local files are re-read from disk on every page reload when browser file access permission is granted.
     </p>
     <div id="settings-browser-hint" style="font-size:0.72rem;color:#aaa;background:#1e1e2e;border:1px solid #333;border-radius:4px;padding:7px 10px;margin-bottom:14px;line-height:1.7;"></div>
+
+    <div class="src-preset-row">
+        <div class="src-row-label">Server preset</div>
+        <select id="settings-preset-select" class="src-preset-select">
+            <option value="arrowgene">Arrowgene (default)</option>
+            <option value="revival">Revival — live.ddon.org Normal</option>
+            <option value="rising">Dogma Rising — Normal Channels</option>
+            <option value="rising-endgame">Dogma Rising — Endgame (Channel 4)</option>
+            <option value="custom">Custom (manual URL or local file)</option>
+        </select>
+        <div id="settings-preset-note" class="src-preset-note"></div>
+    </div>
 
     <div class="src-row"
          data-key="ddon-src-gathering"

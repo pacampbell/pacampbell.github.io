@@ -16,12 +16,12 @@ import emThinkInfo      from './resources/emThinkInfo.json'      with {type: "js
 import thinkTableNotes from './resources/thinkTableNotes.json' with {type: "json"};
 import emMontageInfo   from './resources/emMontageInfo.json'   with {type: "json"};
 import montageNotes    from './resources/montageNotes.json'    with {type: "json"};
-import breakTargets   from './resources/breakTargets.json'   with {type: "json"};
 import stageGroups   from './resources/stageGroups.json'   with {type: "json"};
 import worldFlags      from './resources/worldFlags.json'      with {type: "json"};
 import worldFlagsExtra from './resources/worldFlagsExtra.json' with {type: "json"};
 import worldQuestFlags from './resources/worldQuestFlags.json' with {type: "json"};
 import emRadii        from './resources/emRadii.json'        with {type: "json"};
+import stageList      from './resources/stage_list.slt.json' with {type: "json"};
 const _iconIdSet = new Set(iconIds);
 // Build lookup map: id → named param entry
 const namedParamsById = new Map(namedParamList.map(p => [p.id, p]));
@@ -170,6 +170,167 @@ L.Control.ResetView = L.Control.extend({
 });
 new L.Control.ResetView().addTo(leafletMap);
 
+// ── Day / night spawn filter (below zoom +/− and reset view) ─────────────────
+const SPAWN_TIME_FILTER_KEY = 'ddon-spawn-time-filter';
+let _activeSpawnTimeFilter  = null;   // null = all, 'day' | 'night'
+
+const loadSpawnTimeFilter = () => {
+    try {
+        const v = localStorage.getItem(SPAWN_TIME_FILTER_KEY);
+        return v === 'day' || v === 'night' ? v : null;
+    } catch { return null; }
+};
+
+const saveSpawnTimeFilter = () => {
+    try {
+        if (_activeSpawnTimeFilter) localStorage.setItem(SPAWN_TIME_FILTER_KEY, _activeSpawnTimeFilter);
+        else localStorage.removeItem(SPAWN_TIME_FILTER_KEY);
+    } catch { /* ignore */ }
+};
+
+_activeSpawnTimeFilter = loadSpawnTimeFilter();
+
+L.Control.SpawnTimeFilter = L.Control.extend({
+    options: { position: 'topleft' },
+    onAdd() {
+        this._container = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-spawn-time');
+        this._buttons = [];
+        const modes = [
+            { filter: null,    cls: 'spawn-time-all',   html: 'All', title: 'All spawn times' },
+            { filter: 'day',   cls: 'spawn-time-day',   html: '☀',  title: 'Day spawns only' },
+            { filter: 'night', cls: 'spawn-time-night', html: '🌙',  title: 'Night spawns only' },
+        ];
+        for (const mode of modes) {
+            const btn = L.DomUtil.create('a', mode.cls, this._container);
+            btn.innerHTML = mode.html;
+            btn.href = '#';
+            btn.title = mode.title;
+            btn.setAttribute('role', 'button');
+            L.DomEvent.on(btn, 'click', (e) => {
+                L.DomEvent.preventDefault(e);
+                L.DomEvent.stopPropagation(e);
+                _activeSpawnTimeFilter = mode.filter;
+                saveSpawnTimeFilter();
+                this._updateActive();
+                applySubGroupFilter();
+            });
+            this._buttons.push({ btn, filter: mode.filter });
+        }
+        L.DomEvent.disableClickPropagation(this._container);
+        L.DomEvent.disableScrollPropagation(this._container);
+        this._updateActive();
+        return this._container;
+    },
+    _updateActive() {
+        for (const { btn, filter } of this._buttons) {
+            btn.classList.toggle('active', _activeSpawnTimeFilter === filter);
+        }
+    },
+});
+new L.Control.SpawnTimeFilter().addTo(leafletMap);
+
+// ── Mob type filter (blood orb, high orb, manual, boss, key bearer, regular) ───
+const MOB_TYPE_FILTER_KEY = 'ddon-mob-type-filters';
+const MOB_TYPE_DEFAULTS   = {
+    bloodOrb: true, highOrb: true, manual: true, boss: true, keyBearer: true, regular: true, dynamic: true,
+};
+const MOB_TYPE_MODES = [
+    { id: 'bloodOrb',   html: '🩸', title: 'Blood orb' },
+    { id: 'highOrb',    html: '⭐', title: 'High orb' },
+    { id: 'manual',     html: '😴', title: 'Dormant / manual spawns' },
+    { id: 'boss',       html: '☠', title: 'Boss' },
+    { id: 'keyBearer',  html: '🗝', title: 'Key Mobs' },
+    { id: 'regular',    html: '·',  title: 'Regular mobs (no special flags)' },
+    { id: 'dynamic',    html: '⚡', title: 'Dynamic' },
+];
+
+const loadMobTypeFilters = () => {
+    try {
+        const raw = localStorage.getItem(MOB_TYPE_FILTER_KEY);
+        return raw ? { ...MOB_TYPE_DEFAULTS, ...JSON.parse(raw) } : { ...MOB_TYPE_DEFAULTS };
+    } catch { return { ...MOB_TYPE_DEFAULTS }; }
+};
+
+const saveMobTypeFilters = () => {
+    try { localStorage.setItem(MOB_TYPE_FILTER_KEY, JSON.stringify(_mobTypeFilters)); } catch { /* ignore */ }
+};
+
+let _mobTypeFilters = loadMobTypeFilters();
+
+function anyMobTypeEnabled() {
+    return MOB_TYPE_MODES.some(m => _mobTypeFilters[m.id]);
+}
+
+function syncMobTypesShowAllCheckbox() {
+    const el = document.getElementById('mob-types-show-all');
+    if (!el) return;
+    const all = MOB_TYPE_MODES.every(m => _mobTypeFilters[m.id]);
+    const none = MOB_TYPE_MODES.every(m => !_mobTypeFilters[m.id]);
+    el.checked = all;
+    el.indeterminate = !all && !none;
+}
+
+function setAllMobTypeFilters(on) {
+    for (const m of MOB_TYPE_MODES) _mobTypeFilters[m.id] = on;
+    saveMobTypeFilters();
+    for (const m of MOB_TYPE_MODES) {
+        const inp = document.getElementById(`mob-type-filter-${m.id}`);
+        if (inp) inp.checked = on;
+    }
+    syncMobTypesShowAllCheckbox();
+    updateEnemyVisibility();
+    applySubGroupFilter();
+}
+
+function initMobTypeFilters() {
+    // Migrate legacy “Enemy Spawns” layer off → all mob types off (once).
+    try {
+        if (!localStorage.getItem('ddon-mob-type-migrated-enemies')) {
+            let legacyOff = false;
+            try {
+                const layerRaw = localStorage.getItem(LAYER_PREFS_KEY);
+                if (layerRaw && JSON.parse(layerRaw).enemies === false) legacyOff = true;
+            } catch { /* ignore */ }
+            const { layers: urlLayers } = parseHash();
+            if (urlLayers?.enemies === false) legacyOff = true;
+            if (legacyOff) {
+                for (const k of Object.keys(MOB_TYPE_DEFAULTS)) _mobTypeFilters[k] = false;
+                saveMobTypeFilters();
+            }
+            localStorage.setItem('ddon-mob-type-migrated-enemies', '1');
+        }
+    } catch { /* ignore */ }
+
+    const list = document.getElementById('mob-type-filter-list');
+    if (!list) return;
+    list.innerHTML = '';
+    for (const mode of MOB_TYPE_MODES) {
+        const label = document.createElement('label');
+        label.className = 'layer-toggle';
+        label.title = mode.title;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.id = `mob-type-filter-${mode.id}`;
+        input.checked = !!_mobTypeFilters[mode.id];
+        input.addEventListener('change', () => {
+            _mobTypeFilters[mode.id] = input.checked;
+            saveMobTypeFilters();
+            syncMobTypesShowAllCheckbox();
+            updateEnemyVisibility();
+            applySubGroupFilter();
+        });
+        const icon = document.createElement('span');
+        icon.className = 'mob-type-icon';
+        icon.textContent = mode.html;
+        label.append(input, icon, document.createTextNode(` ${mode.title}`));
+        list.appendChild(label);
+    }
+    const showAll = document.getElementById('mob-types-show-all');
+    showAll?.addEventListener('change', () => setAllMobTypeFilters(showAll.checked));
+    syncMobTypesShowAllCheckbox();
+    updateEnemyVisibility();
+}
+
 
 // ── World → pixel conversion ───────────────────────────────────────────────────
 // Formula from GMP data + engine scale constant (derived from PS4 disassembly):
@@ -218,13 +379,13 @@ let connectionLayer = L.layerGroup().addTo(leafletMap);
 let gridLayer        = L.layerGroup();   // off by default
 let territoryLayer   = L.layerGroup();   // off by default; territory rects when groups expand
 let stageLabelsLayer = L.layerGroup().addTo(leafletMap);  // area name text labels
-let gatherLayer       = L.layerGroup();   // off by default
+let gatherLayer       = L.layerGroup().addTo(leafletMap);
 const _gatherMarkerByKey   = new Map();    // "${stageNo}:${groupId}:${posId}" → L.marker
 const _gatherGroupMarkers  = new Map();    // "${stageNo}:${groupId}" → L.marker[]
 const _shopMarkerByNpcId = new Map();    // "${stageNo}:${npcId}" → L.marker
-let npcShopLayer        = L.layerGroup();   // off by default
-let specialShopLayer    = L.layerGroup();   // off by default
-let breakTargetLayer  = L.layerGroup();   // off by default
+const _specialShopMarkerByNpcId = new Map();
+let npcShopLayer        = L.layerGroup().addTo(leafletMap);
+let specialShopLayer    = L.layerGroup().addTo(leafletMap);
 let pdBoundaryLayer = L.layerGroup().addTo(leafletMap);
 let spawnRadiiLayer   = L.layerGroup().addTo(leafletMap);  // aggro/link radius circles
 let _spreadOverlay    = L.layerGroup().addTo(leafletMap);  // cross-group spoke lines + anchor dots
@@ -266,8 +427,8 @@ let _rebuildOpenPopup  = null;        // set on enemy popupopen; rebuilds active
 let _dtEditorReadAndSave = null;      // set by openDropTableEditor; saves + closes the editor
 
 function updateEnemyVisibility() {
-    const checked = document.getElementById('layer-enemies').checked;
-    if (checked) {
+    const show = anyMobTypeEnabled();
+    if (show) {
         leafletMap.addLayer(enemyLayer);
         leafletMap.addLayer(_spreadOverlay);
         for (const g of _groupStore.values())
@@ -288,20 +449,151 @@ function updateEnemyVisibility() {
 // URL state takes priority over localStorage (enables sharing exact views).
 
 const LAYER_PREFS_KEY = 'ddon-maps-layers';
+const DEV_PREFS_KEY     = 'ddon-dev-prefs';
+const DEV_PANEL_KEY     = 'ddon-dev-panel-open';
+const DEV_SECTION_OPEN_KEY = 'ddon-dev-section-open';
+
+const DEV_SECTION_DEFAULTS = { labels: false, overlays: false, waves: false, tools: true };
+
+let _devShowSpawnIds       = false;
+let _devShowGroupIds       = false;
+let _devShowGroupCounts    = false;
+let _devLegacyGroupChips   = false;
+let _devShowCoords         = false;
+
+const DYNAMIC_ENEMY_LABEL = 'Dynamic Enemy';
+let _enemySpawnDataLoaded  = false;
+
+const useLegacyGroupChips = () => _devLegacyGroupChips;
+
+const loadDevPrefs = () => {
+    try {
+        const raw = localStorage.getItem(DEV_PREFS_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+};
+
+const saveDevPrefs = () => {
+    const prefs = {
+        showSpawnIds:     _devShowSpawnIds,
+        showGroupIds:     _devShowGroupIds,
+        showGroupCounts:  _devShowGroupCounts,
+        legacyGroupChips:    _devLegacyGroupChips,
+        showCoords:          _devShowCoords,
+    };
+    try { localStorage.setItem(DEV_PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ }
+};
+
+const applyDevDisplayPrefs = () => {
+    document.body.classList.toggle('dev-coords-on', _devShowCoords);
+};
+
+const syncTerritoryLayer = () => {
+    const on = document.getElementById('layer-territory')?.checked;
+    if (!on) {
+        territoryLayer.clearLayers();
+        if (leafletMap.hasLayer(territoryLayer)) leafletMap.removeLayer(territoryLayer);
+        return;
+    }
+    territoryLayer.clearLayers();
+    for (const g of _groupStore.values()) {
+        if (g.isExpanded && g.territoryRect) territoryLayer.addLayer(g.territoryRect);
+    }
+    if (territoryLayer.getLayers().length) leafletMap.addLayer(territoryLayer);
+};
+
+const attachTerritoryRect = (g) => {
+    if (!document.getElementById('layer-territory')?.checked || !g.territoryRect) return;
+    territoryLayer.addLayer(g.territoryRect);
+    if (!leafletMap.hasLayer(territoryLayer)) leafletMap.addLayer(territoryLayer);
+};
+
+const detachTerritoryRect = (g) => {
+    if (g.territoryRect && territoryLayer.hasLayer(g.territoryRect)) {
+        territoryLayer.removeLayer(g.territoryRect);
+    }
+    if (!territoryLayer.getLayers().length && leafletMap.hasLayer(territoryLayer)) {
+        leafletMap.removeLayer(territoryLayer);
+    }
+};
+
+const refreshGroupChipIcons = () => {
+    for (const g of _groupStore.values()) {
+        if (!g.labelMarker) continue;
+        g.labelMarker.setIcon(makeChipIcon(
+            g.groupId, g.color, g.items.length, g.isExpanded, g.yOffset,
+            g.isKeyBearerGroup, _groupHasBoss(g),
+        ));
+    }
+};
+
+const refreshMobTooltips = () => {
+    for (const g of _groupStore.values()) {
+        if (!g.detailsLayer) continue;
+        for (const layer of g.detailsLayer.getLayers()) {
+            if (!layer._rebuildTooltip) continue;
+            const tt = layer._rebuildTooltip();
+            layer._label = tt;
+            layer._naturalTooltip = tt;
+            const display = layer._spreadCount
+                ? `${tt} <span style="opacity:0.7">[×${layer._spreadCount} stacked]</span>`
+                : tt;
+            if (layer.isTooltipOpen()) layer.setTooltipContent(display);
+            else layer.bindTooltip(display, { direction: 'top', offset: [0, -8] });
+        }
+    }
+};
+
+const applyMobDisplayMode = () => {
+    const legacy = useLegacyGroupChips();
+    const expandBtn = document.getElementById('btn-expand-collapse');
+    if (expandBtn) expandBtn.style.display = legacy ? '' : 'none';
+
+    if (!legacy) {
+        let expandedAny = false;
+        for (const g of _groupStore.values()) {
+            if (!g.isExpanded) {
+                _expandGroupCore(g, { skipFilter: true });
+                expandedAny = true;
+            }
+        }
+        if (expandedAny) applySubGroupFilter();
+    }
+
+    for (const g of _groupStore.values()) {
+        if (!g.labelMarker) continue;
+        const showChip = legacy;
+        g.labelMarker.setOpacity(showChip ? 1 : 0);
+        g.labelMarker.options.interactive = showChip;
+        const chipEl = g.labelMarker.getElement();
+        if (chipEl) chipEl.style.pointerEvents = showChip ? '' : 'none';
+        if (g.detailsLayer) {
+            for (const layer of g.detailsLayer.getLayers()) {
+                if (layer._spawn) continue;
+                if (legacy) layer.setStyle(layer._origStyle ?? {});
+                else {
+                    if (!layer._origStyle) {
+                        layer._origStyle = {
+                            opacity: layer.options.opacity ?? 0.75,
+                            fillOpacity: layer.options.fillOpacity ?? 0.1,
+                        };
+                    }
+                    layer.setStyle({ opacity: 0, fillOpacity: 0 });
+                }
+            }
+        }
+    }
+    refreshGroupChipIcons();
+    reapplySpread();
+};
 
 // Returns the !-suffix string: layer flags + optional ;groupId,groupId,...
 // Format: !elcgt;0,3,80
 function getLayersHash() {
     let s = '';
-    if (document.getElementById('layer-enemies').checked)       s += 'e';
-    if (document.getElementById('layer-landmarks').checked)     s += 'l';
-    if (document.getElementById('layer-connections').checked)   s += 'c';
     if (document.getElementById('layer-grid').checked)          s += 'g';
-    if (document.getElementById('layer-stage-labels').checked)  s += 'a';
-    if (document.getElementById('layer-gather').checked)        s += 'r';
+    if (document.getElementById('layer-territory')?.checked)    s += 't';
     if (document.getElementById('layer-radii').checked)         s += 'i';
-    if (document.getElementById('layer-shops').checked)               s += 'n';
-    if (document.getElementById('layer-break-targets').checked)       s += 'b';
     if (document.getElementById('sidebar').classList.contains('collapsed')) s += 's';
     const openIds = [..._groupStore.values()]
         .filter(g => g.isExpanded)
@@ -328,15 +620,9 @@ function updateLayersInHash() {
 
 function saveLayerPrefs() {
     const prefs = {
-        enemies:      document.getElementById('layer-enemies').checked,
-        landmarks:    document.getElementById('layer-landmarks').checked,
-        connections:  document.getElementById('layer-connections').checked,
         grid:         document.getElementById('layer-grid').checked,
-        stageLabels:  document.getElementById('layer-stage-labels').checked,
-        gather:       document.getElementById('layer-gather').checked,
+        territory:    document.getElementById('layer-territory')?.checked ?? false,
         radii:        document.getElementById('layer-radii').checked,
-        shops:         document.getElementById('layer-shops').checked,
-        breakTargets:  document.getElementById('layer-break-targets').checked,
     };
     try { localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
     updateLayersInHash();
@@ -358,73 +644,32 @@ function loadLayerPrefs() {
     const prefs = urlLayers ?? stored ?? {};
     const isOn = (key, defaultOn) => key in prefs ? prefs[key] : defaultOn;
 
-    document.getElementById('layer-enemies').checked       = isOn('enemies',      true);
-    document.getElementById('layer-landmarks').checked     = isOn('landmarks',    true);
-    document.getElementById('layer-connections').checked   = isOn('connections',  true);
     document.getElementById('layer-grid').checked          = isOn('grid',         false);
-    document.getElementById('layer-stage-labels').checked  = isOn('stageLabels',  true);
-    document.getElementById('layer-gather').checked        = isOn('gather',        false);
+    const layerTerritory = document.getElementById('layer-territory');
+    if (layerTerritory) layerTerritory.checked = isOn('territory', false);
     document.getElementById('layer-radii').checked         = isOn('radii',         false);
-    document.getElementById('layer-shops').checked          = isOn('shops', false) || isOn('npcShops', true);
-    document.getElementById('layer-break-targets').checked  = isOn('breakTargets',  false);
 
-    if (!document.getElementById('layer-landmarks').checked)
-        leafletMap.removeLayer(landmarkLayer);
-    if (!document.getElementById('layer-connections').checked)
-        leafletMap.removeLayer(connectionLayer);
     if (document.getElementById('layer-grid').checked)
         leafletMap.addLayer(gridLayer);
-    if (!document.getElementById('layer-stage-labels').checked)
-        leafletMap.removeLayer(stageLabelsLayer);
-    if (document.getElementById('layer-gather').checked)
-        leafletMap.addLayer(gatherLayer);
-    if (document.getElementById('layer-shops').checked) {
-        leafletMap.addLayer(npcShopLayer);
-        leafletMap.addLayer(specialShopLayer);
-    }
-    if (document.getElementById('layer-break-targets').checked)
-        leafletMap.addLayer(breakTargetLayer);
-    if (!document.getElementById('layer-enemies').checked)
+    if (document.getElementById('layer-territory')?.checked)
+        syncTerritoryLayer();
+    if (!anyMobTypeEnabled())
         updateEnemyVisibility();
     if (isOn('sidebarHidden', false))
         document.getElementById('sidebar').classList.add('collapsed');
 })();
 
 // ── Layer toggles ──────────────────────────────────────────────────────────────
-document.getElementById('layer-enemies').addEventListener('change', () => {
-    updateEnemyVisibility(); saveLayerPrefs();
-});
-document.getElementById('layer-landmarks').addEventListener('change', e => {
-    e.target.checked ? leafletMap.addLayer(landmarkLayer) : leafletMap.removeLayer(landmarkLayer);
-    saveLayerPrefs();
-});
-document.getElementById('layer-connections').addEventListener('change', e => {
-    e.target.checked ? leafletMap.addLayer(connectionLayer) : leafletMap.removeLayer(connectionLayer);
-    saveLayerPrefs();
-});
 document.getElementById('layer-grid').addEventListener('change', e => {
     e.target.checked ? leafletMap.addLayer(gridLayer) : leafletMap.removeLayer(gridLayer);
     saveLayerPrefs();
 });
-document.getElementById('layer-stage-labels').addEventListener('change', e => {
-    e.target.checked ? leafletMap.addLayer(stageLabelsLayer) : leafletMap.removeLayer(stageLabelsLayer);
-    saveLayerPrefs();
-});
-document.getElementById('layer-gather').addEventListener('change', e => {
-    e.target.checked ? leafletMap.addLayer(gatherLayer) : leafletMap.removeLayer(gatherLayer);
+document.getElementById('layer-territory')?.addEventListener('change', () => {
+    syncTerritoryLayer();
     saveLayerPrefs();
 });
 document.getElementById('layer-radii').addEventListener('change', e => {
     if (!e.target.checked) clearSpawnRadii();
-    saveLayerPrefs();
-});
-document.getElementById('layer-shops').addEventListener('change', e => {
-    if (e.target.checked) { leafletMap.addLayer(npcShopLayer); leafletMap.addLayer(specialShopLayer); }
-    else { leafletMap.removeLayer(npcShopLayer); leafletMap.removeLayer(specialShopLayer); }
-    saveLayerPrefs();
-});
-document.getElementById('layer-break-targets').addEventListener('change', e => {
-    e.target.checked ? leafletMap.addLayer(breakTargetLayer) : leafletMap.removeLayer(breakTargetLayer);
     saveLayerPrefs();
 });
 // ── Sidebar collapse / expand ──────────────────────────────────────────────────
@@ -535,11 +780,129 @@ function appendCollapsibleGroup(listEl, label, group, currentMap, currentStage) 
     listEl.appendChild(subList);
 }
 
-function appendGroupHeader(listEl, text) {
+// Sidebar world hierarchy — matches in-game minimap region menu.
+const SIDEBAR_WORLD_GROUPS = [
+    {
+        key: 'world:lestania',
+        name: 'Lestania',
+        areas: [1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 10, 12],
+        defaultCollapsed: true,
+    },
+    { key: 'area:13', areas: [13], flat: true, displayName: 'Bloodbane Isle' },
+    {
+        key: 'world:phindym',
+        name: 'Phindym',
+        areas: [14, 15, 16, 17],
+    },
+    {
+        key: 'world:acre-selund',
+        name: 'Acre Selund',
+        areas: [18, 19, 20, 21],
+    },
+];
+const SIDEBAR_GROUPED_AREA_IDS = new Set(SIDEBAR_WORLD_GROUPS.flatMap(g => g.areas));
+
+const MAP_AREA_OPEN_KEY = 'ddon-map-area-open';
+
+const loadAreaOpenState = () => {
+    try {
+        const raw = localStorage.getItem(MAP_AREA_OPEN_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+};
+
+const saveAreaOpenState = (state) => {
+    try { localStorage.setItem(MAP_AREA_OPEN_KEY, JSON.stringify(state)); } catch { /* ignore */ }
+};
+
+const isEntryActive = (name, stid, currentMap, currentStage) =>
+    name === currentMap && (stid === null ? !currentStage : stid === currentStage);
+
+function renderMapEntries(container, entries, currentMap, currentStage) {
+    const byLabel = new Map();
+    for (const e of entries) {
+        if (!byLabel.has(e.label)) byLabel.set(e.label, []);
+        byLabel.get(e.label).push(e);
+    }
+    const sortedLabels = [...byLabel.keys()].sort((a, b) => a.localeCompare(b));
+    for (const label of sortedLabels) {
+        const group = byLabel.get(label);
+        if (group.length === 1) {
+            const e = group[0];
+            appendMapEntry(container, e.name, e.info, label, e.stid, currentMap, currentStage);
+        } else {
+            appendCollapsibleGroup(container, label, group, currentMap, currentStage);
+        }
+    }
+}
+
+function appendAreaSection(listEl, areaId, areaName, entries, currentMap, currentStage, openState) {
+    const anyActive = entries.some(e => isEntryActive(e.name, e.stid, currentMap, currentStage));
+    const areaKey   = String(areaId);
+    const startOpen = anyActive || openState[areaKey] === true;
+
+    const section = document.createElement('div');
+    section.className = 'map-area-section' + (startOpen ? ' expanded' : '');
+    section.dataset.areaId = areaKey;
+
     const header = document.createElement('div');
-    header.className = 'map-group-header';
-    header.textContent = text;
-    listEl.appendChild(header);
+    header.className = 'map-area-header';
+    header.innerHTML = `<span class="expand-arrow">▶</span><span class="map-area-name">${areaName}</span><span class="map-area-count">${entries.length}</span>`;
+
+    const body = document.createElement('div');
+    body.className = 'map-area-body';
+    renderMapEntries(body, entries, currentMap, currentStage);
+
+    header.addEventListener('click', () => {
+        const open = section.classList.toggle('expanded');
+        openState[areaKey] = open;
+        saveAreaOpenState(openState);
+    });
+
+    section.appendChild(header);
+    section.appendChild(body);
+    listEl.appendChild(section);
+}
+
+function appendWorldRegionSection(listEl, regionKey, regionName, subAreas, currentMap, currentStage, openState, { defaultCollapsed = false } = {}) {
+    const allEntries = subAreas.flatMap(([, area]) => area.entries);
+    const anyActive  = allEntries.some(e => isEntryActive(e.name, e.stid, currentMap, currentStage));
+    let startOpen;
+    if (regionKey in openState) {
+        startOpen = openState[regionKey] === true;
+    } else if (defaultCollapsed) {
+        startOpen = false;
+    } else {
+        startOpen = anyActive;
+    }
+
+    const section = document.createElement('div');
+    section.className = 'map-world-section' + (startOpen ? ' expanded' : '');
+    section.dataset.worldRegion = regionKey;
+
+    const header = document.createElement('div');
+    header.className = 'map-world-header';
+    header.innerHTML =
+        `<span class="expand-arrow">▶</span>` +
+        `<span class="map-world-name">${regionName}</span>` +
+        `<span class="map-area-count">${allEntries.length}</span>`;
+
+    const body = document.createElement('div');
+    body.className = 'map-world-body';
+
+    for (const [areaId, area] of subAreas) {
+        appendAreaSection(body, areaId, area.name, area.entries, currentMap, currentStage, openState);
+    }
+
+    header.addEventListener('click', () => {
+        const open = section.classList.toggle('expanded');
+        openState[regionKey] = open;
+        saveAreaOpenState(openState);
+    });
+
+    section.appendChild(header);
+    section.appendChild(body);
+    listEl.appendChild(section);
 }
 
 function stageLabel(info, stid) {
@@ -608,23 +971,11 @@ function buildSidebar(filter = '') {
 
     if (hasFilter) {
         entries.sort((a, b) => a.label.localeCompare(b.label));
-        const byLabel = new Map();
-        for (const e of entries) {
-            if (!byLabel.has(e.label)) byLabel.set(e.label, []);
-            byLabel.get(e.label).push(e);
-        }
-        for (const [label, group] of byLabel) {
-            if (group.length === 1) {
-                const e = group[0];
-                appendMapEntry(listEl, e.name, e.info, label, e.stid, currentMap, currentStage);
-            } else {
-                appendCollapsibleGroup(listEl, label, group, currentMap, currentStage);
-            }
-        }
+        renderMapEntries(listEl, entries, currentMap, currentStage);
         return;
     }
 
-    // No search: group by quest area (sorted by quest_area_id), then alphabetically within
+    // No search: group by quest area (sorted by quest_area_id), collapsible sections
     const areaMap = new Map(); // area_id -> { name, entries[] }
     for (const e of entries) {
         let aid   = e.info.quest_area_id  ?? 0;
@@ -643,26 +994,31 @@ function buildSidebar(filter = '') {
         return a - b;
     });
 
-    for (const [, area] of sortedAreas) {
-        area.entries.sort((a, b) => a.label.localeCompare(b.label));
-        appendGroupHeader(listEl, area.name);
+    const areaById = new Map(sortedAreas);
 
-        // Collapse entries that share the same display label into one expandable row.
-        // This handles: same map model with multiple stages AND different models with identical names.
-        const byLabel = new Map();
-        for (const e of area.entries) {
-            if (!byLabel.has(e.label)) byLabel.set(e.label, []);
-            byLabel.get(e.label).push(e);
-        }
+    const openState = loadAreaOpenState();
+    for (const group of SIDEBAR_WORLD_GROUPS) {
+        const subAreas = group.areas
+            .map(id => {
+                const area = areaById.get(id);
+                return area ? [id, area] : null;
+            })
+            .filter(Boolean);
+        if (!subAreas.length) continue;
 
-        for (const [label, group] of byLabel) {
-            if (group.length === 1) {
-                const e = group[0];
-                appendMapEntry(listEl, e.name, e.info, label, e.stid, currentMap, currentStage);
-            } else {
-                appendCollapsibleGroup(listEl, label, group, currentMap, currentStage);
-            }
+        if (group.flat && subAreas.length === 1) {
+            const [areaId, area] = subAreas[0];
+            appendAreaSection(listEl, areaId, group.displayName ?? area.name, area.entries,
+                currentMap, currentStage, openState);
+        } else {
+            appendWorldRegionSection(listEl, group.key, group.name, subAreas,
+                currentMap, currentStage, openState, { defaultCollapsed: !!group.defaultCollapsed });
         }
+    }
+    for (const [areaId, area] of sortedAreas) {
+        if (SIDEBAR_GROUPED_AREA_IDS.has(areaId)) continue;
+        appendAreaSection(listEl, areaId, area.name, area.entries,
+            currentMap, currentStage, openState);
     }
 }
 
@@ -702,11 +1058,11 @@ function parseHash() {
             landmarks:    flagStr.includes('l'),
             connections:  flagStr.includes('c'),
             grid:         flagStr.includes('g'),
+            territory:    flagStr.includes('t'),
             stageLabels:  flagStr.includes('a'),
             gather:       flagStr.includes('r'),
             radii:         flagStr.includes('i'),
             shops:         flagStr.includes('n') || flagStr.includes('p'),
-            breakTargets:  flagStr.includes('b'),
             sidebarHidden: flagStr.includes('s'),
         };
         openGroups = groupsStr ? groupsStr.split(',').filter(Boolean) : [];
@@ -812,6 +1168,7 @@ function _doSpread(markers, overlayLayer) {
             ));
             m.setStyle({ dashArray: '4 3' });
             m._origStyle = { ...m._origStyle, dashArray: '4 3' };
+            m._spreadCount = N;
             m.bindTooltip(
                 `${m._naturalTooltip} <span style="opacity:0.7">[×${N} stacked]</span>`,
                 { direction: 'top', offset: [0, -8] },
@@ -920,9 +1277,11 @@ function makeChipIcon(groupId, _color, count, expanded, yOffset = 10, isKeyBeare
     if (isKeyBearerGroup) glows.push('0 0 7px 2px rgba(255,210,0,0.85)');
     const shadowStyle = glows.length ? `box-shadow:0 0 4px rgba(0,0,0,0.7),${glows.join(',')};` : '';
     const titleAttr = [isBossGroup ? 'Contains boss enemy' : '', isKeyBearerGroup ? 'Key bearer group' : ''].filter(Boolean).join(' · ');
+    const groupPart = _devShowGroupIds ? `G${groupId}${_devShowGroupCounts ? ' ' : ''}` : '';
+    const countPart = _devShowGroupCounts ? `<span class="chip-count">${count}</span>` : '';
     return L.divIcon({
         className: '',
-        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor};${shadowStyle}"${titleAttr ? ` title="${titleAttr}"` : ''}><span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>G${groupId} <span class="chip-count">${count}</span></div>`,
+        html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor};${shadowStyle}"${titleAttr ? ` title="${titleAttr}"` : ''}><span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>${groupPart}${countPart}</div>`,
         iconSize:   null,
         // When expanded: anchor at bottom of chip so the chip floats above the marker position.
         // When collapsed: anchor near top (yOffset) so chip hangs below the centroid.
@@ -943,14 +1302,157 @@ function _groupHasBoss(g) {
     return false;
 }
 
+const _SPAWN_INFECTION_PREFIX = [null, 'Infected', 'Severely Infected', 'War-Ready'];
+
+// Known SpawnTime windows (Lestania clock, "start,end" — night wraps midnight).
+const SPAWN_TIME_ALWAYS = '00:00,23:59';
+const SPAWN_TIME_DAY    = new Set(['07:00,17:59', '06:00,17:59']);   // Arrowgene / Rising·Revival
+const SPAWN_TIME_NIGHT  = new Set(['18:00,06:59', '18:00,05:59']);   // Arrowgene / Rising·Revival
+
+const spawnTimeKind = (t) => {
+    if (!t || t === SPAWN_TIME_ALWAYS) return 'always';
+    if (SPAWN_TIME_DAY.has(t))   return 'day';
+    if (SPAWN_TIME_NIGHT.has(t)) return 'night';
+    const [start, end] = t.split(',');
+    if (!end) return 'other';
+    // Heuristic for minor variants of the standard day/night windows
+    if ((start.startsWith('06:') || start.startsWith('07:')) && end.startsWith('17:')) return 'day';
+    if (start.startsWith('18:') && (end.startsWith('05:') || end.startsWith('06:'))) return 'night';
+    return 'other';
+};
+
+const spawnTimeLabel = (t) => {
+    const kind = spawnTimeKind(t);
+    if (kind === 'day')    return '☀ Day';
+    if (kind === 'night')  return '🌙 Night';
+    if (kind === 'always') return '';
+    return t;
+};
+
+const filterEntriesBySpawnTime = (entries, filter = _activeSpawnTimeFilter) => {
+    if (!filter) return entries;
+    return entries.filter(e => {
+        const kind = spawnTimeKind(e.spawnTime);
+        if (kind === 'always') return true;
+        if (kind === 'other') return false;
+        return kind === filter;
+    });
+};
+
+// Layout slot with no row in EnemySpawn.json — quest/event/dynamic spawn.
+const isDynamicSpawnSlot = (spawnCache, spawnKey) => {
+    if (!_enemySpawnDataLoaded || spawnKey == null || !spawnCache) return false;
+    const allEntries = spawnCache.get(spawnKey) ?? [];
+    return !allEntries.some(e => !!e.lv);
+};
+
+const spawnMobTags = (entries, spawn, spawnCache, spawnKey) => {
+    const tags = new Set();
+    if (isDynamicSpawnSlot(spawnCache, spawnKey)) {
+        tags.add('dynamic');
+        return tags;
+    }
+    if (spawn?.KeyBearer === true) tags.add('keyBearer');
+    for (const e of entries) {
+        if (!e.lv) continue;
+        if (e.isBloodOrbEnemy && e.bloodOrbs) tags.add('bloodOrb');
+        if (e.isHighOrbEnemy && e.highOrbs)  tags.add('highOrb');
+        if (e.isManualSet) tags.add('manual');
+        if (e.isBossGauge || e.isAreaBoss || e.isBossBGM || e.raidBossId > 0) tags.add('boss');
+    }
+    if (entries.some(e => !!e.lv) && !tags.size) tags.add('regular');
+    return tags;
+};
+
+const spawnMatchesTypeFilter = (cache, spawnKey, spawn) => {
+    const enabledIds = MOB_TYPE_MODES.filter(m => _mobTypeFilters[m.id]).map(m => m.id);
+    if (!enabledIds.length) return false;
+
+    if (!_enemySpawnDataLoaded) {
+        if (spawn?.KeyBearer && !_mobTypeFilters.keyBearer) return false;
+        return _mobTypeFilters.regular;
+    }
+
+    const allEntries = spawnKey && cache ? (cache.get(spawnKey) ?? []) : [];
+    const entries    = filterEntriesBySpawnTime(allEntries);
+    const tags = spawnMobTags(entries, spawn, cache, spawnKey);
+    if (!tags.size) return false;
+    return [...tags].some(t => _mobTypeFilters[t]);
+};
+
+const resolveDisplayNameFromEntry = (e) => {
+    const baseName = e.emCode ? (emNames[e.emCode]?.name ?? e.emCode) : null;
+    if (!baseName) return null;
+    const np = e.namedId ? namedParamsById.get(e.namedId) : null;
+    const npName = np?.name?.trim();
+    let name;
+    if (!npName || np.type === 'NAMED_TYPE_NONE') name = baseName;
+    else if (np.type === 'NAMED_TYPE_REPLACE') name = npName;
+    else if (np.type === 'NAMED_TYPE_PREFIX')  name = `${npName} ${baseName}`;
+    else if (np.type === 'NAMED_TYPE_SUFFIX')  name = `${baseName} ${npName}`;
+    else name = baseName;
+    const prefix = e.infection ? _SPAWN_INFECTION_PREFIX[e.infection] : null;
+    return prefix ? `${prefix} ${name}` : name;
+};
+
+const replaceOriginSuffix = (e) => {
+    if (!e?.namedId) return '';
+    const np = namedParamsById.get(e.namedId);
+    if (np?.type !== 'NAMED_TYPE_REPLACE') return '';
+    const base = e.emCode ? (emNames[e.emCode]?.name ?? null) : null;
+    if (!base) return '';
+    return ` <span style="font-size:10px;color:#aaa;font-style:italic">(${base})</span>`;
+};
+
+const resolveSpawnMobLabelFromEntries = (entries, spawn, spawnCache) => {
+    const hasEnemy = !spawnCache || entries.some(e => !!e.lv);
+
+    if (entries.length > 1) {
+        const parts = entries
+            .filter(e => !!e.lv)
+            .map(e => {
+                const n = resolveDisplayNameFromEntry(e);
+                const t = spawnTimeLabel(e.spawnTime);
+                return n ? `${n} Lv${e.lv}${t ? [...t][0] : ''}${replaceOriginSuffix(e)}` : null;
+            })
+            .filter(Boolean);
+        if (parts.length) return parts.join(' / ');
+    } else if (entries.length === 1 && hasEnemy) {
+        const e0 = entries[0];
+        const n  = resolveDisplayNameFromEntry(e0) ?? (spawn?.EmName ? (emNames[spawn.EmName]?.name ?? null) : null);
+        if (n) return `${n}${e0.lv ? ` Lv${e0.lv}` : ''}${replaceOriginSuffix(e0)}`;
+    } else if (!spawnCache && spawn?.EmName) {
+        const n = emNames[spawn.EmName]?.name ?? null;
+        if (n) return n;
+    }
+    return null;
+};
+
+// Returns a player-facing mob label, or null when the slot should stay hidden.
+const resolveSpawnMobLabel = (spawnCache, spawnKey, spawn) => {
+    const allEntries = spawnKey && spawnCache ? (spawnCache.get(spawnKey) ?? []) : [];
+    if (isDynamicSpawnSlot(spawnCache, spawnKey)) return DYNAMIC_ENEMY_LABEL;
+    const entries = filterEntriesBySpawnTime(allEntries);
+    if (_activeSpawnTimeFilter && allEntries.length && !entries.length) return null;
+    return resolveSpawnMobLabelFromEntries(entries, spawn, spawnCache);
+};
+
+const spawnHasMobLabel = (spawnCache, spawnKey, spawn) => {
+    if (!_enemySpawnDataLoaded) {
+        if (_activeSpawnTimeFilter) return false;
+        return !!(spawn?.EmName && emNames[spawn.EmName]?.name);
+    }
+    return resolveSpawnMobLabel(spawnCache, spawnKey, spawn) != null;
+};
+
 // Build the details layer (hull + territory + spawn dots) for a group entry.
 // Does NOT add the layer to the map — that is done by expandGroup.
 function buildGroupDetails(g) {
     const info  = _currentMapInfo;
     const layer = L.layerGroup();
 
-    // Hull
-    if (g.pts.length >= 3) {
+    // Hull (legacy group-chip mode only)
+    if (useLegacyGroupChips() && g.pts.length >= 3) {
         const hull = convexHull(g.pts);
         if (hull.length >= 3) {
             const poly = L.polygon(hull.map(([px, py]) => xy(px, py)), {
@@ -965,7 +1467,7 @@ function buildGroupDetails(g) {
             layer.addLayer(poly);
             g.hullPts = hull;  // stored for map-level middle-click collapse
         }
-    } else if (g.pts.length === 2) {
+    } else if (useLegacyGroupChips() && g.pts.length === 2) {
         L.polyline(g.pts.map(([px, py]) => xy(px, py)), {
             color: g.color, weight: 1.5, opacity: 0.65, dashArray: '4 3', interactive: false,
         }).addTo(layer);
@@ -1049,13 +1551,6 @@ function buildGroupDetails(g) {
                     const entries = cache.get(key) ?? [];
                     return [{ key, entries, idx: item.idx }];
                 });
-        };
-
-        const spawnTimeLabel = (t) => {
-            if (!t || t === '00:00,23:59') return '';
-            if (t.startsWith('07:')) return '☀ Day';
-            if (t.startsWith('18:')) return '🌙 Night';
-            return t;
         };
 
         const buildDropsHtml = (spawnInfo) => {
@@ -1429,58 +1924,15 @@ function buildGroupDetails(g) {
         };
 
         const buildTooltip = (spawnCache) => {
-            const entries  = spawnKey && spawnCache ? (spawnCache.get(spawnKey) ?? []) : [];
-            const hasEnemy = !spawnCache || entries.some(e => !!e.lv);
-            // Helper: resolve display name with named param applied
-            const infectionPrefix = [null, 'Infected', 'Severely Infected', 'War-Ready'];
-            const resolveDisplayName = (e) => {
-                const baseName = e.emCode ? (emNames[e.emCode]?.name ?? e.emCode) : null;
-                if (!baseName) return null;
-                const np = e.namedId ? namedParamsById.get(e.namedId) : null;
-                const npName = np?.name?.trim();
-                let name;
-                if (!npName || np.type === 'NAMED_TYPE_NONE') name = baseName;
-                else if (np.type === 'NAMED_TYPE_REPLACE') name = npName;
-                else if (np.type === 'NAMED_TYPE_PREFIX')  name = `${npName} ${baseName}`;
-                else if (np.type === 'NAMED_TYPE_SUFFIX')  name = `${baseName} ${npName}`;
-                else name = baseName;
-                const prefix = e.infection ? infectionPrefix[e.infection] : null;
-                return prefix ? `${prefix} ${name}` : name;
-            };
-            // Returns a small styled "(OriginalName)" suffix when namedId is REPLACE type
-            const replaceOriginSuffix = (e) => {
-                if (!e?.namedId) return '';
-                const np = namedParamsById.get(e.namedId);
-                if (np?.type !== 'NAMED_TYPE_REPLACE') return '';
-                const base = e.emCode ? (emNames[e.emCode]?.name ?? null) : null;
-                if (!base) return '';
-                return ` <span style="font-size:10px;color:#aaa;font-style:italic">(${base})</span>`;
-            };
-            let namePart = '';
-            if (entries.length > 1) {
-                // Show all variants: "Killer Bee Lv3☀ / Skeleton Lv3🌙"
-                const parts = entries
-                    .filter(e => !!e.lv)
-                    .map(e => {
-                        const n = resolveDisplayName(e);
-                        const t = spawnTimeLabel(e.spawnTime);
-                        return n ? `${n} Lv${e.lv}${t ? [...t][0] : ''}${replaceOriginSuffix(e)}` : null;
-                    })
-                    .filter(Boolean);
-                if (parts.length) namePart = parts.join(' / ') + ' — ';
-            } else if (entries.length === 1 && hasEnemy) {
-                const e0 = entries[0];
-                const n  = resolveDisplayName(e0) ?? (spawn.EmName ? (emNames[spawn.EmName]?.name ?? null) : null);
-                if (n) namePart = `${n}${e0.lv ? ` Lv${e0.lv}` : ''}${replaceOriginSuffix(e0)} — `;
-            } else if (!spawnCache && hasEnemy && spawn.EmName) {
-                const n = emNames[spawn.EmName]?.name ?? null;
-                if (n) namePart = `${n} — `;
-            }
+            const entries = spawnKey && spawnCache ? (spawnCache.get(spawnKey) ?? []) : [];
             const e0 = entries[0] ?? null;
+            const mobLabel = resolveSpawnMobLabel(spawnCache, spawnKey, spawn);
             const orbBadge  = (e0?.isBloodOrbEnemy && e0?.bloodOrbs ? ' 🩸' : '') + (e0?.isHighOrbEnemy && e0?.highOrbs ? ' ⭐' : '');
             const manualBadge = e0?.isManualSet ? ' 😴' : '';
             const bossBadge = (e0?.isBossGauge || e0?.isAreaBoss || e0?.raidBossId > 0) ? ' <span style="color:#ff4444" title="Boss enemy">☠</span>' : '';
-            return `${namePart}${g.groupId}.${idx} [SS:${sg}]${orbBadge}${manualBadge}${bossBadge}${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
+            const idPart = _devShowSpawnIds ? `${g.groupId}.${idx} [SS:${sg}]` : '';
+            const core = [mobLabel, idPart].filter(Boolean).join(' — ');
+            return `${core || DYNAMIC_ENEMY_LABEL}${orbBadge}${manualBadge}${bossBadge}${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
         };
 
         const marker = L.circleMarker(latlng, {
@@ -2294,6 +2746,7 @@ function buildGroupDetails(g) {
         marker._info           = info;
         marker._spawnKey       = spawnKey;
         marker._naturalLatLng  = latlng;    // saved for spread reset
+        marker._rebuildTooltip = () => buildTooltip(_enemySpawnCache);
         marker._naturalTooltip = buildTooltip(_enemySpawnCache);
 
         if (!g.sgMarkers[sgKey]) g.sgMarkers[sgKey] = [];
@@ -2323,9 +2776,9 @@ function buildGroupDetails(g) {
 
 // _expandGroupCore / _collapseGroupCore do the state change without triggering
 // reapplySpread or updateLayersInHash — used by bulk operations.
-function _expandGroupCore(g) {
+function _expandGroupCore(g, { skipFilter = false } = {}) {
     if (!g.detailsLayer) buildGroupDetails(g);
-    const enemiesOn = document.getElementById('layer-enemies').checked;
+    const enemiesOn = anyMobTypeEnabled();
     if (enemiesOn) g.detailsLayer.addTo(leafletMap);
     g.isExpanded = true;
     // Move chip to just above the topmost spawn so it doesn't cover any enemies.
@@ -2338,12 +2791,13 @@ function _expandGroupCore(g) {
         if (!_sgMarkers[sgKey]) _sgMarkers[sgKey] = [];
         _sgMarkers[sgKey].push(...markers);
     }
-    applySubGroupFilter();  // after setIcon so opacity isn't reset by icon replacement
+    if (!skipFilter) applySubGroupFilter();  // after setIcon so opacity isn't reset by icon replacement
+    attachTerritoryRect(g);
 }
 
 function _collapseGroupCore(g) {
     if (g.detailsLayer) leafletMap.removeLayer(g.detailsLayer);
-    if (g.territoryRect) territoryLayer.removeLayer(g.territoryRect);
+    detachTerritoryRect(g);
     g.isExpanded = false;
     g.labelMarker.setLatLng(xy(g.centroid.px, g.centroid.py));
     g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, false, g.yOffset, g.isKeyBearerGroup, _groupHasBoss(g)));
@@ -2398,15 +2852,17 @@ function _setMarkerVisible(m, visible) {
 }
 
 function _setGroupVisible(g, visible) {
-    // Chip (label marker)
-    g.labelMarker.setOpacity(visible ? 1 : 0);
+    const showChip = visible && useLegacyGroupChips();
+    g.labelMarker.setOpacity(showChip ? 1 : 0);
+    g.labelMarker.options.interactive = showChip;
     const chipEl = g.labelMarker.getElement();
-    if (chipEl) chipEl.style.pointerEvents = visible ? '' : 'none';
+    if (chipEl) chipEl.style.pointerEvents = showChip ? '' : 'none';
     // Hull and other structure layers in an expanded detailsLayer
     if (g.detailsLayer) {
         for (const layer of g.detailsLayer.getLayers()) {
             if (layer._spawn) continue;  // skip spawn markers — handled separately
-            if (visible) {
+            const showHull = visible && useLegacyGroupChips();
+            if (showHull) {
                 layer.setStyle(layer._origStyle ?? {});
             } else {
                 if (!layer._origStyle) layer._origStyle = { opacity: layer.options.opacity ?? 0.75, fillOpacity: layer.options.fillOpacity ?? 0.1 };
@@ -2427,12 +2883,15 @@ function applySubGroupFilter() {
             if (!m._spawn) continue;
             // Area-spawn groups (g.areaSpawn) re-request their SubGroupNo=-1 spawns under SubGroupId=1
             const spawnIsAreaSpawnInitial = g.areaSpawn && (m._spawn?.SubGroupNo == null || m._spawn.SubGroupNo === -1);
-            const visible = _activeSubGroupId === null ||
+            const subgroupVisible = _activeSubGroupId === null ||
                 _spawnSubGroupId(m._spawn) === _activeSubGroupId ||
                 (_activeSubGroupId === 1 && spawnIsAreaSpawnInitial);
-            _setMarkerVisible(m, visible);
+            const labelVisible = spawnHasMobLabel(_enemySpawnCache, m._spawnKey, m._spawn);
+            const typeVisible  = spawnMatchesTypeFilter(_enemySpawnCache, m._spawnKey, m._spawn);
+            _setMarkerVisible(m, subgroupVisible && labelVisible && typeVisible);
         }
     }
+    refreshMobTooltips();
     reapplySpread();
 }
 
@@ -2506,10 +2965,18 @@ let _sgMarkers = {};
 let _unhighlightTimer = null;
 let _highlightedSet   = new Set();  // all markers currently in highlighted state
 
+function _restoreMarkerStyle(m) {
+    if (m._hidden) {
+        m.setStyle({ opacity: 0, fillOpacity: 0 });
+        return;
+    }
+    m.setStyle(m._origStyle);
+    m.setRadius(m._origStyle?.radius ?? 5);
+}
+
 function _clearHighlight() {
     for (const m of _highlightedSet) {
-        m.setStyle(m._origStyle);
-        m.setRadius(5);
+        _restoreMarkerStyle(m);
         m.closeTooltip();
         if (m._spreadAnchor) {
             m._spreadAnchor.setRadius(4);
@@ -2524,6 +2991,7 @@ function _applyHighlight(markers) {
     clearTimeout(_unhighlightTimer);
     _clearHighlight();                  // synchronously reset any previously lit markers
     for (const m of markers) {
+        if (m._hidden) continue;
         m.setStyle({ weight: 4, fillOpacity: 1.0, color: '#ffffff' });
         m.setRadius(9);
         m.openTooltip();
@@ -2537,7 +3005,7 @@ function _applyHighlight(markers) {
 }
 
 function _highlightSG(sgKey) {
-    _applyHighlight(_sgMarkers[sgKey] || []);
+    _applyHighlight((_sgMarkers[sgKey] || []).filter(m => !m._hidden));
 }
 
 function _unhighlightSG() {
@@ -2560,6 +3028,7 @@ function _applyGatherHighlight(markers) {
     clearTimeout(_gatherHighlightTimer);
     _clearGatherHighlight();
     for (const m of markers) {
+        if (m._poiHidden) continue;
         const el = m.getElement()?.firstElementChild;
         if (el) { el.style.outline = '2px solid #fff'; el.style.outlineOffset = '2px'; el.style.boxShadow = '0 0 6px 2px rgba(255,255,255,0.8)'; }
         _gatherHighlightedSet.add(m);
@@ -2780,6 +3249,8 @@ function loadEnemySpawns(info, stid = null) {
     _updateExpandCollapseBtn();
     _computeAvailableSubGroups();
     applySubGroupFilter();
+    // Expanding hundreds of groups blocks the main thread — defer so the map image can paint.
+    setTimeout(() => applyMobDisplayMode(), 0);
 }
 
 // ── Landmark markers ──────────────────────────────────────────────────────────
@@ -2800,6 +3271,526 @@ const LANDMARK_COLORS = {
 
 // Types that clutter the map without being useful landmarks
 const HIDDEN_LANDMARK_TYPES = new Set(['TYPE_TEXT', 'TYPE_WATER_LINE', 'TYPE_NONE']);
+
+// ── Map point (POI) category filters ───────────────────────────────────────────
+const POI_FILTER_KEY = 'ddon-poi-filters';
+const POI_ICON_BASE  = 'resources/poi-icons';
+const MMAPICON_SLICE_BASE = 'resources/mmapicon_slices';
+/** Confirmed mmapicon slice IDs (see resources/mmapicon_manifest.json). */
+const LANDMARK_MMAPICON = {
+    door:         8,
+    house:        14,
+    outpost:      13,
+    cave:         15,
+    well:         17,
+    areaWarp:     48,
+    pathway:      44,
+    inn:          21,
+    ark:          19,
+    itemShop:     11,
+    materialShop: 11,
+    shop:         11,
+};
+
+/** poi-icons filename when a filter category has no mmapicon slice. */
+const POI_ICON_FALLBACK = {
+    gatherNode: 'sparkNode',
+};
+
+function poiIconSrc(categoryId, fallbackIcon) {
+    const mmapId = LANDMARK_MMAPICON[categoryId];
+    if (mmapId) return `${MMAPICON_SLICE_BASE}/${mmapId}.png`;
+    const iconKey = fallbackIcon ?? POI_ICON_FALLBACK[categoryId] ?? categoryId;
+    if (iconKey) return `${POI_ICON_BASE}/${iconKey}.png`;
+    return null;
+}
+
+function makePoiMapIcon(src, size = 24) {
+    const half = size / 2;
+    return L.divIcon({
+        className: 'poi-map-marker',
+        html: `<img src="${src}" width="${size}" height="${size}" alt="" `
+            + `style="display:block;image-rendering:pixelated;filter:drop-shadow(0 0 1px #000) drop-shadow(0 1px 2px #000);">`,
+        iconSize:    [size, size],
+        iconAnchor:  [half, half],
+        tooltipAnchor: [0, -half],
+    });
+}
+
+// Connections that share a map point with a landmark use POI icons instead of diamonds.
+const CONNECTION_POI_MATCH_DIST = { _default: 1200, door: 2500, cave: 1500, house: 1500 };
+const connectionMatchDist = (poiCat) =>
+    CONNECTION_POI_MATCH_DIST[poiCat] ?? CONNECTION_POI_MATCH_DIST._default;
+
+const LANDMARK_ENTRANCE_TYPES = new Set([
+    'TYPE_WELL', 'TYPE_CATACOMB', 'TYPE_CAVE', 'TYPE_SHRINE',
+    'TYPE_BASEMENT', 'TYPE_DOOR', 'TYPE_ELF_RUIN',
+]);
+/** POI categories that represent the same map entrance as a landmark type. */
+const POI_COVERS_LANDMARK = {
+    cave:     ['TYPE_CAVE', 'TYPE_CATACOMB', 'TYPE_BASEMENT', 'TYPE_SHRINE', 'TYPE_ELF_RUIN'],
+    basement: ['TYPE_BASEMENT', 'TYPE_CATACOMB', 'TYPE_CAVE'],
+    well:     ['TYPE_WELL'],
+    door:     ['TYPE_DOOR'],
+    house:    ['TYPE_DOOR'],
+};
+
+const isGenericLandmark = (lm) => !lm.spot_name_en?.trim();
+
+const landmarkMatchDist = (lm) => {
+    const poiCat = LANDMARK_TYPE_TO_POI[lm.type];
+    return poiCat ? connectionMatchDist(poiCat) : CONNECTION_POI_MATCH_DIST._default;
+};
+
+const poiCoversLandmarkType = (poiCat, lmType) =>
+    (POI_COVERS_LANDMARK[_normalizePoiFilterCategory(poiCat) ?? poiCat] ?? []).includes(lmType);
+const LANDMARK_TYPE_TO_POI = {
+    TYPE_CAVE:     'cave',
+    TYPE_DOOR:     'door',
+    TYPE_BASEMENT: 'basement',
+    TYPE_CATACOMB: 'catacomb',
+    TYPE_SHRINE:   'shrine',
+    TYPE_WELL:     'well',
+    TYPE_ELF_RUIN: 'elfRuin',
+};
+
+const connectionDisplayName = (conn) => {
+    const name = conn.name_en?.trim();
+    return name || `Stage ${conn.to_stage}`;
+};
+
+const isCaveLikeConnectionName = (name) => {
+    if (!name) return false;
+    const lower = name.toLowerCase();
+    if (/\bterrace\b|\bsecret lodge\b/i.test(lower)) return true;
+    if (/\b(inn|shrine|chapel|well|house|fort|castle|temple|palace|cellar|basement|drain)\b/.test(lower)) return false;
+    if (/\blodge\b/.test(lower)) return false;
+    return /\b(caves?|cavern|grotto|tunnels?|labyrinth|crypt|\bdens?\b|hollow|quarry|mines?|barrows?|\bold route\b|\bsecret route\b|\bsecret passage\b|guardhouse|storehouse|floodway|waterway|ruins|laboratory|mausoleum|columbarium|cemetery|penitentiary|burial chamber)\b/.test(lower);
+};
+
+function finalizeConnectionPoi(poiCat) {
+    if (poiCat === 'catacomb' || poiCat === 'shrine' || poiCat === 'elfRuin') return 'cave';
+    return poiCat;
+}
+
+function classifyConnectionPoi(conn, mapName) {
+    const name = conn.name_en ?? '';
+    const lower = name.toLowerCase();
+
+    if (/\bbowmaster's secret lodge\b/i.test(lower)) return 'cave';
+    if (/\bterrace\b/i.test(lower)) return 'cave';
+    if (/\binn\b/i.test(name)) return 'inn';
+    if (/\bwell\b/i.test(lower)) return 'well';
+    if (/\bshrine\b|\bchapel\b/i.test(lower)) return 'cave';
+    if (/\bbasement\b|\bcellar\b|\bdrain(s|age)?\b|\bflood control\b/i.test(lower)) return 'basement';
+    if (/\b(underground|channel)\b/i.test(lower) && /\b(waterway|passage|drain|flood)\b/i.test(lower)) return 'basement';
+    if (/\bcatacombs?\b/i.test(lower)) return 'cave';
+    if (/\bthe ark\b|\bthe second ark\b/i.test(lower)) return 'ark';
+    if (/\bshop\b|\bstore(?!house)\b|\bbazaar\b|\bmarket\b|\boutfitter\b|\bworkshop\b|\btrading post\b|\btrading company\b/i.test(lower)) return 'shop';
+    if (/^house$/i.test(name.trim()) || /\bhouse in the\b|\bhermit's house\b|\bkeeper's house\b|\bchief's home\b|\balchemist's home\b|\bivan's lodge\b/i.test(lower)) return 'house';
+    if (/\bfort\b|\bcastle\b|\bgate\b|\bdoor\b/i.test(lower)) return 'door';
+    if (isCaveLikeConnectionName(name)) return 'cave';
+
+    const landmarks = landmarkData[mapName];
+    if (!landmarks || conn.x == null || conn.z == null) return null;
+    for (const lm of landmarks) {
+        const poiCat = LANDMARK_TYPE_TO_POI[lm.type];
+        if (!poiCat) continue;
+        if (Math.hypot(lm.x - conn.x, lm.z - conn.z) >= connectionMatchDist(poiCat)) continue;
+        return finalizeConnectionPoi(poiCat);
+    }
+    return null;
+}
+
+// Per-map cache — avoids re-classifying every connection for each landmark (O(n²) on load).
+let _connectionPoiCacheMap = null;
+let _connectionPoiCache    = null;
+
+function resetConnectionPoiCache(mapName) {
+    _connectionPoiCacheMap = mapName;
+    _connectionPoiCache = new Map();
+    const conns = connectionData[mapName];
+    if (!conns) return;
+    for (const conn of conns) {
+        if (conn.x == null || conn.z == null) continue;
+        _connectionPoiCache.set(conn, classifyConnectionPoi(conn, mapName));
+    }
+}
+
+function getConnectionPoi(conn, mapName) {
+    if (_connectionPoiCacheMap !== mapName || !_connectionPoiCache) resetConnectionPoiCache(mapName);
+    return _connectionPoiCache.get(conn) ?? null;
+}
+
+function isLandmarkCoveredByConnection(mapName, lm) {
+    const conns = connectionData[mapName];
+    if (!conns) return false;
+    if (_connectionPoiCacheMap !== mapName || !_connectionPoiCache) resetConnectionPoiCache(mapName);
+    for (const conn of conns) {
+        if (conn.x == null || conn.z == null) continue;
+        const dist = Math.hypot(lm.x - conn.x, lm.z - conn.z);
+        const poiCat = _connectionPoiCache.get(conn);
+
+        if (poiCat) {
+            if (dist < connectionMatchDist(poiCat) && poiCoversLandmarkType(poiCat, lm.type))
+                return true;
+        }
+
+        // Unlabeled landmark layer (tooltip shows "WELL", "CATACOMB", …) — hide when a
+        // named stage connection sits on the same entrance (even if orange diamond).
+        if (isGenericLandmark(lm) && LANDMARK_ENTRANCE_TYPES.has(lm.type) &&
+            conn.name_en?.trim() && dist < landmarkMatchDist(lm)) {
+            return true;
+        }
+
+        // Decorative water-line overlay at the same entrance (e.g. Kinoza Drains).
+        if (lm.type === 'TYPE_WATER_LINE' && dist < 100) return true;
+    }
+    return false;
+}
+
+const POI_LOCATION_CATEGORIES = [
+    { id: 'cave',       label: 'Cave',               icon: 'cave' },
+    { id: 'basement',   label: 'Basement',           icon: 'basement' },
+    { id: 'house',      label: 'House',              icon: 'house' },
+    { id: 'well',       label: 'Well',               icon: 'well' },
+    { id: 'areaWarp',   label: 'Area warp',          icon: 'areaWarp' },
+    { id: 'outpost',    label: 'Outpost',            icon: 'outpost' },
+    { id: 'door',       label: 'Door',               icon: 'door' },
+    { id: 'inn',        label: 'Inn',                icon: 'inn' },
+    { id: 'shop',       label: 'Shops & appraisals', icon: 'shop' },
+];
+const POI_GATHER_CATEGORIES = [
+    { id: 'mushroom',   label: 'Mushrooms',                   icon: 'mushroom' },
+    { id: 'treasure',   label: 'Treasure chests',             icon: 'treasure' },
+    { id: 'box',        label: 'Boxes',                       icon: 'box' },
+    { id: 'antique',    label: 'Antiques',                    icon: 'antique' },
+    { id: 'grassHerb',  label: 'Grass / herb',                icon: 'grassHerb' },
+    { id: 'flower',     label: 'Flower',                      icon: 'flower' },
+    { id: 'sand',       label: 'Sand',                        icon: 'sand' },
+    { id: 'shell',      label: 'Shell',                       icon: 'shell' },
+    { id: 'crystal',    label: 'Crystal',                     icon: 'crystal' },
+    { id: 'gatherNode', label: 'Spark',                       icon: 'sparkNode' },
+    { id: 'water',      label: 'Water',                       icon: 'water' },
+    { id: 'lumber',     label: 'Lumber',                      icon: 'lumber' },
+];
+const POI_CATEGORIES = [...POI_LOCATION_CATEGORIES, ...POI_GATHER_CATEGORIES];
+const LANDMARK_POI_CATEGORIES = new Set([
+    'areaWarp', 'outpost', 'door', 'house', 'cave', 'basement', 'catacomb', 'elfRuin', 'shrine', 'well', 'ark', 'landmarkOther',
+]);
+const GATHER_POI_CATEGORIES = new Set([
+    'mushroom', 'treasure', 'box', 'antique', 'grassHerb', 'flower', 'sand', 'shell', 'crystal', 'gatherNode', 'water', 'lumber', 'gatherOther',
+]);
+const POI_FILTER_DEFAULTS = Object.fromEntries(POI_CATEGORIES.map(c => [c.id, true]));
+
+const loadPoiFilters = () => {
+    try {
+        const raw = localStorage.getItem(POI_FILTER_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        // Migrate renamed gather category (chest → treasure)
+        if ('chest' in parsed && !('treasure' in parsed)) parsed.treasure = parsed.chest;
+        delete parsed.chest;
+        // Merge split shop toggles into one
+        if ('itemShop' in parsed || 'materialShop' in parsed) {
+            parsed.shop = parsed.shop !== false &&
+                parsed.itemShop !== false && parsed.materialShop !== false;
+            delete parsed.itemShop;
+            delete parsed.materialShop;
+        }
+        // Merge spark + dragon into gathering nodes
+        if ('sparkNode' in parsed || 'dragon' in parsed) {
+            parsed.gatherNode = parsed.gatherNode !== false &&
+                parsed.sparkNode !== false && parsed.dragon !== false;
+            delete parsed.sparkNode;
+            delete parsed.dragon;
+        }
+        if (parsed.gemstone === false) parsed.crystal = false;
+        delete parsed.gemstone;
+        // Old pathways / connections layer → all location filters off
+        if (parsed.pathway === false || parsed.entrance === false) {
+            for (const c of POI_LOCATION_CATEGORIES) parsed[c.id] = false;
+        }
+        delete parsed.pathway;
+        if ('entrance' in parsed) delete parsed.entrance;
+        try {
+            if (!localStorage.getItem('ddon-poi-migrated-connections')) {
+                let connOff = false;
+                const layerRaw = localStorage.getItem(LAYER_PREFS_KEY);
+                if (layerRaw && JSON.parse(layerRaw).connections === false) connOff = true;
+                const { layers: urlLayers } = parseHash();
+                if (urlLayers?.connections === false) connOff = true;
+                if (connOff) {
+                    for (const c of POI_LOCATION_CATEGORIES) parsed[c.id] = false;
+                }
+                localStorage.setItem('ddon-poi-migrated-connections', '1');
+            }
+        } catch { /* ignore */ }
+        if (parsed.appraisal === false) parsed.shop = false;
+        delete parsed.appraisal;
+        // Removed categories fold into cave
+        if (parsed.catacomb === false || parsed.shrine === false || parsed.elfRuin === false)
+            parsed.cave = false;
+        delete parsed.catacomb;
+        delete parsed.shrine;
+        delete parsed.elfRuin;
+        delete parsed.ark;
+        // inn is now a first-class location filter
+        return raw || Object.keys(parsed).length
+            ? { ...POI_FILTER_DEFAULTS, ...parsed }
+            : { ...POI_FILTER_DEFAULTS };
+    } catch { return { ...POI_FILTER_DEFAULTS }; }
+};
+
+const savePoiFilters = () => {
+    try { localStorage.setItem(POI_FILTER_KEY, JSON.stringify(_poiFilters)); } catch { /* ignore */ }
+};
+
+let _poiFilters = loadPoiFilters();
+
+function classifyLandmarkPoiCategory(type, lm = null) {
+    const spot = lm?.spot_name_en?.trim().toLowerCase();
+    if (spot === 'the ark' || spot === 'the second ark') return 'areaWarp';
+    switch (type) {
+        case 'TYPE_AREA_WARP':  return 'areaWarp';
+        case 'TYPE_OUTPOST':    return 'outpost';
+        case 'TYPE_DOOR':       return 'door';
+        case 'TYPE_CAVE':       return 'cave';
+        case 'TYPE_BASEMENT':   return 'basement';
+        case 'TYPE_CATACOMB':
+        case 'TYPE_ELF_RUIN':
+        case 'TYPE_SHRINE':     return 'cave';
+        case 'TYPE_WELL':       return 'well';
+        default:                return 'landmarkOther';
+    }
+}
+
+function classifyGatherPoiCategory(type) {
+    if (type === 'OM_GATHER_MUSHROOM') return 'mushroom';
+    if (type === 'OM_GATHER_GRASS') return 'grassHerb';
+    if (type === 'OM_GATHER_FLOWER') return 'flower';
+    if (type === 'OM_GATHER_SAND') return 'sand';
+    if (type === 'OM_GATHER_SHELL') return 'shell';
+    if (/^OM_GATHER_CRST_LV/.test(type)) return 'crystal';
+    if (/^OM_GATHER_JWL_LV/.test(type)) return 'crystal';
+    if (type === 'OM_GATHER_TWINKLE' || type === 'OM_GATHER_DRAGON' || type === 'OM_GATHER_CORPSE') return 'gatherNode';
+    if (type === 'OM_GATHER_WATER') return 'water';
+    if (/^OM_GATHER_TREE_LV/.test(type)) return 'lumber';
+    if (type === 'OM_GATHER_BOX') return 'box';
+    if (type === 'OM_GATHER_ANTIQUE') return 'antique';
+    if (type.startsWith('CHEST_') || type.startsWith('OM_GATHER_TREA_') ||
+        type.startsWith('OM_GATHER_KEY_')) return 'treasure';
+    return 'gatherOther';
+}
+
+function classifyShopPoiCategory(_funcId) {
+    return 'shop';
+}
+
+/** Map legacy / internal POI ids to sidebar filter keys. */
+function _normalizePoiFilterCategory(category) {
+    if (!category) return category;
+    if (category === 'itemShop' || category === 'materialShop' || category === 'appraisal') return 'shop';
+    if (category === 'sparkNode' || category === 'dragon' || category === 'corpse') return 'gatherNode';
+    if (category === 'gemstone') return 'crystal';
+    if (category === 'ark') return 'areaWarp';
+    if (category === 'catacomb' || category === 'shrine' || category === 'elfRuin') return 'cave';
+    return category;
+}
+
+function poiFilterIconSrc(filterCategoryId) {
+    const catDef = POI_CATEGORIES.find(c => c.id === filterCategoryId);
+    return poiIconSrc(filterCategoryId, catDef?.icon);
+}
+
+function poiMapIconSrc(internalCategory, { uncategorizedConnection = false } = {}) {
+    if (uncategorizedConnection || internalCategory == null) return poiFilterIconSrc('pathway');
+    if (internalCategory === 'ark') return poiIconSrc('ark');
+    const filterCat = _normalizePoiFilterCategory(internalCategory) ?? internalCategory;
+    return poiFilterIconSrc(filterCat);
+}
+
+function gatherMapIconSrc(gatherType) {
+    const cat = classifyGatherPoiCategory(gatherType);
+    const catDef = POI_GATHER_CATEGORIES.find(c => c.id === cat);
+    return poiIconSrc(cat, catDef?.icon ?? cat);
+}
+
+function makeConnectionMarkerIcon(poiCat) {
+    return makePoiMapIcon(poiMapIconSrc(poiCat, { uncategorizedConnection: !poiCat }), 22);
+}
+
+function anyLocationFilterEnabled() {
+    return POI_LOCATION_CATEGORIES.some(c => _poiFilters[c.id] !== false);
+}
+
+function syncLocationsShowAllCheckbox() {
+    const el = document.getElementById('poi-locations-show-all');
+    if (!el) return;
+    const all = POI_LOCATION_CATEGORIES.every(c => _poiFilters[c.id] !== false);
+    const none = POI_LOCATION_CATEGORIES.every(c => _poiFilters[c.id] === false);
+    el.checked = all;
+    el.indeterminate = !all && !none;
+}
+
+function setAllLocationFilters(on) {
+    for (const c of POI_LOCATION_CATEGORIES) _poiFilters[c.id] = on;
+    savePoiFilters();
+    for (const c of POI_LOCATION_CATEGORIES) {
+        const inp = document.getElementById(`poi-filter-${c.id}`);
+        if (inp) inp.checked = on;
+    }
+    syncLocationsShowAllCheckbox();
+    applyAllPoiVisibility();
+}
+
+function syncGatherablesShowAllCheckbox() {
+    const el = document.getElementById('poi-gatherables-show-all');
+    if (!el) return;
+    const all = POI_GATHER_CATEGORIES.every(c => _poiFilters[c.id] !== false);
+    const none = POI_GATHER_CATEGORIES.every(c => _poiFilters[c.id] === false);
+    el.checked = all;
+    el.indeterminate = !all && !none;
+}
+
+function setAllGatherableFilters(on) {
+    for (const c of POI_GATHER_CATEGORIES) _poiFilters[c.id] = on;
+    savePoiFilters();
+    for (const c of POI_GATHER_CATEGORIES) {
+        const inp = document.getElementById(`poi-filter-${c.id}`);
+        if (inp) inp.checked = on;
+    }
+    syncGatherablesShowAllCheckbox();
+    applyAllPoiVisibility();
+}
+
+function _isConnectionVisible(poiCat) {
+    if (!anyLocationFilterEnabled()) return false;
+    if (!poiCat) return true;
+    const norm = _normalizePoiFilterCategory(poiCat);
+    return _isPoiCategoryEnabled(norm);
+}
+
+function _isPoiCategoryEnabled(category) {
+    if (!category || category.endsWith('Other')) return true;
+    const norm = _normalizePoiFilterCategory(category);
+    if (!(norm in POI_FILTER_DEFAULTS)) return true;
+    return _poiFilters[norm] !== false;
+}
+
+function _setPoiMarkerVisible(m, visible) {
+    m._poiHidden = !visible;
+    if (m.setOpacity) m.setOpacity(visible ? 1 : 0);
+    if (m.setStyle) {
+        if (visible) {
+            m.setStyle({ opacity: 1, fillOpacity: m._poiFillOpacity ?? 0.85 });
+        } else {
+            if (m._poiFillOpacity == null && m.options?.fillOpacity != null)
+                m._poiFillOpacity = m.options.fillOpacity;
+            m.setStyle({ opacity: 0, fillOpacity: 0 });
+        }
+    }
+    m.options.interactive = visible;
+    const el = m.getElement?.();
+    if (el) el.style.pointerEvents = visible ? '' : 'none';
+}
+
+function _applyPoiMarkerVisibility(m) {
+    const cat = m._poiCategory;
+    if (!cat && !m._poiIsConnection) return;
+    const visible = m._poiIsConnection
+        ? _isConnectionVisible(cat)
+        : _isPoiCategoryEnabled(cat);
+    _setPoiMarkerVisible(m, visible);
+}
+
+function applyAllPoiVisibility() {
+    for (const m of _gatherMarkerByKey.values()) _applyPoiMarkerVisibility(m);
+    for (const m of _shopMarkerByNpcId.values()) _applyPoiMarkerVisibility(m);
+    for (const m of _specialShopMarkerByNpcId.values()) _applyPoiMarkerVisibility(m);
+    for (const m of landmarkLayer.getLayers()) _applyPoiMarkerVisibility(m);
+    for (const m of connectionLayer.getLayers()) _applyPoiMarkerVisibility(m);
+}
+
+function _buildPoiFilterList(listEl, categories, { onItemChange } = {}) {
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    for (const cat of categories) {
+        const label = document.createElement('label');
+        label.className = 'layer-toggle';
+        label.title = `Show/hide ${cat.label.toLowerCase()}`;
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.id = `poi-filter-${cat.id}`;
+        input.checked = _poiFilters[cat.id] !== false;
+        input.addEventListener('change', () => {
+            _poiFilters[cat.id] = input.checked;
+            savePoiFilters();
+            onItemChange?.();
+            applyAllPoiVisibility();
+        });
+        const icon = document.createElement('span');
+        icon.className = 'poi-icon';
+        icon.dataset.poi = cat.id;
+        if (cat.icon) {
+            const img = document.createElement('img');
+            img.className = 'poi-icon-img';
+            const src = poiFilterIconSrc(cat.id);
+            if (src) img.src = src;
+            img.alt = '';
+            img.loading = 'lazy';
+            icon.appendChild(img);
+        }
+        label.append(input, icon, document.createTextNode(` ${cat.label}`));
+        listEl.appendChild(label);
+    }
+}
+
+const POI_SECTION_OPEN_KEY = 'ddon-poi-section-open';
+const POI_SECTION_DEFAULTS = { mobTypes: true, locations: true, gatherables: true };
+
+function initPoiSectionToggles() {
+    let open = { ...POI_SECTION_DEFAULTS };
+    try {
+        const raw = localStorage.getItem(POI_SECTION_OPEN_KEY);
+        if (raw) open = { ...open, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+
+    document.querySelectorAll('.poi-section[data-poi-section]').forEach(section => {
+        const key = section.dataset.poiSection;
+        const btn = section.querySelector('.poi-section-toggle');
+        const expanded = open[key] !== false;
+        section.classList.toggle('expanded', expanded);
+        btn?.setAttribute('aria-expanded', String(expanded));
+        btn?.addEventListener('click', () => {
+            const nowExpanded = section.classList.toggle('expanded');
+            btn.setAttribute('aria-expanded', String(nowExpanded));
+            open[key] = nowExpanded;
+            try { localStorage.setItem(POI_SECTION_OPEN_KEY, JSON.stringify(open)); } catch { /* ignore */ }
+        });
+    });
+}
+
+function initPoiFilters() {
+    document.getElementById('poi-locations-show-all')?.addEventListener('change', (e) => {
+        setAllLocationFilters(e.target.checked);
+    });
+    document.getElementById('poi-gatherables-show-all')?.addEventListener('change', (e) => {
+        setAllGatherableFilters(e.target.checked);
+    });
+    _buildPoiFilterList(
+        document.getElementById('poi-filter-locations'),
+        POI_LOCATION_CATEGORIES,
+        { onItemChange: syncLocationsShowAllCheckbox },
+    );
+    _buildPoiFilterList(
+        document.getElementById('poi-filter-gatherables'),
+        POI_GATHER_CATEGORIES,
+        { onItemChange: syncGatherablesShowAllCheckbox },
+    );
+    initPoiSectionToggles();
+    syncLocationsShowAllCheckbox();
+    syncGatherablesShowAllCheckbox();
+}
 
 // ── Live server data (fetched from GitHub at runtime) ─────────────────────────
 // File content for local overrides is stored in IndexedDB (higher capacity than
@@ -2971,7 +3962,7 @@ function showSrcError(label) {
         + `<button data-action="dismiss" style="font-size:0.7rem;padding:1px 4px;cursor:pointer;`
         + `background:none;color:#aaa;border:none">✕</button>`;
     item.querySelector('[data-action="fix"]').addEventListener('click',
-        () => document.getElementById('settings-btn').click());
+        () => document.getElementById('map-settings-btn')?.click());
     item.querySelector('[data-action="dismiss"]').addEventListener('click', () => item.remove());
     box.appendChild(item);
 }
@@ -2992,6 +3983,94 @@ const _DEFAULT_GATHERING_URL = 'https://raw.githubusercontent.com/sebastian-hein
 const _DEFAULT_SPAWNS_URL        = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/EnemySpawn.json';
 const _DEFAULT_SHOP_URL          = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/Shop.json';
 const _DEFAULT_SPECIAL_SHOP_URL  = 'https://raw.githubusercontent.com/sebastian-heinz/Arrowgene.DragonsDogmaOnline/refs/heads/develop/Arrowgene.Ddon.Shared/Files/Assets/SpecialShops.json';
+
+const _PRESET_LS_KEY = 'ddon-server-preset';
+const _SRC_KEYS = ['ddon-src-gathering', 'ddon-src-spawns', 'ddon-src-shop', 'ddon-src-special-shop'];
+const _EDELARROW_SPAWNS_BASE = 'https://raw.githubusercontent.com/edelarrow/map-spawns/refs/heads/main';
+
+const _SERVER_PRESETS = {
+    arrowgene: {
+        label: 'Arrowgene (default)',
+        note: 'Official Arrowgene shared assets — generic server defaults.',
+        urls: {
+            'ddon-src-gathering':    _DEFAULT_GATHERING_URL,
+            'ddon-src-spawns':       _DEFAULT_SPAWNS_URL,
+            'ddon-src-shop':         _DEFAULT_SHOP_URL,
+            'ddon-src-special-shop': _DEFAULT_SPECIAL_SHOP_URL,
+        },
+    },
+    revival: {
+        label: 'Revival (live.ddon.org — Normal)',
+        note: 'Enemy spawns from live.ddon.org Normal channel. Gathering & shop stay on Arrowgene (live.ddon.org uses a different file format).',
+        urls: {
+            'ddon-src-gathering':    _DEFAULT_GATHERING_URL,
+            'ddon-src-spawns':       'https://live.ddon.org/datas/EnemySpawn.json',
+            'ddon-src-shop':         _DEFAULT_SHOP_URL,
+            'ddon-src-special-shop': _DEFAULT_SPECIAL_SHOP_URL,
+        },
+    },
+    rising: {
+        label: 'Dogma Rising — Normal Channels',
+        note: 'All four data files from the Dogma Rising normal map (edelarrow/map-spawns).',
+        urls: {
+            'ddon-src-gathering':    `${_EDELARROW_SPAWNS_BASE}/Normal%20Channels/GatheringItem.csv`,
+            'ddon-src-spawns':       `${_EDELARROW_SPAWNS_BASE}/Normal%20Channels/EnemySpawn.json`,
+            'ddon-src-shop':         `${_EDELARROW_SPAWNS_BASE}/Normal%20Channels/Shop.json`,
+            'ddon-src-special-shop': `${_EDELARROW_SPAWNS_BASE}/Normal%20Channels/SpecialShops.json`,
+        },
+    },
+    'rising-endgame': {
+        label: 'Dogma Rising — Endgame (Channel 4)',
+        note: 'All four data files from the Dogma Rising endgame map (edelarrow/map-spawns).',
+        urls: {
+            'ddon-src-gathering':    `${_EDELARROW_SPAWNS_BASE}/Channel%204/GatheringItem.csv`,
+            'ddon-src-spawns':       `${_EDELARROW_SPAWNS_BASE}/Channel%204/EnemySpawn.json`,
+            'ddon-src-shop':         `${_EDELARROW_SPAWNS_BASE}/Channel%204/Shop.json`,
+            'ddon-src-special-shop': `${_EDELARROW_SPAWNS_BASE}/Channel%204/SpecialShops.json`,
+        },
+    },
+};
+
+const presetMatchesStored = (presetId) => {
+    const preset = _SERVER_PRESETS[presetId];
+    if (!preset) return false;
+    return _SRC_KEYS.every(key => {
+        const stored = localStorage.getItem(key);
+        if (stored === '__local__') return false;
+        const expected = preset.urls[key];
+        const effective = stored ?? _SERVER_PRESETS.arrowgene.urls[key];
+        return effective === expected;
+    });
+};
+
+const detectActivePreset = () => {
+    if (_SRC_KEYS.some(key => localStorage.getItem(key) === '__local__')) return 'custom';
+    const storedPreset = localStorage.getItem(_PRESET_LS_KEY);
+    if (storedPreset && storedPreset !== 'custom' && _SERVER_PRESETS[storedPreset]) return storedPreset;
+    for (const presetId of Object.keys(_SERVER_PRESETS)) {
+        if (presetMatchesStored(presetId)) return presetId;
+    }
+    return 'custom';
+};
+
+/** Short sidebar label, e.g. "(Rising)" — omitted for default Arrowgene preset. */
+const _PRESET_SHORT_LABEL = {
+    revival:          'Revival',
+    rising:           'Rising',
+    'rising-endgame': 'Rising Endgame',
+    custom:           'Custom',
+};
+
+function updateSidebarPresetLabel() {
+    const el = document.getElementById('sidebar-preset-label');
+    if (!el) return;
+    const presetId = detectActivePreset();
+    const short = _PRESET_SHORT_LABEL[presetId];
+    el.textContent = short ? ` (${short})` : '';
+}
+
+const presetUrlFor = (presetId, lsKey) =>
+    _SERVER_PRESETS[presetId]?.urls[lsKey] ?? _SERVER_PRESETS.arrowgene.urls[lsKey];
 
 // Shared metadata for all user-editable data sources.
 // Used by both the settings dialog and the edit panel footer.
@@ -3182,7 +4261,12 @@ const _enemySpawnPromise = getSrcUrl('ddon-src-spawns', _DEFAULT_SPAWNS_URL)
         _enemySpawnCache = result;
         return result;
     })
-    .catch(() => { showSrcError('Enemy Spawns'); _enemySpawnCache = new Map(); return _enemySpawnCache; });
+    .catch(() => { showSrcError('Enemy Spawns'); _enemySpawnCache = new Map(); return _enemySpawnCache; })
+    .finally(() => {
+        _enemySpawnDataLoaded = true;
+        applySubGroupFilter();
+        refreshMobTooltips();
+    });
 
 // Map: ShopId → {walletType, items:[{itemId, price, stock}]}
 let _shopCache = null;
@@ -3474,26 +4558,30 @@ function loadGatherPoints(info, stid = null) {
             };
 
             const tooltipText = `${label} — ${node.groupId}.${node.posId}`;
-
-            const gatherIcon = L.divIcon({
-                className: '',
-                html: `<div style="width:9px;height:9px;background:${color};border:2px solid rgba(255,255,255,0.7);box-shadow:0 0 3px rgba(0,0,0,0.7);"></div>`,
-                iconSize:    [9, 9],
-                iconAnchor:  [4, 4],
-                popupAnchor: [0, -8],
-            });
+            const poiCategory = classifyGatherPoiCategory(node.type);
+            const iconSrc     = gatherMapIconSrc(node.type);
+            const gatherIcon  = iconSrc
+                ? makePoiMapIcon(iconSrc, 22)
+                : L.divIcon({
+                    className: '',
+                    html: `<div style="width:9px;height:9px;background:${color};border:2px solid rgba(255,255,255,0.7);box-shadow:0 0 3px rgba(0,0,0,0.7);"></div>`,
+                    iconSize:    [9, 9],
+                    iconAnchor:  [4, 4],
+                    popupAnchor: [0, -8],
+                });
             const marker = L.marker(latlng, { icon: gatherIcon })
             .bindPopup(buildGatherPopup(_gatherItemsCache))
-            .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -8] })
+            .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, iconSrc ? -12 : -8] })
             .addTo(gatherLayer);
+            marker._poiCategory = poiCategory;
             _gatherMarkerByKey.set(`${stageNo}:${node.groupId}:${node.posId}`, marker);
 
-            // Group hover highlight: all nodes sharing the same groupId light up together.
+            // Group key kept for potential future group actions; hover highlights this marker only.
             const groupKey = `${stageNo}:${node.groupId}`;
             if (!_gatherGroupMarkers.has(groupKey)) _gatherGroupMarkers.set(groupKey, []);
             _gatherGroupMarkers.get(groupKey).push(marker);
             marker._gatherGroupKey = groupKey;
-            marker.on('mouseover', function() { _applyGatherHighlight(_gatherGroupMarkers.get(this._gatherGroupKey) || []); });
+            marker.on('mouseover', function() { _applyGatherHighlight([this]); });
             marker.on('mouseout',  _unhighlightGather);
 
             // Drop target: drag items from the Items panel onto a gather node marker.
@@ -3704,72 +4792,7 @@ function loadGatherPoints(info, stid = null) {
         }
     }
 
-
-}
-
-function loadBreakTargets(info, stid = null) {
-    breakTargetLayer.clearLayers();
-    if (!info.stages?.length) return;
-
-    const floorObbs     = info.floor_obbs ?? null;
-    const filterByFloor = floorObbs !== null;
-    const stagesToLoad  = (stid && info.stages.includes(stid)) ? [stid] : info.stages;
-
-    for (const stageId of stagesToLoad) {
-        const stageNo = String(parseInt(stageId.slice(2), 10));
-        const nodes   = breakTargets[stageNo];
-        if (!nodes) continue;
-
-        for (const node of nodes) {
-            if (filterByFloor) {
-                const floor = getEnemyFloor(node.x, node.y, node.z, floorObbs);
-                if (floor !== null && floor !== currentLayer) continue;
-            }
-            const latlng = worldToPixel(node.x, node.z, info);
-
-            const questLine  = node.questName
-                ? `<br><span style="color:#c97a00;font-size:10px;font-style:italic">${node.questName.replace(/\n/g, ' ')}</span>`
-                : '';
-            const hitsLine   = node.hitNum != null
-                ? `<br><span style="font-size:10px;color:#888">${node.hitNum} hit${node.hitNum !== 1 ? 's' : ''} to destroy</span>`
-                : '';
-            const condLine   = (node.questNo || node.layoutFlagNo)
-                ? `<br><span style="font-size:10px;color:#888">` +
-                  (node.questNo      ? `Quest: ${node.questNo}` : '') +
-                  (node.questNo && node.layoutFlagNo ? ' &nbsp;·&nbsp; ' : '') +
-                  (node.layoutFlagNo ? `LayoutFlag: ${node.layoutFlagNo}` : '') +
-                  `</span>`
-                : '';
-            const omLine     = node.unitId != null
-                ? `<br><span style="font-size:10px;color:#666">OMID: ${node.unitId}` +
-                  (node.omName ? ` &nbsp;(${node.omName})` : '') +
-                  `</span>`
-                : '';
-            const coordLine  = `<br><span style="font-size:11px;color:#555">X:&nbsp;${node.x.toFixed(0)}&nbsp; Y:&nbsp;${node.y.toFixed(0)}&nbsp; Z:&nbsp;${node.z.toFixed(0)}</span>`;
-            const groupLine  = `<br><span style="color:#666;font-size:10px">Group ${node.groupId} · pos ${node.posId}</span>`;
-
-            const popupHtml  =
-                `<span style="font-weight:bold;color:#e65c00">Destroyable Object</span>` +
-                questLine + hitsLine + condLine + omLine + groupLine + coordLine;
-
-            const tooltipText = node.questName
-                ? `Destroyable Object — ${node.questName}`
-                : `Destroyable Object (group ${node.groupId})`;
-
-            const icon = L.divIcon({
-                className: '',
-                html: `<div style="color:#ffb300;font-size:20px;line-height:1;text-shadow:0 0 4px #000,0 0 4px #000;margin:-2px 0 0 -2px">◈</div>`,
-                iconSize:    [18, 18],
-                iconAnchor:  [8, 11],
-                popupAnchor: [0, -10],
-            });
-
-            L.marker(latlng, { icon })
-                .bindPopup(popupHtml)
-                .bindTooltip(tooltipText, { permanent: false, direction: 'top', offset: [0, -10] })
-                .addTo(breakTargetLayer);
-        }
-    }
+    applyAllPoiVisibility();
 }
 
 function loadNpcShops(info, stid = null) {
@@ -3862,17 +4885,22 @@ function loadNpcShops(info, stid = null) {
                     `<table style="font-size:13px;border-collapse:collapse;line-height:1.8;width:100%">${viewRows}</table></div>`;
             };
 
-            const icon = L.divIcon({
-                className: '',
-                html: `<div style="width:12px;height:12px;background:${color};border:2px solid #111;transform:rotate(45deg);box-shadow:0 0 3px rgba(0,0,0,0.6);"></div>`,
-                iconSize:    [12, 12],
-                iconAnchor:  [6, 6],
-                popupAnchor: [0, -10],
-            });
+            const shopCategory = classifyShopPoiCategory(funcId);
+            const shopIconSrc  = poiMapIconSrc(shopCategory);
+            const icon = shopIconSrc
+                ? makePoiMapIcon(shopIconSrc, 22)
+                : L.divIcon({
+                    className: '',
+                    html: `<div style="width:12px;height:12px;background:${color};border:2px solid #111;transform:rotate(45deg);box-shadow:0 0 3px rgba(0,0,0,0.6);"></div>`,
+                    iconSize:    [12, 12],
+                    iconAnchor:  [6, 6],
+                    popupAnchor: [0, -10],
+                });
             const marker = L.marker(latlng, { icon })
             .bindPopup(buildShopPopup(_shopCache), { minWidth: 340 })
             .bindTooltip(`${npcName} — ${funcLabel}`, { direction: 'top', offset: [0, -10] })
             .addTo(npcShopLayer);
+            marker._poiCategory = shopCategory;
             _shopMarkerByNpcId.set(`${stageNo}:${npc.NpcId}`, marker);
 
             let _shopClickHandler = null;
@@ -3964,10 +4992,12 @@ function loadNpcShops(info, stid = null) {
             });
         }
     }
+    applyAllPoiVisibility();
 }
 
 function loadSpecialShops(info, stid = null) {
     specialShopLayer.clearLayers();
+    _specialShopMarkerByNpcId.clear();
     if (!info.stages?.length) return;
 
     const floorObbs     = info.floor_obbs ?? null;
@@ -4233,17 +5263,23 @@ function loadSpecialShops(info, stid = null) {
                     `</div>`;
             };
 
-            const icon = L.divIcon({
-                className: '',
-                html: `<div style="width:12px;height:12px;background:${color};border:2px solid #111;transform:rotate(45deg);box-shadow:0 0 4px rgba(192,132,252,0.7);"></div>`,
-                iconSize:    [12, 12],
-                iconAnchor:  [6, 6],
-                popupAnchor: [0, -10],
-            });
+            const shopIconSrc = poiMapIconSrc('shop');
+            const icon = shopIconSrc
+                ? makePoiMapIcon(shopIconSrc, 22)
+                : L.divIcon({
+                    className: '',
+                    html: `<div style="width:12px;height:12px;background:${color};border:2px solid #111;transform:rotate(45deg);box-shadow:0 0 4px rgba(192,132,252,0.7);"></div>`,
+                    iconSize:    [12, 12],
+                    iconAnchor:  [6, 6],
+                    popupAnchor: [0, -10],
+                });
             const marker = L.marker(latlng, { icon })
                 .bindPopup(buildSpecialShopPopup(_specialShopCache, 0, 0), { minWidth: 600 })
                 .bindTooltip(`${npcName} — Appraisals (${shopType})`, { direction: 'top', offset: [0, -10] })
                 .addTo(specialShopLayer);
+
+            marker._poiCategory = 'shop';
+            _specialShopMarkerByNpcId.set(`${stageNo}:${npc.NpcId}`, marker);
 
             marker.on('popupclose', () => {
                 if (_shopPopupDropFn?._marker === marker) _shopPopupDropFn = null;
@@ -4510,6 +5546,7 @@ function loadSpecialShops(info, stid = null) {
             });
         }
     }
+    applyAllPoiVisibility();
 }
 
 function loadStageLabels(info) {
@@ -4533,6 +5570,11 @@ function loadStageLabels(info) {
     }
 }
 
+function landmarkDisplayName(lm) {
+    if (lm.spot_name_en) return lm.spot_name_en;
+    return lm.type.replace('TYPE_', '').replace(/_/g, ' ');
+}
+
 function loadLandmarks(mapName, info) {
     landmarkLayer.clearLayers();
     const entries = landmarkData[mapName];
@@ -4540,19 +5582,31 @@ function loadLandmarks(mapName, info) {
 
     for (const lm of entries) {
         if (HIDDEN_LANDMARK_TYPES.has(lm.type)) continue;
+        if (isLandmarkCoveredByConnection(mapName, lm)) continue;
         const latlng = worldToPixel(lm.x, lm.z, info);
-        const color = LANDMARK_COLORS[lm.type] ?? '#aaaaaa';
-        const label = lm.type.replace('TYPE_', '').replace(/_/g, ' ');
-        L.circleMarker(latlng, {
-            color,
-            fillColor: color,
-            fillOpacity: 0.85,
-            radius: 6,
-            weight: 1.5,
-        })
-        .bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -6] })
-        .addTo(landmarkLayer);
+        const label = landmarkDisplayName(lm);
+        const category = classifyLandmarkPoiCategory(lm.type, lm);
+        const iconSrc  = poiMapIconSrc(category);
+        let marker;
+        if (iconSrc) {
+            marker = L.marker(latlng, { icon: makePoiMapIcon(iconSrc) })
+                .bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -12] })
+                .addTo(landmarkLayer);
+        } else {
+            const color = LANDMARK_COLORS[lm.type] ?? '#aaaaaa';
+            marker = L.circleMarker(latlng, {
+                color,
+                fillColor: color,
+                fillOpacity: 0.85,
+                radius: 6,
+                weight: 1.5,
+            })
+            .bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -6] })
+            .addTo(landmarkLayer);
+        }
+        marker._poiCategory = category;
     }
+    applyAllPoiVisibility();
 }
 
 // ── Stage connection markers ───────────────────────────────────────────────────
@@ -4583,10 +5637,10 @@ function loadConnections(mapName, info) {
     // Clear any previous unpositioned exits list
     const exitsPanel = document.getElementById('exits-panel');
     const exitsList  = document.getElementById('exits-list');
-    exitsList.innerHTML = '';
+    if (exitsList) exitsList.innerHTML = '';
 
     const allEntries = connectionData[mapName];
-    if (!allEntries) { exitsPanel.style.display = 'none'; return; }
+    if (!allEntries) { if (exitsPanel) exitsPanel.style.display = 'none'; return; }
 
     // Filter by active stage: connections with a from_stage only show when that
     // stage is active (or when no stid is set, e.g. navigating directly by map name).
@@ -4596,18 +5650,42 @@ function loadConnections(mapName, info) {
         c.from_stage == null || activeStageNo == null || c.from_stage === activeStageNo
     );
 
-    // Proximity deduplication: if two connections go to the same destination and
-    // are within 500 world units of each other, keep only the first.  This handles
-    // near-duplicate markers from FAA data and multi-stage maps without from_stage.
+    // Proximity deduplication: drop duplicate markers at the same map spot.
+    // Merges same-stage copies, repeated FAA rows, and variant stages (e.g. st0406
+    // + st0437 both labeled "Volden Large Tunnels" ~180 units apart).
     const DEDUP_DIST = 500;
+    const connectionLabelKey = (conn) => (conn.name_en ?? '').trim().toLowerCase();
+    const isDuplicateConnection = (a, b) => {
+        if (a.x == null || b.x == null) return false;
+        if (Math.hypot(a.x - b.x, a.z - b.z) >= DEDUP_DIST) return false;
+        if (a.to_stage === b.to_stage) return true;
+        const keyA = connectionLabelKey(a);
+        const keyB = connectionLabelKey(b);
+        return !!(keyA && keyA === keyB);
+    };
+    const connectionKeepScore = (conn) => [
+        conn.stp_approx ? 0 : 1,
+        conn.to_map && mapParams[conn.to_map] ? 1 : 0,
+        /_m00(?:_|$)/.test(conn.to_map ?? '') ? 1 : 0,
+        -(conn.to_stage ?? 99999),
+    ];
+    const scoreGt = (a, b) => {
+        for (let i = 0; i < a.length; i++) {
+            if (a[i] > b[i]) return true;
+            if (a[i] < b[i]) return false;
+        }
+        return false;
+    };
+
     const entries = [];
     for (const conn of stageFiltered) {
         if (conn.x == null) { entries.push(conn); continue; }
-        const near = entries.some(c =>
-            c.to_stage === conn.to_stage && c.x != null &&
-            Math.hypot(c.x - conn.x, c.z - conn.z) < DEDUP_DIST
-        );
-        if (!near) entries.push(conn);
+        const dupeIdx = entries.findIndex(c => isDuplicateConnection(c, conn));
+        if (dupeIdx < 0) {
+            entries.push(conn);
+        } else if (scoreGt(connectionKeepScore(conn), connectionKeepScore(entries[dupeIdx]))) {
+            entries[dupeIdx] = conn;
+        }
     }
 
     const unpositioned = [];
@@ -4627,57 +5705,68 @@ function loadConnections(mapName, info) {
         // Floor filter: on multi-floor maps only show connections on the active floor
         if (info.floor_obbs) {
             const floor = getEnemyFloor(conn.x, conn.y ?? 0, conn.z, info.floor_obbs);
-            if (floor !== null && floor !== currentLayer) continue;
+            if (floor !== null && floor !== currentLayer) {
+                unpositioned.push({
+                    navMap,
+                    hasMap,
+                    stageId,
+                    destName: `${destName} (floor ${floor})`,
+                    fromStage: conn.from_stage ?? null,
+                    targetFloor: floor,
+                    latlng: worldToPixel(conn.x, conn.z, info),
+                });
+                continue;
+            }
         }
 
         const latlng = worldToPixel(conn.x, conn.z, info);
-        const color  = hasMap ? '#ff6b35' : '#666666';
-
-        const icon = L.divIcon({
-            className: '',
-            html: `<div style="
-                width:14px;height:14px;
-                background:${color};
-                border:2px solid #fff;
-                border-radius:3px;
-                transform:rotate(45deg);
-                box-shadow:0 0 4px rgba(0,0,0,0.7);
-            "></div>`,
-            iconSize: [14, 14],
-            iconAnchor: [7, 7],
-        });
+        const poiCat = getConnectionPoi(conn, mapName);
+        const icon   = makeConnectionMarkerIcon(poiCat);
+        const label  = connectionDisplayName(conn);
 
         const marker = L.marker(latlng, { icon });
-        marker.bindTooltip(destName, { permanent: false, direction: 'top', offset: [0, -10] });
+        marker.bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -10] });
         if (hasMap) {
             marker.on('click', () => navigateTo(navMap, stageId, arrivalView(mapName, navMap, conn.from_stage ?? null)));
         } else {
             marker.bindPopup(`No map data for Stage ${conn.to_stage}<br>${destName}`);
         }
         marker.addTo(connectionLayer);
+        marker._poiCategory = poiCat;
+        marker._poiIsConnection = true;
+        _applyPoiMarkerVisibility(marker);
     }
 
     // Render unpositioned exits in the sidebar
     if (unpositioned.length) {
-        for (const { navMap, hasMap, stageId, destName } of unpositioned) {
+        for (const exit of unpositioned) {
+            const { navMap, hasMap, stageId, destName, fromStage, targetFloor, latlng } = exit;
             const li = document.createElement('div');
             li.style.cssText = 'padding:2px 0;font-size:0.78rem;';
             if (hasMap) {
                 const a = document.createElement('span');
                 a.textContent = destName;
                 a.style.cssText = 'color:#ff6b35;cursor:pointer;text-decoration:underline dotted;';
-                a.addEventListener('click', () => navigateTo(navMap, stageId, arrivalView(mapName, navMap, conn.from_stage ?? null)));
+                a.addEventListener('click', () => {
+                    if (targetFloor != null && targetFloor !== currentLayer) {
+                        _switchToFloor(targetFloor, info);
+                        if (latlng) leafletMap.setView(latlng, Math.max(leafletMap.getZoom(), 1.5));
+                        return;
+                    }
+                    navigateTo(navMap, stageId, arrivalView(mapName, navMap, fromStage ?? null));
+                });
                 li.appendChild(a);
             } else {
                 li.textContent = destName;
                 li.style.color = '#666';
             }
-            exitsList.appendChild(li);
+            exitsList?.appendChild(li);
         }
-        exitsPanel.style.display = '';
-    } else {
+        if (exitsPanel) exitsPanel.style.display = '';
+    } else if (exitsPanel) {
         exitsPanel.style.display = 'none';
     }
+    applyAllPoiVisibility();
 }
 
 // ── Grid overlay ──────────────────────────────────────────────────────────────
@@ -4954,6 +6043,7 @@ function swapMapImage(info, imgFile) {
     if (imageOverlay) imageOverlay.remove();
     const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
     imageOverlay = L.imageOverlay('images/maps/' + imgFile, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
+    fitMapToImage(info);
 }
 
 // ── Tile-layer selector (pd maps with multi-layer pieces) ─────────────────────
@@ -5168,90 +6258,117 @@ function loadPdBoundaries(info) {
 }
 
 // ── Map loader ────────────────────────────────────────────────────────────────
-function resetView() {
-    const info = mapParams[_loadedMapName];
-    if (!info) return;
-    if (info.img_exists) {
-        leafletMap.fitBounds([xy(0, 0), xy(info.img_width, info.img_height)]);
+const nextFrame = () => new Promise(resolve => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+});
+
+const waitForMapContainer = (timeoutMs = 8000) => new Promise(resolve => {
+    const mapEl = document.getElementById('map');
+    const t0 = performance.now();
+    const check = () => {
+        if (mapEl && mapEl.offsetWidth > 0 && mapEl.offsetHeight > 0) return resolve(mapEl);
+        if (performance.now() - t0 >= timeoutMs) return resolve(mapEl);
+        requestAnimationFrame(check);
+    };
+    check();
+});
+
+const waitForImageOverlay = (overlay, timeoutMs = 15000) => new Promise(resolve => {
+    if (!overlay) return resolve();
+    const img = overlay.getElement?.();
+    if (img?.complete && img.naturalWidth > 0) return resolve();
+    let settled = false;
+    const done = () => { if (!settled) { settled = true; resolve(); } };
+    overlay.once('load', done);
+    overlay.once('error', done);
+    setTimeout(done, timeoutMs);
+});
+
+function fitMapToImage(info) {
+    if (!info?.img_exists) {
+        leafletMap.invalidateSize({ animate: false });
+        return;
+    }
+    leafletMap.invalidateSize({ animate: false });
+    const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
+    const savedView = parseHash().view;
+    if (savedView?.center
+        && Number.isFinite(savedView.center.lat)
+        && Number.isFinite(savedView.center.lng)
+        && Number.isFinite(savedView.zoom)) {
+        leafletMap.setView(savedView.center, savedView.zoom, { animate: false });
+        return;
+    }
+    const mapEl = document.getElementById('map');
+    if (mapEl?.offsetWidth > 0 && mapEl?.offsetHeight > 0) {
+        leafletMap.fitBounds(bounds, { animate: false, padding: [0, 0] });
     } else {
-        leafletMap.setView(xy(info.img_width / 2, info.img_height / 2), 0);
+        leafletMap.setView(xy(info.img_width / 2, info.img_height / 2), 0, { animate: false });
     }
 }
 
-function loadMap(mapName) {
-    const info = mapParams[mapName];
+function refitActiveMapView() {
+    fitMapToImage(mapParams[_loadedMapName]);
+}
+
+function setMapLoading(on) {
+    document.getElementById('map-container')?.classList.toggle('map-loading', !!on);
+}
+
+function resetView() {
+    const info = mapParams[_loadedMapName];
     if (!info) return;
+    fitMapToImage(info);
+}
 
-    _loadedMapName = mapName;
-    _loadedStid = currentStageName();
-    currentLayer = 0;
-
-    // Update title — always append an ID so the user knows which stage they're on.
-    // Prefer the stid from the URL hash (e.g. "st0200"); fall back to the map name.
-    const stid = currentStageName();
-    const baseName = stid ? stageLabel(info, stid) : (info.name_en ? splitPascalCase(info.name_en) : mapName);
-    const sidNum   = stid ? info.stage_ids?.[stid] : null;
-    const sidStr   = sidNum != null ? ` - sid${String(sidNum).padStart(4, '0')}` : '';
-    const title = baseName + ` (${stid ?? mapName}${sidStr})`;
-    document.getElementById('map-title').textContent = title;
-    document.title = `${title} — DDON Maps`;
-
-    // Replace image overlay
-    if (imageOverlay) imageOverlay.remove();
-    const savedView = parseHash().view;
-    if (info.img_exists) {
-        const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
-        imageOverlay = L.imageOverlay('images/maps/' + info.img_file, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
-        if (savedView) {
-            leafletMap.setView(savedView.center, savedView.zoom);
-        } else {
-            leafletMap.fitBounds(bounds);
+function watchMapContainerSize() {
+    const mapEl = document.getElementById('map');
+    if (!mapEl || typeof ResizeObserver === 'undefined') return;
+    let lastW = 0;
+    let lastH = 0;
+    new ResizeObserver(() => {
+        const w = mapEl.offsetWidth;
+        const h = mapEl.offsetHeight;
+        if (w > 0 && h > 0 && (lastW === 0 || lastH === 0)) fitMapToImage(mapParams[_loadedMapName]);
+        else if (w > 0 && h > 0 && (Math.abs(w - lastW) > 24 || Math.abs(h - lastH) > 24)) {
+            leafletMap.invalidateSize({ animate: false });
         }
-    } else {
+        lastW = w;
+        lastH = h;
+    }).observe(mapEl);
+}
+
+async function loadMapImagePhase(info) {
+    if (imageOverlay) imageOverlay.remove();
+    if (!info.img_exists) {
         imageOverlay = null;
         leafletMap.setView(xy(info.img_width / 2, info.img_height / 2), 0);
+        leafletMap.invalidateSize({ animate: false });
+        return;
     }
+    await waitForMapContainer();
+    leafletMap.invalidateSize({ animate: false });
+    const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
+    imageOverlay = L.imageOverlay('images/maps/' + info.img_file, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
+    fitMapToImage(info);
+    await waitForImageOverlay(imageOverlay);
+    await nextFrame();
+    fitMapToImage(info);
+}
 
-    // Restore floor: explicit hash value wins, then arrival-connection detection, else stays 0.
-    if (info.floor_obbs) {
-        const savedFloor = parseHash().view?.floor;
-        if (savedFloor != null) {
-            currentLayer = savedFloor;
-        } else if (stid) {
-            const arrivalStageNo = parseInt(stid.slice(2), 10);
-            const conns = connectionData[_loadedMapName] ?? [];
-            const arrConn = conns.find(c => c.from_stage === arrivalStageNo && c.x != null && c.z != null);
-            if (arrConn) {
-                const arrFloor = getEnemyFloor(arrConn.x, arrConn.y ?? 0, arrConn.z, info.floor_obbs);
-                if (arrFloor !== null) currentLayer = arrFloor;
-            }
-        }
-        if (currentLayer !== 0) {
-            const floorLayer = (info.layers || []).find(l => l.layer === currentLayer && l.img_exists);
-            if (floorLayer) swapMapImage(info, floorLayer.img_file);
-        }
-    }
-
-    // Build floor selector for multi-floor maps
-    buildFloorSelector(info);
-    buildTileLayerSelector(info);
-    buildStageGroupsPanel(info, currentStageName());
-
-    // Reload layers
+async function loadMapOverlaysPhase(mapName, info, stid, openGroups) {
+    resetConnectionPoiCache(mapName);
     loadGrid(info);
     loadPdBoundaries(info);
     loadStageLabels(info);
     loadLandmarks(mapName, info);
     loadConnections(mapName, info);
-    loadGatherPoints(info, currentStageName());
-    loadNpcShops(info, currentStageName());
-    loadSpecialShops(info, currentStageName());
-    loadBreakTargets(info, currentStageName());
-    // Read openGroups BEFORE loadEnemySpawns — that function calls _updateExpandCollapseBtn
-    // → updateLayersInHash which would overwrite the hash (erasing the group list) if read after.
-    const { openGroups } = parseHash();
+    loadGatherPoints(info, stid);
+    loadNpcShops(info, stid);
+    loadSpecialShops(info, stid);
+    await nextFrame();
 
-    loadEnemySpawns(info, currentStageName());
+    loadEnemySpawns(info, stid);
 
     if (openGroups?.length) {
         for (const id of openGroups) if (_groupStore.has(id)) _expandGroupCore(_groupStore.get(id));
@@ -5268,6 +6385,81 @@ function loadMap(mapName) {
         _pendingGlobalNavTarget = null;
         setTimeout(() => _navigateToSpot(t), 300);
     }
+
+    fitMapToImage(info);
+}
+
+let _loadMapGen = 0;
+
+async function loadMap(mapName) {
+    const info = mapParams[mapName];
+    if (!info) return;
+
+    const loadGen = ++_loadMapGen;
+    const isCurrent = () => loadGen === _loadMapGen;
+
+    _loadedMapName = mapName;
+    _loadedStid = currentStageName();
+    currentLayer = 0;
+
+    // Update title — always append an ID so the user knows which stage they're on.
+    // Prefer the stid from the URL hash (e.g. "st0200"); fall back to the map name.
+    const stid = currentStageName();
+    const baseName = stid ? stageLabel(info, stid) : (info.name_en ? splitPascalCase(info.name_en) : mapName);
+    const sidNum   = stid ? info.stage_ids?.[stid] : null;
+    const sidStr   = sidNum != null ? ` - sid${String(sidNum).padStart(4, '0')}` : '';
+    const title = baseName + ` (${stid ?? mapName}${sidStr})`;
+    document.getElementById('map-title').textContent = title;
+    document.title = `${title} — DDON Maps`;
+
+    setMapLoading(true);
+
+    try {
+        // Phase 1 — map tile only (wait for container size + PNG decode before anything else).
+        await loadMapImagePhase(info);
+        if (!isCurrent()) return;
+
+        // Restore floor after base image is visible.
+        if (info.floor_obbs) {
+            const savedFloor = parseHash().view?.floor;
+            if (savedFloor != null) {
+                currentLayer = savedFloor;
+            } else if (stid) {
+                const arrivalStageNo = parseInt(stid.slice(2), 10);
+                const conns = connectionData[_loadedMapName] ?? [];
+                const arrConn = conns.find(c => c.from_stage === arrivalStageNo && c.x != null && c.z != null);
+                if (arrConn) {
+                    const arrFloor = getEnemyFloor(arrConn.x, arrConn.y ?? 0, arrConn.z, info.floor_obbs);
+                    if (arrFloor !== null) currentLayer = arrFloor;
+                }
+            }
+            if (currentLayer !== 0) {
+                const floorLayer = (info.layers || []).find(l => l.layer === currentLayer && l.img_exists);
+                if (floorLayer) {
+                    swapMapImage(info, floorLayer.img_file);
+                    await waitForImageOverlay(imageOverlay);
+                    await nextFrame();
+                    fitMapToImage(info);
+                }
+            }
+        }
+
+        buildFloorSelector(info);
+        buildTileLayerSelector(info);
+        buildStageGroupsPanel(info, currentStageName());
+
+        const { openGroups } = parseHash();
+
+        // Phase 2 — markers / spawns (only after map tile is on screen).
+        await loadMapOverlaysPhase(mapName, info, stid, openGroups);
+        if (!isCurrent()) return;
+    } catch (err) {
+        if (!isCurrent()) return;
+        console.error('loadMap failed:', err);
+        document.getElementById('map-title').textContent = `${title} — load error`;
+    } finally {
+        if (isCurrent()) setMapLoading(false);
+    }
 }
 
 // ── Spot search panel ─────────────────────────────────────────────────────────
@@ -5279,6 +6471,7 @@ const _spotHlLayer  = L.layerGroup().addTo(leafletMap);
 let _spotGlobal       = false; // true = global (all stages) search mode
 let _globalSpotIndex  = [];    // searchable entries across all maps/stages
 let _pendingGlobalNavTarget = null; // deferred navigation target after stage switch
+const _spotOriginLayer = L.layerGroup().addTo(leafletMap);
 
 function _clearSpotHighlights() {
     for (const m of _spotHighlights) _spotHlLayer.removeLayer(m);
@@ -5462,31 +6655,15 @@ function buildSpotIndex(info) {
                     const posLatlng = worldToPixel(s.Position.x, s.Position.z, info);
                     const spawnKey  = serverStageId != null ? `${serverStageId},${groupId},${s.posIdx ?? i}` : null;
                     if (cache && spawnKey) {
-                        const byEmCode = new Map(); // emCode → Set<level>
-                        for (const e of (cache.get(spawnKey) ?? [])) {
-                            if (!e.emCode) continue;
-                            if (!byEmCode.has(e.emCode)) byEmCode.set(e.emCode, new Set());
-                            if (e.lv != null) byEmCode.get(e.emCode).add(e.lv);
-                        }
-                        for (const [emCode, lvSet] of byEmCode) {
+                        for (const [emCode, lvSet] of groupSpawnLevelsByEmCode(cache.get(spawnKey) ?? [])) {
                             const baseName = emNames[emCode]?.name;
                             if (!baseName) continue;
-                            const lvs = [...lvSet].sort((a, b) => a - b);
-                            const lo = lvs[0], hi = lvs[lvs.length - 1];
-                            const lvLabel = lvs.length ? (lo === hi ? `Lv${lo}` : `Lv${lo}-${hi}`) : '';
-                            const displayName = lvLabel ? `${baseName} ${lvLabel}` : baseName;
-                            _spotIndex.push({
-                                type: 'enemy', name: displayName,
-                                searchText: `${baseName} ${lvLabel}`.toLowerCase(),
-                                latlng: posLatlng, groupId, emCode, spawnKey,
+                            _spotIndex.push(makeIndexedEnemySpot({
+                                emCode, lvSet, baseName, groupId,
+                                latlng: posLatlng, spawnKey,
                                 worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
-                                previewLines: [
-                                    `<b>${displayName}</b>`,
-                                    `Code: ${emCode}`,
-                                    `Group ${groupId}`,
-                                ],
                                 stageId,
-                            });
+                            }));
                         }
                     } else if (s.EmName) {
                         _spotIndex.push({
@@ -5664,26 +6841,14 @@ function _buildGlobalSpotIndex() {
                         const s = spawns[i];
                         const spawnKey = serverStageId != null ? `${serverStageId},${groupId},${s.posIdx ?? i}` : null;
                         if (_enemySpawnCache && spawnKey) {
-                            const byEmCode = new Map();
-                            for (const e of (_enemySpawnCache.get(spawnKey) ?? [])) {
-                                if (!e.emCode) continue;
-                                if (!byEmCode.has(e.emCode)) byEmCode.set(e.emCode, new Set());
-                                if (e.lv != null) byEmCode.get(e.emCode).add(e.lv);
-                            }
-                            for (const [emCode, lvSet] of byEmCode) {
+                            for (const [emCode, lvSet] of groupSpawnLevelsByEmCode(_enemySpawnCache.get(spawnKey) ?? [])) {
                                 const baseName = emNames[emCode]?.name;
                                 if (!baseName) continue;
-                                const lvs = [...lvSet].sort((a, b) => a - b);
-                                const lo = lvs[0], hi = lvs[lvs.length - 1];
-                                const lvLabel = lvs.length ? (lo === hi ? `Lv${lo}` : `Lv${lo}-${hi}`) : '';
-                                const displayName = lvLabel ? `${baseName} ${lvLabel}` : baseName;
-                                _globalSpotIndex.push({
-                                    type: 'enemy', name: displayName,
-                                    searchText: `${baseName} ${lvLabel}`.toLowerCase(),
+                                _globalSpotIndex.push(makeGlobalEnemySpot({
+                                    emCode, lvSet, baseName, groupId, spawnKey,
                                     worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
-                                    groupId, emCode, spawnKey,
                                     mapName, stageId, stageNo, locationTag,
-                                });
+                                }));
                             }
                         } else if (s.EmName) {
                             const emCode = s.EmName;
@@ -5803,8 +6968,362 @@ function _rebuildGlobalSpotIndex() {
     if (_spotGlobal && document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
 }
 
-// Parse a search query for exact-match syntax: "quoted phrase" → prefix match on name.
-// Returns { term: string, exact: boolean }
+// ── Spot search — pure helpers ───────────────────────────────────────────────
+
+const SPOT_LEVEL_FILTER_KEY = 'ddon-spot-level-filter';
+const SPOT_MIN_LEVEL_KEY_LEGACY = 'ddon-spot-min-level';
+
+/** Game stage order from stage_list.slt.json (StageNo → list index). */
+const _stageOrderByStageId = new Map(
+    stageList.StageListInfoList.map((entry, index) => [
+        `st${String(entry.StageNo).padStart(4, '0')}`,
+        index,
+    ]),
+);
+
+const parsePositiveInt = (value) => {
+    const n = parseInt(String(value ?? '').trim(), 10);
+    return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+const normalizeLevelBounds = ({ minLevel, maxLevel }) => {
+    if (minLevel > 0 && maxLevel > 0 && minLevel > maxLevel) {
+        return { minLevel: maxLevel, maxLevel: minLevel };
+    }
+    return { minLevel, maxLevel };
+};
+
+const readSpotLevelInputs = () => ({
+    min: document.getElementById('spot-min-level')?.value ?? '',
+    max: document.getElementById('spot-max-level')?.value ?? '',
+});
+
+const readSpotLevelBounds = () =>
+    normalizeLevelBounds({
+        minLevel: parsePositiveInt(readSpotLevelInputs().min),
+        maxLevel: parsePositiveInt(readSpotLevelInputs().max),
+    });
+
+const hasActiveSpotLevelFilter = ({ minLevel, maxLevel }) =>
+    minLevel > 0 || maxLevel > 0;
+
+const enemyLevelSortKey = (entry) =>
+    entry.minLv ?? entry.maxLv ?? Number.MAX_SAFE_INTEGER;
+
+const stageOrderKey = (entry) =>
+    _stageOrderByStageId.get(entry.stageId) ?? Number.MAX_SAFE_INTEGER;
+
+const compareSpotResultNames = (a, b) =>
+    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+
+/** Hidell Plains overworld — distance sort anchor (WDT entrance on st0100). */
+const HIDELL_PLAINS_MAP = 'field000_m00';
+
+const readWhiteDragonTempleAnchor = () => {
+    const entrance = (connectionData[HIDELL_PLAINS_MAP] ?? []).find(c =>
+        c.to_map === 'lb000_m00'
+        && c.x != null
+        && c.z != null
+        && (c.from_stage == null || c.from_stage === 100));
+    return entrance ? { x: entrance.x, z: entrance.z } : null;
+};
+
+const _whiteDragonTempleAnchor = readWhiteDragonTempleAnchor();
+
+const worldDistSqXZ = (pos, anchor) => {
+    if (!pos || !anchor) return Number.MAX_SAFE_INTEGER;
+    const dx = pos.x - anchor.x;
+    const dz = pos.z - anchor.z;
+    return dx * dx + dz * dz;
+};
+
+const SPOT_NO_PATH = Number.MAX_SAFE_INTEGER;
+const _spotPathDistCache = new Map();
+
+/** null = default WDT anchor; otherwise a custom map position. */
+let _spotSortOrigin = null;
+let _spotSetOriginMode = false;
+
+const getDefaultWdtOrigin = () =>
+    _whiteDragonTempleAnchor
+        ? {
+            mapName: HIDELL_PLAINS_MAP,
+            x: _whiteDragonTempleAnchor.x,
+            z: _whiteDragonTempleAnchor.z,
+            label: 'White Dragon Temple',
+        }
+        : null;
+
+const getSpotSortOrigin = () => _spotSortOrigin ?? getDefaultWdtOrigin();
+
+const worldPosFromLatLng = (latlng, info) => {
+    if (!info) return null;
+    const px = latlng.lng;
+    const py = latlng.lat;
+    const png_y = info.img_height - py;
+    const wx = (px - info.center_x) / info.scale;
+    let wz;
+    if (info.pd_pieces?.length) {
+        const pieces = info.pd_pieces;
+        let piece = pieces[0];
+        for (const p of pieces) {
+            if (png_y >= p.pixel_y_start && png_y <= p.pixel_y_entrance) { piece = p; break; }
+        }
+        wz = piece.connect_z + (png_y - piece.pixel_y_entrance_v) / info.scale;
+    } else {
+        const scaleZ = info.scale_z ?? info.scale;
+        wz = ((info.img_height - info.center_y) - py) / scaleZ;
+    }
+    return { x: wx, z: wz };
+};
+
+/** Where you arrive on the destination map after taking conn from fromMap. */
+const findConnectionArrivalPos = (fromMap, conn) => {
+    const destMap = conn.to_map;
+    if (!destMap) return null;
+    const destConns = connectionData[destMap] || [];
+    const rev = destConns.find(c =>
+        c.to_map === fromMap && c.x != null && c.z != null
+        && (conn.from_stage == null || c.to_stage === conn.from_stage)
+    ) ?? destConns.find(c => c.to_map === fromMap && c.x != null && c.z != null);
+    if (!rev) return null;
+    return { mapName: destMap, x: rev.x, z: rev.z };
+};
+
+/** Shortest path distance (squared XZ) via positioned connection markers; SPOT_NO_PATH if unreachable. */
+const pathDistSqFromOrigin = (origin, targetMap, targetPos) => {
+    if (!origin || !targetPos || !targetMap) return SPOT_NO_PATH;
+
+    const cacheKey = `${origin.mapName}:${origin.x},${origin.z}|${targetMap}:${targetPos.x},${targetPos.z}`;
+    if (_spotPathDistCache.has(cacheKey)) return _spotPathDistCache.get(cacheKey);
+
+    if (origin.mapName === targetMap) {
+        const d = worldDistSqXZ(targetPos, origin);
+        _spotPathDistCache.set(cacheKey, d);
+        return d;
+    }
+
+    const best = new Map();
+    best.set(origin.mapName, { cost: 0, x: origin.x, z: origin.z });
+    const queue = [{ mapName: origin.mapName, cost: 0, x: origin.x, z: origin.z }];
+
+    while (queue.length) {
+        queue.sort((a, b) => a.cost - b.cost);
+        const cur = queue.shift();
+        const prev = best.get(cur.mapName);
+        if (!prev || cur.cost > prev.cost) continue;
+
+        for (const conn of (connectionData[cur.mapName] ?? [])) {
+            if (!conn.to_map || conn.x == null || conn.z == null) continue;
+            const arrival = findConnectionArrivalPos(cur.mapName, conn);
+            if (!arrival) continue;
+            const leg = worldDistSqXZ({ x: conn.x, z: conn.z }, { x: cur.x, z: cur.z });
+            const newCost = cur.cost + leg;
+            const existing = best.get(arrival.mapName);
+            if (!existing || newCost < existing.cost) {
+                best.set(arrival.mapName, { cost: newCost, x: arrival.x, z: arrival.z });
+                queue.push({ mapName: arrival.mapName, cost: newCost, x: arrival.x, z: arrival.z });
+            }
+        }
+    }
+
+    const onTarget = best.get(targetMap);
+    const result = onTarget
+        ? onTarget.cost + worldDistSqXZ(targetPos, { x: onTarget.x, z: onTarget.z })
+        : SPOT_NO_PATH;
+    _spotPathDistCache.set(cacheKey, result);
+    return result;
+};
+
+const spotEntryMapName = (entry, scope) =>
+    entry.mapName ?? (scope === 'local' ? _loadedMapName : null);
+
+const spotEntryPathDistSq = (entry, scope = 'local') => {
+    if (!entry?.worldPos) return SPOT_NO_PATH;
+    const origin = getSpotSortOrigin();
+    if (!origin) return SPOT_NO_PATH;
+    const targetMap = spotEntryMapName(entry, scope);
+    if (!targetMap) return SPOT_NO_PATH;
+    return pathDistSqFromOrigin(origin, targetMap, entry.worldPos);
+};
+
+const spotGroupPathDistSq = (items, scope = 'local') =>
+    Math.min(...items.map(e => spotEntryPathDistSq(e, scope)));
+
+const defaultSpotGroupCompare = (a, b) => {
+    const stDiff = stageOrderKey(a) - stageOrderKey(b);
+    if (stDiff !== 0) return stDiff;
+    if (a.type === 'enemy' && b.type === 'enemy') {
+        const lvDiff = enemyLevelSortKey(a) - enemyLevelSortKey(b);
+        if (lvDiff !== 0) return lvDiff;
+    }
+    return compareSpotResultNames(a, b);
+};
+
+const compareSpotEnemyGroups = (itemsA, itemsB, { scope = 'local' } = {}) => {
+    const a = itemsA[0];
+    const b = itemsB[0];
+    if (a.type !== b.type) return compareSpotResultNames(a, b);
+
+    const distA = spotGroupPathDistSq(itemsA, scope);
+    const distB = spotGroupPathDistSq(itemsB, scope);
+    const aPath = distA < SPOT_NO_PATH;
+    const bPath = distB < SPOT_NO_PATH;
+
+    if (aPath && bPath) {
+        const distDiff = distA - distB;
+        if (distDiff !== 0) return distDiff;
+    } else if (!aPath || !bPath) {
+        return defaultSpotGroupCompare(a, b);
+    }
+
+    return defaultSpotGroupCompare(a, b);
+};
+
+const compareSpotLocalGroups = (itemsA, itemsB) =>
+    compareSpotEnemyGroups(itemsA, itemsB, { scope: 'local' });
+
+const compareSpotGlobalGroups = (itemsA, itemsB) =>
+    compareSpotEnemyGroups(itemsA, itemsB, { scope: 'global' });
+
+const orderSpotGroupItems = (items, scope) => {
+    if (!items[0]?.worldPos) return items;
+    const allPath = items.every(e => spotEntryPathDistSq(e, scope) < SPOT_NO_PATH);
+    if (!allPath) return items;
+    return [...items].sort((a, b) => spotEntryPathDistSq(a, scope) - spotEntryPathDistSq(b, scope));
+};
+
+const sortSpotGroupedResults = (grouped, scope) => {
+    const compare = scope === 'global' ? compareSpotGlobalGroups : compareSpotLocalGroups;
+    return [...grouped.values()].sort(compare);
+};
+
+const formatSpotSortOriginLabel = (origin) => {
+    if (!origin) return 'No connection anchor';
+    if (origin.label) return origin.label;
+    const info = mapParams[origin.mapName];
+    return info?.name_en ?? origin.mapName;
+};
+
+const syncSpotOriginMarker = () => {
+    _spotOriginLayer.clearLayers();
+    const origin = getSpotSortOrigin();
+    if (!origin || origin.mapName !== _loadedMapName) return;
+    const info = mapParams[_loadedMapName];
+    if (!info) return;
+    const latlng = worldToPixel(origin.x, origin.z, info);
+    const icon = L.divIcon({
+        className: 'spot-hl-outer',
+        html: '<div class="spot-hl-origin"></div>',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+    });
+    L.marker(latlng, { icon, interactive: false }).addTo(_spotOriginLayer);
+};
+
+const syncSpotSortUI = () => {
+    const origin = getSpotSortOrigin();
+    document.getElementById('spot-sort-label')?.replaceChildren(
+        document.createTextNode(formatSpotSortOriginLabel(origin)),
+    );
+    const badge = document.getElementById('spot-sort-badge');
+    if (badge) {
+        badge.textContent = _spotSortOrigin ? 'Custom' : 'WDT';
+        badge.hidden = false;
+    }
+    const pickBtn = document.getElementById('spot-sort-pick');
+    if (pickBtn) {
+        pickBtn.classList.toggle('active', _spotSetOriginMode);
+        pickBtn.textContent = _spotSetOriginMode ? 'Click map to set origin…' : 'Set from map click…';
+    }
+};
+
+const setSpotSortOrigin = (origin) => {
+    _spotSortOrigin = origin;
+    _spotSetOriginMode = false;
+    syncSpotSortUI();
+    syncSpotOriginMarker();
+    _spotPathDistCache.clear();
+    if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
+};
+
+const setSpotSortSectionExpanded = (expanded) => {
+    const section = document.getElementById('spot-sort-section');
+    const toggle = document.getElementById('spot-sort-toggle');
+    if (!section || !toggle) return;
+    section.classList.toggle('expanded', expanded);
+    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+};
+
+const cancelSpotSetOriginMode = () => {
+    if (!_spotSetOriginMode) return;
+    _spotSetOriginMode = false;
+    syncSpotSortUI();
+};
+
+const clearStoredSpotLevelFilter = () => {
+    try {
+        localStorage.removeItem(SPOT_LEVEL_FILTER_KEY);
+        localStorage.removeItem(SPOT_MIN_LEVEL_KEY_LEGACY);
+    } catch (_) {}
+};
+
+const spawnOverlapsLevelFilter = (entry, { minLevel, maxLevel }) => {
+    if (!hasActiveSpotLevelFilter({ minLevel, maxLevel })) return true;
+    if (entry.minLv == null && entry.maxLv == null) return true;
+    const lo = entry.minLv ?? entry.maxLv;
+    const hi = entry.maxLv ?? entry.minLv;
+    if (minLevel > 0 && hi < minLevel) return false;
+    if (maxLevel > 0 && lo > maxLevel) return false;
+    return true;
+};
+
+const formatSpotLevelFilterLabel = ({ minLevel, maxLevel }) => {
+    if (minLevel > 0 && maxLevel > 0) return `Lv${minLevel}–${maxLevel}`;
+    if (minLevel > 0) return `≥ Lv${minLevel}`;
+    if (maxLevel > 0) return `≤ Lv${maxLevel}`;
+    return '';
+};
+
+const formatSpotLevelFilterNote = ({ filter, minLevel, maxLevel }) => {
+    if (filter !== 'enemy') return '';
+    const label = formatSpotLevelFilterLabel({ minLevel, maxLevel });
+    return label ? ` (${label})` : '';
+};
+
+const formatSpotLevelEmptyMessage = ({ minLevel, maxLevel }) => {
+    if (minLevel > 0 && maxLevel > 0) {
+        return `No enemy spawns between Lv${minLevel} and Lv${maxLevel} on this stage.`;
+    }
+    if (minLevel > 0) return `No enemy spawns at Lv${minLevel} or above on this stage.`;
+    if (maxLevel > 0) return `No enemy spawns at Lv${maxLevel} or below on this stage.`;
+    return 'No matches.';
+};
+
+const syncSpotLevelFilterBadge = () => {
+    const badge = document.getElementById('spot-level-badge');
+    if (!badge) return;
+    const { minLevel, maxLevel } = readSpotLevelBounds();
+    const label = formatSpotLevelFilterLabel({ minLevel, maxLevel });
+    badge.textContent = label;
+    badge.hidden = !label;
+};
+
+const syncSpotEnemyPanelSections = () => {
+    const filter = document.querySelector('.spot-tab.active')?.dataset.filter ?? 'enemy';
+    document.getElementById('spot-level-section')?.classList.toggle('visible', filter === 'enemy');
+    document.getElementById('spot-sort-section')?.classList.toggle('visible',
+        filter === 'enemy' || filter === 'gather' || filter === 'item');
+};
+
+const setSpotLevelSectionExpanded = (expanded) => {
+    const section = document.getElementById('spot-level-section');
+    const toggle = document.getElementById('spot-level-toggle');
+    if (!section || !toggle) return;
+    section.classList.toggle('expanded', expanded);
+    toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+};
+
 function _parseSpotQuery(raw) {
     if (raw.length > 2 && raw.startsWith('"') && raw.endsWith('"'))
         return { term: raw.slice(1, -1), exact: true };
@@ -5817,43 +7336,127 @@ function _spotEntryMatches(e, term, exact) {
     return e.searchText.includes(term);
 }
 
-function _runSpotSearch() {
-    const raw       = (document.getElementById('spot-search-input')?.value ?? '').trim().toLowerCase();
+const enemyLevelRange = (levels) => {
+    const sorted = [...levels].sort((a, b) => a - b);
+    if (!sorted.length) return { minLv: null, maxLv: null, label: '' };
+    const minLv = sorted[0];
+    const maxLv = sorted[sorted.length - 1];
+    const label = minLv === maxLv ? `Lv${minLv}` : `Lv${minLv}-${maxLv}`;
+    return { minLv, maxLv, label };
+};
+
+const enemyDisplayName = (baseName, levelLabel) =>
+    levelLabel ? `${baseName} ${levelLabel}` : baseName;
+
+const groupSpawnLevelsByEmCode = (spawnEntries) =>
+    spawnEntries.reduce((byEmCode, entry) => {
+        if (!entry.emCode) return byEmCode;
+        if (!byEmCode.has(entry.emCode)) byEmCode.set(entry.emCode, new Set());
+        if (entry.lv != null) byEmCode.get(entry.emCode).add(entry.lv);
+        return byEmCode;
+    }, new Map());
+
+const makeIndexedEnemySpot = ({ emCode, lvSet, baseName, groupId, ...rest }) => {
+    const { label, minLv, maxLv } = enemyLevelRange(lvSet);
+    const name = enemyDisplayName(baseName, label);
+    return {
+        type: 'enemy',
+        name,
+        searchText: `${baseName} ${label}`.toLowerCase(),
+        minLv,
+        maxLv,
+        emCode,
+        groupId,
+        previewLines: [`<b>${name}</b>`, `Code: ${emCode}`, `Group ${groupId}`],
+        ...rest,
+    };
+};
+
+const makeGlobalEnemySpot = ({ emCode, lvSet, baseName, ...rest }) => {
+    const { label, minLv, maxLv } = enemyLevelRange(lvSet);
+    const name = enemyDisplayName(baseName, label);
+    return {
+        type: 'enemy',
+        name,
+        searchText: `${baseName} ${label}`.toLowerCase(),
+        minLv,
+        maxLv,
+        emCode,
+        ...rest,
+    };
+};
+
+const readSpotSearchCriteria = () => {
+    const raw = (document.getElementById('spot-search-input')?.value ?? '').trim().toLowerCase();
     const { term, exact } = _parseSpotQuery(raw);
-    const filter    = document.querySelector('.spot-tab.active')?.dataset.filter ?? 'enemy';
+    const { minLevel, maxLevel } = readSpotLevelBounds();
+    return {
+        raw,
+        term,
+        exact,
+        filter: document.querySelector('.spot-tab.active')?.dataset.filter ?? 'enemy',
+        minLevel,
+        maxLevel,
+    };
+};
+
+const meetsSpotType = (entry, filter) => entry.type === filter;
+
+const meetsSpotLevelFilter = (entry, filter, bounds) =>
+    filter !== 'enemy' || spawnOverlapsLevelFilter(entry, bounds);
+
+const matchesSpotCriteria = (entry, criteria) =>
+    meetsSpotType(entry, criteria.filter)
+    && meetsSpotLevelFilter(entry, criteria.filter, criteria)
+    && _spotEntryMatches(entry, criteria.term, criteria.exact);
+
+const filterSpotEntries = (entries, criteria) =>
+    entries.filter(entry => matchesSpotCriteria(entry, criteria));
+
+const formatSpotEmptyMessage = (criteria, { global = false } = {}) => {
+    const levelNote = formatSpotLevelFilterNote(criteria);
+    if (global) {
+        return `<div class="spot-empty">No matches for <em>${criteria.raw}</em>${levelNote} across all stages.</div>`;
+    }
+    if (criteria.raw) {
+        return `<div class="spot-empty">No matches for <em>${criteria.raw}</em>${levelNote}.</div>`;
+    }
+    if (criteria.filter === 'enemy' && hasActiveSpotLevelFilter(criteria)) {
+        return `<div class="spot-empty">${formatSpotLevelEmptyMessage(criteria)}</div>`;
+    }
+    return `<div class="spot-empty">No matches${levelNote}.</div>`;
+};
+
+function _runSpotSearch() {
     const resultsEl = document.getElementById('spot-results');
     if (!resultsEl) return;
 
+    _spotPathDistCache.clear();
+    const criteria = readSpotSearchCriteria();
     _clearSpotHighlights();
 
     if (_spotGlobal) {
-        if (!raw) {
+        if (!criteria.raw) {
             resultsEl.innerHTML = `<div class="spot-empty">Enter a search term to search across all stages.</div>`;
             return;
         }
-        const matches = _globalSpotIndex.filter(e => {
-            if (filter === 'enemy'  && e.type !== 'enemy')  return false;
-            if (filter === 'gather' && e.type !== 'gather') return false;
-            if (filter === 'item'   && e.type !== 'item')   return false;
-            return _spotEntryMatches(e, term, exact);
-        });
+        const matches = filterSpotEntries(_globalSpotIndex, criteria);
         if (!matches.length) {
-            resultsEl.innerHTML = `<div class="spot-empty">No matches for <em>${raw}</em> across all stages.</div>`;
+            resultsEl.innerHTML = formatSpotEmptyMessage(criteria, { global: true });
             return;
         }
         _renderGlobalResults(matches, resultsEl);
         return;
     }
 
-    const matches = _spotIndex.filter(e => {
-        if (filter === 'enemy'  && e.type !== 'enemy')  return false;
-        if (filter === 'gather' && e.type !== 'gather') return false;
-        if (filter === 'item'   && e.type !== 'item')   return false;
-        return _spotEntryMatches(e, term, exact);
-    });
+    if (!criteria.raw) {
+        resultsEl.innerHTML = `<div class="spot-empty">Enter a search term to search this stage.</div>`;
+        return;
+    }
 
+    const matches = filterSpotEntries(_spotIndex, criteria);
     if (!matches.length) {
-        resultsEl.innerHTML = `<div class="spot-empty">No matches for <em>${raw}</em>.</div>`;
+        resultsEl.innerHTML = formatSpotEmptyMessage(criteria);
         return;
     }
 
@@ -5865,13 +7468,16 @@ function _runSpotSearch() {
         grouped.get(key).push(m);
     }
 
+    const sortedGroups = sortSpotGroupedResults(grouped, 'local');
+
     const frag = document.createDocumentFragment();
     const summary = document.createElement('div');
     summary.className = 'spot-summary';
     summary.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${grouped.size} unique`;
     frag.appendChild(summary);
 
-    for (const items of grouped.values()) {
+    for (const rawItems of sortedGroups) {
+        const items = orderSpotGroupItems(rawItems, 'local');
         const first = items[0];
         const multi = items.length > 1;
 
@@ -5974,11 +7580,8 @@ function _renderGlobalResults(matches, resultsEl) {
         grouped.get(key).push(m);
     }
 
-    // Sort groups by locationTag (stage name) then by name
-    const sortedGroups = [...grouped.values()].sort((a, b) => {
-        const locCmp = a[0].locationTag.localeCompare(b[0].locationTag);
-        return locCmp !== 0 ? locCmp : a[0].name.localeCompare(b[0].name);
-    });
+    // Sort by stage_list order, then level, then name
+    const sortedGroups = sortSpotGroupedResults(grouped, 'global');
 
     const uniqueNames = new Set(matches.map(m => m.name)).size;
     const frag = document.createDocumentFragment();
@@ -5987,7 +7590,8 @@ function _renderGlobalResults(matches, resultsEl) {
     summary.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${uniqueNames} unique · ${sortedGroups.length} stage entries`;
     frag.appendChild(summary);
 
-    for (const items of sortedGroups) {
+    for (const rawItems of sortedGroups) {
+        const items = orderSpotGroupItems(rawItems, 'global');
         const first = items[0];
         const multi = items.length > 1;
 
@@ -6078,6 +7682,7 @@ function _renderGlobalResults(matches, resultsEl) {
     const closePanel = () => {
         panel.classList.remove('open');
         toggle.style.display = '';
+        cancelSpotSetOriginMode();
         _clearSpotHighlights();
     };
 
@@ -6096,10 +7701,55 @@ function _renderGlobalResults(matches, resultsEl) {
         });
     }
 
+    const onLevelFilterChange = () => {
+        syncSpotLevelFilterBadge();
+        _runSpotSearch();
+    };
+
+    const minLevelInput = document.getElementById('spot-min-level');
+    const maxLevelInput = document.getElementById('spot-max-level');
+    clearStoredSpotLevelFilter();
+    minLevelInput?.addEventListener('input', onLevelFilterChange);
+    maxLevelInput?.addEventListener('input', onLevelFilterChange);
+
+    document.getElementById('spot-level-toggle')?.addEventListener('click', () => {
+        const section = document.getElementById('spot-level-section');
+        setSpotLevelSectionExpanded(!section?.classList.contains('expanded'));
+    });
+
+    document.getElementById('spot-sort-toggle')?.addEventListener('click', () => {
+        const section = document.getElementById('spot-sort-section');
+        setSpotSortSectionExpanded(!section?.classList.contains('expanded'));
+    });
+
+    document.getElementById('spot-sort-pick')?.addEventListener('click', () => {
+        _spotSetOriginMode = !_spotSetOriginMode;
+        syncSpotSortUI();
+    });
+
+    leafletMap.on('click', (e) => {
+        if (!_spotSetOriginMode || !_currentMapInfo || !_loadedMapName) return;
+        const pos = worldPosFromLatLng(e.latlng, _currentMapInfo);
+        if (!pos) return;
+        const mapLabel = mapParams[_loadedMapName]?.name_en ?? _loadedMapName;
+        setSpotSortOrigin({
+            mapName: _loadedMapName,
+            x: pos.x,
+            z: pos.z,
+            label: `My location (${mapLabel})`,
+        });
+    });
+
+    syncSpotLevelFilterBadge();
+    syncSpotEnemyPanelSections();
+    syncSpotSortUI();
+    syncSpotOriginMarker();
+
     document.querySelectorAll('.spot-tab').forEach(btn =>
         btn.addEventListener('click', () => {
             document.querySelectorAll('.spot-tab').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
+            syncSpotEnemyPanelSections();
             _runSpotSearch();
         })
     );
@@ -6124,10 +7774,8 @@ function _renderGlobalResults(matches, resultsEl) {
     });
 
     // Resize handled by shared _initPanelResize (called after this IIFE)
+    openPanel();
 })();
-
-// Pre-build global spot index in the background after startup
-setTimeout(_buildGlobalSpotIndex, 0);
 
 // ── Coordinate readout ────────────────────────────────────────────────────────
 // Shows pixel and world coordinates under the cursor, useful for calibration.
@@ -6224,6 +7872,7 @@ function _initPanelResize({ handleId, panelId, lsKey, minW, maxW, dragDir }) {
             localStorage.setItem(lsKey, panel.offsetWidth);
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
+            refitActiveMapView();
         };
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
@@ -6236,18 +7885,57 @@ _initPanelResize({ handleId: 'spot-resize-handle',    panelId: 'spot-panel', lsK
 
 // Patch loadMap to keep currentInfo updated
 const _origLoadMap = loadMap;
-loadMap = function (mapName) {
-    _origLoadMap(mapName);
+loadMap = async function (mapName) {
+    await _origLoadMap(mapName);
     if (window._setCurrentInfo) window._setCurrentInfo(mapParams[mapName]);
+    syncSpotOriginMarker();
 };
 
 // ── Settings modal ────────────────────────────────────────────────────────────
 {
     const modal        = document.getElementById('settings-modal');
     const srcRows      = [...document.querySelectorAll('.src-row')];
+    const presetSelect = document.getElementById('settings-preset-select');
+    const presetNote   = document.getElementById('settings-preset-note');
     const pendingHandles = new Map(); // lsKey → FileSystemFileHandle  (FSA path)
     const pendingFiles   = new Map(); // lsKey → File                  (non-FSA fallback)
     const pendingResets  = new Set(); // lsKey → user clicked reset this session
+
+    const readActivePreset = () => presetSelect?.value || 'custom';
+
+    const syncPresetNote = (presetId) => {
+        if (!presetNote) return;
+        if (presetId === 'custom') {
+            presetNote.textContent = 'Per-source URLs and local files below — edit any field to stay in custom mode.';
+            return;
+        }
+        presetNote.textContent = _SERVER_PRESETS[presetId]?.note ?? '';
+    };
+
+    const fillRowsFromPreset = (presetId) => {
+        if (!_SERVER_PRESETS[presetId]) return;
+        for (const row of srcRows) {
+            row.querySelector('.src-url-input').value = presetUrlFor(presetId, row.dataset.key);
+            row.querySelector('.src-file-input').value = '';
+        }
+    };
+
+    const markPresetCustom = () => {
+        if (presetSelect) presetSelect.value = 'custom';
+        syncPresetNote('custom');
+    };
+
+    const applyPresetSelection = (presetId) => {
+        pendingHandles.clear();
+        pendingFiles.clear();
+        pendingResets.clear();
+        if (presetId === 'custom') {
+            syncPresetNote('custom');
+            return;
+        }
+        fillRowsFromPreset(presetId);
+        syncPresetNote(presetId);
+    };
 
     // Updates the status label for a row. Async because it may query FSA handle permission.
     async function srcStatus(row) {
@@ -6265,7 +7953,8 @@ loadMap = function (mapName) {
             el.style.color = '#4caf50';
             isLocal = true;
         } else if (pendingResets.has(lsKey)) {
-            el.textContent = 'Default';
+            const presetId = readActivePreset();
+            el.textContent = presetId === 'custom' ? 'Default' : _SERVER_PRESETS[presetId]?.label ?? 'Default';
             el.style.color = '#666';
         } else {
             const stored = localStorage.getItem(lsKey);
@@ -6297,12 +7986,20 @@ loadMap = function (mapName) {
                     el.textContent = '📁 Local file';
                     el.style.color = '#4caf50';
                 }
-            } else if (stored && stored !== row.dataset.default) {
-                el.textContent = '🔗 Custom URL';
-                el.style.color = '#42a5f5';
             } else {
-                el.textContent = 'Default';
-                el.style.color = '#666';
+                const presetId = detectActivePreset();
+                const rowDefault = row.dataset.default;
+                const inputVal = row.querySelector('.src-url-input')?.value.trim();
+                if (presetId !== 'custom' && !stored && inputVal === presetUrlFor(presetId, lsKey)) {
+                    el.textContent = _SERVER_PRESETS[presetId]?.label ?? 'Preset';
+                    el.style.color = '#7cb342';
+                } else if (stored && stored !== rowDefault) {
+                    el.textContent = '🔗 Custom URL';
+                    el.style.color = '#42a5f5';
+                } else {
+                    el.textContent = 'Default';
+                    el.style.color = '#666';
+                }
             }
         }
     }
@@ -6313,6 +8010,9 @@ loadMap = function (mapName) {
         pendingFiles.clear();
         pendingResets.clear();
         document.getElementById('settings-reload-note').style.display = 'none';
+        const activePreset = detectActivePreset();
+        if (presetSelect) presetSelect.value = activePreset;
+        syncPresetNote(activePreset);
         for (const row of srcRows) {
             const lsKey  = row.dataset.key;
             const stored = localStorage.getItem(lsKey);
@@ -6328,8 +8028,12 @@ loadMap = function (mapName) {
                         if (perm === 'prompt') await handle.requestPermission({ mode: 'read' });
                     } catch { /* ignore */ }
                 }
+            } else if (stored) {
+                urlInput.value = stored;
+            } else if (activePreset !== 'custom') {
+                urlInput.value = presetUrlFor(activePreset, lsKey);
             } else {
-                urlInput.value = stored || row.dataset.default;
+                urlInput.value = row.dataset.default;
             }
             row.querySelector('.src-file-input').value = '';
             srcStatus(row);
@@ -6363,10 +8067,15 @@ loadMap = function (mapName) {
         }
     })();
 
-    document.getElementById('settings-btn').addEventListener('click', openSettings);
+    document.getElementById('map-settings-btn').addEventListener('click', openSettings);
     document.getElementById('settings-close').addEventListener('click', closeSettings);
     document.getElementById('settings-cancel').addEventListener('click', closeSettings);
     modal.addEventListener('click', e => { if (e.target === modal) closeSettings(); });
+
+    presetSelect?.addEventListener('change', () => {
+        applyPresetSelection(presetSelect.value);
+        for (const row of srcRows) srcStatus(row);
+    });
 
     for (const row of srcRows) {
         const lsKey = row.dataset.key;
@@ -6379,6 +8088,8 @@ loadMap = function (mapName) {
                     const [handle] = await showOpenFilePicker();
                     pendingHandles.set(lsKey, handle);
                     pendingFiles.delete(lsKey);
+                    pendingResets.delete(lsKey);
+                    markPresetCustom();
                     row.querySelector('.src-url-input').value = `(local: ${handle.name})`;
                     srcStatus(row);
                 } catch (e) {
@@ -6395,6 +8106,8 @@ loadMap = function (mapName) {
             if (!file) return;
             pendingFiles.set(lsKey, file);
             pendingHandles.delete(lsKey);
+            pendingResets.delete(lsKey);
+            markPresetCustom();
             row.querySelector('.src-url-input').value = `(local: ${file.name})`;
             srcStatus(row);
         });
@@ -6403,7 +8116,10 @@ loadMap = function (mapName) {
             pendingHandles.delete(lsKey);
             pendingFiles.delete(lsKey);
             pendingResets.add(lsKey);
-            row.querySelector('.src-url-input').value = row.dataset.default;
+            const presetId = readActivePreset();
+            row.querySelector('.src-url-input').value = presetId === 'custom'
+                ? row.dataset.default
+                : presetUrlFor(presetId, lsKey);
             row.querySelector('.src-file-input').value = '';
             srcStatus(row);
             showSettingsReloadNote(false);
@@ -6412,6 +8128,7 @@ loadMap = function (mapName) {
             pendingHandles.delete(lsKey);
             pendingFiles.delete(lsKey);
             pendingResets.delete(lsKey);
+            markPresetCustom();
             row.querySelector('.src-file-input').value = '';
             srcStatus(row);
         });
@@ -6431,21 +8148,27 @@ loadMap = function (mapName) {
         pendingHandles.clear();
         pendingFiles.clear();
         pendingResets.clear();
+        if (presetSelect) {
+            presetSelect.value = 'arrowgene';
+            applyPresetSelection('arrowgene');
+        }
         for (const row of srcRows) {
-            row.querySelector('.src-url-input').value = row.dataset.default;
             row.querySelector('.src-file-input').value = '';
-            localStorage.removeItem(row.dataset.key);
-            localStorage.removeItem(row.dataset.key + '-data');
-            localStorage.removeItem(row.dataset.key + '-name');
-            await _idbDel(row.dataset.key);
-            await _idbDel(row.dataset.key + '-handle');
+            const lsKey = row.dataset.key;
+            localStorage.removeItem(lsKey);
+            localStorage.removeItem(lsKey + '-data');
+            localStorage.removeItem(lsKey + '-name');
+            await _idbDel(lsKey);
+            await _idbDel(lsKey + '-handle');
             srcStatus(row);
         }
+        localStorage.removeItem(_PRESET_LS_KEY);
         showSettingsReloadNote(true);
     });
 
     document.getElementById('settings-apply').addEventListener('click', async () => {
         try {
+            const presetId = readActivePreset();
             for (const row of srcRows) {
                 const lsKey  = row.dataset.key;
                 const handle = pendingHandles.get(lsKey);
@@ -6466,14 +8189,31 @@ loadMap = function (mapName) {
                     localStorage.setItem(lsKey + '-name', file.name);
                     localStorage.removeItem(lsKey + '-data');
                 } else if (pendingResets.has(lsKey)) {
-                    // User explicitly reset this source — clear everything
-                    localStorage.removeItem(lsKey);
+                    if (presetId !== 'custom') {
+                        const presetDefault = presetUrlFor(presetId, lsKey);
+                        if (presetDefault === row.dataset.default) localStorage.removeItem(lsKey);
+                        else localStorage.setItem(lsKey, presetDefault);
+                    } else {
+                        localStorage.removeItem(lsKey);
+                    }
                     localStorage.removeItem(lsKey + '-name');
                     localStorage.removeItem(lsKey + '-data');
                     await _idbDel(lsKey);
                     await _idbDel(lsKey + '-handle');
                 } else if (localStorage.getItem(lsKey) === '__local__') {
                     // Local source with no pending change — preserve handle/IDB as-is
+                } else if (presetId !== 'custom') {
+                    const val = row.querySelector('.src-url-input').value.trim();
+                    const presetDefault = presetUrlFor(presetId, lsKey);
+                    const arrowDefault  = row.dataset.default;
+                    if (!val || val === presetDefault) {
+                        if (presetDefault === arrowDefault) localStorage.removeItem(lsKey);
+                        else localStorage.setItem(lsKey, presetDefault);
+                    } else {
+                        localStorage.setItem(lsKey, val);
+                    }
+                    await _idbDel(lsKey);
+                    await _idbDel(lsKey + '-handle');
                 } else {
                     const val = row.querySelector('.src-url-input').value.trim();
                     if (!val || val === row.dataset.default) {
@@ -6487,6 +8227,8 @@ loadMap = function (mapName) {
                     }
                 }
             }
+            if (presetId === 'custom') localStorage.removeItem(_PRESET_LS_KEY);
+            else localStorage.setItem(_PRESET_LS_KEY, presetId);
             location.reload();
         } catch (e) {
             alert('Failed to save settings: ' + e.message);
@@ -6850,8 +8592,9 @@ loadMap = function (mapName) {
     // ── Edit mode toggle ──────────────────────────────────────────────────────
     function setEditMode(on) {
         _editMode = on;
-        document.getElementById('edit-mode-btn').classList.toggle('active', on);
-        document.getElementById('edit-mode-btn').title = on ? 'Exit edit mode' : 'Enter edit mode';
+        document.getElementById('edit-mode-btn')?.classList.toggle('active', on);
+        const editBtn = document.getElementById('edit-mode-btn');
+        if (editBtn) editBtn.title = on ? 'Exit edit mode' : 'Enter edit mode';
         document.getElementById('edit-panel').classList.toggle('open', on);
         if (!on) { _copiedEnemyConfig = null; _updateClipboardBar(); }
         if (on) updateSaveFooter();
@@ -7618,6 +9361,138 @@ window.addEventListener('beforeunload', e => {
 if (!location.hash || location.hash === '#') {
     history.replaceState(null, '', '#field000_m00:st0100');
 }
-buildSidebar();
-loadMap(currentMapName());
-checkLocalSources();
+
+async function bootstrapMapApp() {
+    initMobTypeFilters();
+    initPoiFilters();
+    initDevPanel();
+    updateSidebarPresetLabel();
+    try {
+        buildSidebar();
+    } catch (err) {
+        console.error('buildSidebar failed:', err);
+        const listEl = document.getElementById('map-list');
+        if (listEl) {
+            listEl.innerHTML = '<div style="padding:8px 16px;color:#e94560;font-size:0.8rem">Map list failed to load — see console.</div>';
+        }
+    }
+    await waitForMapContainer();
+    await nextFrame();
+    leafletMap.invalidateSize({ animate: false });
+    const sz = leafletMap.getSize();
+    if (sz.x === 0 || sz.y === 0) {
+        await waitForMapContainer();
+        await nextFrame();
+        leafletMap.invalidateSize({ animate: false });
+    }
+    await loadMap(currentMapName());
+    watchMapContainerSize();
+    checkLocalSources();
+}
+
+bootstrapMapApp();
+window.addEventListener('load', () => fitMapToImage(mapParams[_loadedMapName]), { once: true });
+window.addEventListener('resize', () => leafletMap.invalidateSize({ animate: false }));
+
+// ── Developer panel ───────────────────────────────────────────────────────────
+function initDevPanel() {
+    const devPanel    = document.getElementById('dev-panel');
+    const panelToggle = document.getElementById('dev-panel-toggle');
+    const panelBody   = document.getElementById('dev-panel-body');
+    if (!devPanel || !panelToggle || !panelBody) return;
+
+    const loadDevSectionOpen = () => {
+        try {
+            const raw = localStorage.getItem(DEV_SECTION_OPEN_KEY);
+            return raw ? JSON.parse(raw) : {};
+        } catch { return {}; }
+    };
+    const saveDevSectionOpen = (state) => {
+        try { localStorage.setItem(DEV_SECTION_OPEN_KEY, JSON.stringify(state)); } catch { /* ignore */ }
+    };
+
+    const devPrefs = loadDevPrefs();
+    _devShowSpawnIds     = devPrefs.showSpawnIds     ?? false;
+    _devShowGroupIds     = devPrefs.showGroupIds     ?? false;
+    _devShowGroupCounts  = devPrefs.showGroupCounts  ?? false;
+    _devLegacyGroupChips = devPrefs.legacyGroupChips ?? false;
+    _devShowCoords       = devPrefs.showCoords       ?? false;
+
+    const spawnEl  = document.getElementById('dev-show-spawn-ids');
+    const groupEl  = document.getElementById('dev-show-group-ids');
+    const countEl  = document.getElementById('dev-show-group-counts');
+    const legacyEl = document.getElementById('dev-legacy-group-chips');
+    const coordsEl = document.getElementById('dev-show-coords');
+    if (spawnEl)  spawnEl.checked  = _devShowSpawnIds;
+    if (groupEl)  groupEl.checked  = _devShowGroupIds;
+    if (countEl)  countEl.checked  = _devShowGroupCounts;
+    if (legacyEl) legacyEl.checked = _devLegacyGroupChips;
+    if (coordsEl) coordsEl.checked = _devShowCoords;
+    applyDevDisplayPrefs();
+    applyMobDisplayMode();
+
+    spawnEl?.addEventListener('change', () => {
+        _devShowSpawnIds = spawnEl.checked;
+        saveDevPrefs();
+        refreshMobTooltips();
+    });
+    groupEl?.addEventListener('change', () => {
+        _devShowGroupIds = groupEl.checked;
+        saveDevPrefs();
+        refreshGroupChipIcons();
+    });
+    countEl?.addEventListener('change', () => {
+        _devShowGroupCounts = countEl.checked;
+        saveDevPrefs();
+        refreshGroupChipIcons();
+    });
+    legacyEl?.addEventListener('change', () => {
+        _devLegacyGroupChips = legacyEl.checked;
+        saveDevPrefs();
+        if (_devLegacyGroupChips) _collapseAllGroups();
+        else _expandAllGroups();
+        applyMobDisplayMode();
+    });
+    coordsEl?.addEventListener('change', () => {
+        _devShowCoords = coordsEl.checked;
+        saveDevPrefs();
+        applyDevDisplayPrefs();
+    });
+
+    const sectionOpen = loadDevSectionOpen();
+    const setDevSectionOpen = (section, open) => {
+        section.classList.toggle('expanded', open);
+        const toggle = section.querySelector('.dev-section-toggle');
+        if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    };
+    devPanel.querySelectorAll('.dev-section').forEach(section => {
+        const key = section.dataset.devSection;
+        if (!key) return;
+        const startOpen = key in sectionOpen
+            ? sectionOpen[key] === true
+            : (DEV_SECTION_DEFAULTS[key] ?? false);
+        setDevSectionOpen(section, startOpen);
+        section.querySelector('.dev-section-toggle')?.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const open = section.classList.toggle('expanded');
+            sectionOpen[key] = open;
+            saveDevSectionOpen(sectionOpen);
+            const toggle = section.querySelector('.dev-section-toggle');
+            if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+    });
+
+    const setPanelOpen = (open) => {
+        devPanel.classList.toggle('expanded', open);
+        panelToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        try { localStorage.setItem(DEV_PANEL_KEY, open ? '1' : '0'); } catch { /* ignore */ }
+        if (open) devPanel.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    };
+    setPanelOpen(localStorage.getItem(DEV_PANEL_KEY) === '1');
+    panelToggle.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setPanelOpen(!devPanel.classList.contains('expanded'));
+    });
+}
