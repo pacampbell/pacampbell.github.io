@@ -51,10 +51,27 @@
         .sidebar-header-actions {
             display: flex;
             align-items: center;
-            gap: 2px;
+            gap: 6px;
             flex-shrink: 0;
         }
-        #map-settings-btn,
+        #map-settings-btn {
+            background: #0f3460;
+            border: 1px solid #2a5080;
+            border-radius: 4px;
+            color: #c8d8f0;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            cursor: pointer;
+            padding: 4px 8px;
+            line-height: 1.2;
+            white-space: nowrap;
+        }
+        #map-settings-btn:hover {
+            background: #1a4a7a;
+            border-color: #4a90d9;
+            color: #fff;
+        }
         #sidebar-collapse {
             background: none;
             border: none;
@@ -64,7 +81,6 @@
             padding: 0 4px;
             line-height: 1;
         }
-        #map-settings-btn:hover,
         #sidebar-collapse:hover { color: #ccc; }
         .sidebar-preset-label {
             color: #aaa;
@@ -1197,7 +1213,7 @@
         <h1>
             <span>DDON Maps<span id="sidebar-preset-label" class="sidebar-preset-label"></span></span>
             <span class="sidebar-header-actions">
-                <button type="button" id="map-settings-btn" title="Data source settings">⚙</button>
+                <button type="button" id="map-settings-btn" title="Choose Rising, Revival, or custom data sources">Select Server</button>
                 <button type="button" id="sidebar-collapse" title="Collapse sidebar">◀</button>
             </span>
         </h1>
