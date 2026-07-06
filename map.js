@@ -3773,15 +3773,19 @@ function makeConnectionMarkerIcon(poiCat) {
 /** Main overworld field maps only — excludes sfield* spot slices (wrong projection). */
 const isMainWorldFieldMap = (mapName) => /^field\d+_m\d+$/.test(mapName);
 
-/** Maps whose landmarks / stage connections appear in named location search. */
-const isNamedLocationSearchMap = (mapName) => {
-    if (isMainWorldFieldMap(mapName)) return true;
+/** Hub / fortress layer maps (not overworld fields). */
+const isHubLayerMap = (mapName) => {
+    if (isMainWorldFieldMap(mapName)) return false;
     const info = mapParams[mapName];
     if (!info?.img_exists) return false;
     if (/^sfield/.test(mapName)) return false;
-    // Temple wings, fortresses, and other multi-stage hub layers (e.g. lb003 Cave Harbor).
-    if (/^(?:lb|rm)\d+_m\d+$/.test(mapName)) return true;
-    return false;
+    return /^(?:lb|rm)\d+_m\d+$/.test(mapName);
+};
+
+/** Maps whose landmarks / stage connections appear in named location search. */
+const isNamedLocationSearchMap = (mapName) => {
+    if (isMainWorldFieldMap(mapName)) return true;
+    return isHubLayerMap(mapName);
 };
 
 const NAMED_LOCATION_CATEGORIES = new Set(POI_LOCATION_CATEGORIES.map(c => c.id));
@@ -3828,7 +3832,7 @@ function locationTypeLabel(categoryId) {
 
 let _namedLocationIndex = null;
 let _namedLocationIndexVersion = 0;
-const NAMED_LOCATION_INDEX_VERSION = 7;
+const NAMED_LOCATION_INDEX_VERSION = 8;
 let _pendingNamedLocNav = null;
 
 function namedLocationMatchesEntry(entry, term, exact) {
@@ -3894,7 +3898,13 @@ function buildNamedLocationIndex() {
             const label = conn.name_en?.trim();
             if (!label || conn.x == null || conn.z == null) continue;
             if (matchSpecialConnection(sourceMap, conn)) continue;
-            if (!conn.to_map || isMainWorldFieldMap(conn.to_map)) continue;
+            if (!conn.to_map) continue;
+            if (isMainWorldFieldMap(conn.to_map)) {
+                // Overworld entrances are indexed from the field map; hub layers also list
+                // named exits back to fields (e.g. Bloodbane Isle from Cave Harbor).
+                if (isMainWorldFieldMap(sourceMap)) continue;
+                if (/^lestania$/i.test(label)) continue;
+            }
             if (/^house$/i.test(label)) continue;
             const poiCat = classifyConnectionPoi(conn, sourceMap) ?? 'door';
             const filterCat = _normalizePoiFilterCategory(poiCat) ?? poiCat;
