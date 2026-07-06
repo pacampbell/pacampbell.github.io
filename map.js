@@ -6432,27 +6432,37 @@ function _switchToFloor(layer, info = _currentMapInfo) {
 }
 
 function swapMapImage(info, imgFile) {
+    if (imageOverlay && _activeMapImageFile === imgFile) {
+        fitMapToImage(info);
+        return;
+    }
     if (imageOverlay) imageOverlay.remove();
     const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
     imageOverlay = L.imageOverlay('images/maps/' + imgFile, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
+    _activeMapImageFile = imgFile;
     fitMapToImage(info);
 }
 
 // ── Tile-layer selector (pd maps with multi-layer pieces) ─────────────────────
 let _tileLayerSel = null;   // id of currently shown tile-layer image, null = merged default
 
-function buildTileLayerSelector(info) {
+function buildTileLayerSelector(info, { activeKey = null } = {}) {
     const el = document.getElementById('tile-layer-selector');
     if (!el) return;
     el.innerHTML = '';
-    _tileLayerSel = null;
     const tlImages = info.tile_layer_images;
-    if (!tlImages || Object.keys(tlImages).length === 0) return;
+    if (!tlImages || Object.keys(tlImages).length === 0) {
+        _tileLayerSel = null;
+        return;
+    }
+
+    const initialKey = activeKey !== undefined ? activeKey : _tileLayerSel;
+    _tileLayerSel = initialKey;
 
     const makeBtn = (label, key, imgFile) => {
         const btn = document.createElement('button');
         btn.textContent = label;
-        if (key === null) btn.classList.add('active');
+        if (key === initialKey) btn.classList.add('active');
         btn.addEventListener('click', () => {
             _tileLayerSel = key;
             swapMapImage(info, imgFile);
@@ -6730,18 +6740,28 @@ function watchMapContainerSize() {
     }).observe(mapEl);
 }
 
-async function loadMapImagePhase(info) {
-    if (imageOverlay) imageOverlay.remove();
+async function loadMapImagePhase(info, imgFile = null) {
+    const file = imgFile ?? resolveDisplayedMapImageFile(info, currentLayer, _tileLayerSel);
     if (!info.img_exists) {
+        if (imageOverlay) imageOverlay.remove();
         imageOverlay = null;
+        _activeMapImageFile = null;
         leafletMap.setView(xy(info.img_width / 2, info.img_height / 2), 0);
         leafletMap.invalidateSize({ animate: false });
         return;
     }
+    if (imageOverlay && _activeMapImageFile === file) {
+        await waitForMapContainer();
+        leafletMap.invalidateSize({ animate: false });
+        fitMapToImage(info);
+        return;
+    }
+    if (imageOverlay) imageOverlay.remove();
     await waitForMapContainer();
     leafletMap.invalidateSize({ animate: false });
     const bounds = [xy(0, 0), xy(info.img_width, info.img_height)];
-    imageOverlay = L.imageOverlay('images/maps/' + info.img_file, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
+    imageOverlay = L.imageOverlay('images/maps/' + file, bounds, { pane: 'mapImagePane' }).addTo(leafletMap);
+    _activeMapImageFile = file;
     fitMapToImage(info);
     await waitForImageOverlay(imageOverlay);
     await nextFrame();
@@ -6790,6 +6810,281 @@ async function loadMapOverlaysPhase(mapName, info, stid, openGroups) {
     fitMapToImage(info);
 }
 
+// ── Map scene cache (fast browser back / revisit) ─────────────────────────────
+const MAP_SCENE_CACHE_MAX = 10;
+const _mapSceneCache = new Map();
+let _activeMapImageFile = null;
+
+function mapSceneCacheEnabled() {
+    return !_editMode && _dirtySet.size === 0;
+}
+
+function normalizeSceneStid(stid) {
+    return stid ?? null;
+}
+
+function mapSceneCacheKey(mapName, stid, floor, tileSel) {
+    return `${mapName}|${normalizeSceneStid(stid)}|${floor}|${tileSel ?? 'merged'}`;
+}
+
+function resolveDisplayedMapImageFile(info, floor = currentLayer, tileSel = _tileLayerSel) {
+    if (tileSel != null && info.tile_layer_images?.[tileSel]) {
+        return info.tile_layer_images[tileSel];
+    }
+    if (floor !== 0 && info.layers) {
+        const floorLayer = info.layers.find(l => l.layer === floor && l.img_exists);
+        if (floorLayer) return floorLayer.img_file;
+    }
+    return info.img_file;
+}
+
+function resolveInitialFloor(mapName, stid, info) {
+    if (!info.floor_obbs) return 0;
+    const savedFloor = parseHash().view?.floor;
+    if (savedFloor != null) return savedFloor;
+    if (stid) {
+        const arrivalStageNo = parseInt(stid.slice(2), 10);
+        const conns = connectionData[mapName] ?? [];
+        const arrConn = conns.find(c => c.from_stage === arrivalStageNo && c.x != null && c.z != null);
+        if (arrConn) {
+            const arrFloor = getEnemyFloor(arrConn.x, arrConn.y ?? 0, arrConn.z, info.floor_obbs);
+            if (arrFloor !== null) return arrFloor;
+        }
+    }
+    return 0;
+}
+
+function mapSceneIdentity(mapName, stid, floor, tileSel = _tileLayerSel) {
+    return mapSceneCacheKey(mapName, stid, floor, tileSel);
+}
+
+function buildMapDocumentTitle(mapName, info, stid) {
+    const baseName = stid ? stageLabel(info, stid) : (info.name_en ? splitPascalCase(info.name_en) : mapName);
+    const sidNum   = stid ? info.stage_ids?.[stid] : null;
+    const sidStr   = sidNum != null ? ` - sid${String(sidNum).padStart(4, '0')}` : '';
+    return baseName + ` (${stid ?? mapName}${sidStr})`;
+}
+
+function detachSceneFromMap(scene) {
+    const layers = [
+        scene.enemyLayer, scene.landmarkLayer, scene.connectionLayer, scene.gridLayer,
+        scene.stageLabelsLayer, scene.gatherLayer, scene.npcShopLayer, scene.specialShopLayer,
+        scene.pdBoundaryLayer, scene.spawnRadiiLayer, scene._spreadOverlay,
+    ];
+    for (const lg of layers) {
+        if (lg && leafletMap.hasLayer(lg)) leafletMap.removeLayer(lg);
+    }
+    if (scene.territoryLayer && leafletMap.hasLayer(scene.territoryLayer)) {
+        leafletMap.removeLayer(scene.territoryLayer);
+    }
+    for (const g of scene.groupStore.values()) {
+        if (g.detailsLayer && leafletMap.hasLayer(g.detailsLayer)) {
+            leafletMap.removeLayer(g.detailsLayer);
+        }
+    }
+    if (scene.imageOverlay && leafletMap.hasLayer(scene.imageOverlay)) {
+        leafletMap.removeLayer(scene.imageOverlay);
+    }
+}
+
+function attachSceneToMap(scene) {
+    if (scene.imageOverlay) scene.imageOverlay.addTo(leafletMap);
+    const layers = [
+        scene.enemyLayer, scene.landmarkLayer, scene.connectionLayer,
+        scene.stageLabelsLayer, scene.gatherLayer, scene.npcShopLayer, scene.specialShopLayer,
+        scene.pdBoundaryLayer, scene.spawnRadiiLayer, scene._spreadOverlay,
+    ];
+    for (const lg of layers) if (lg) lg.addTo(leafletMap);
+    if (scene.gridLayer && document.getElementById('layer-grid')?.checked) {
+        scene.gridLayer.addTo(leafletMap);
+    }
+    updateEnemyVisibility();
+    syncTerritoryLayer();
+    applyAllPoiVisibility();
+}
+
+function createFreshSceneLayers() {
+    const oldLayers = [
+        enemyLayer, landmarkLayer, connectionLayer, gridLayer, territoryLayer,
+        stageLabelsLayer, gatherLayer, npcShopLayer, specialShopLayer,
+        pdBoundaryLayer, spawnRadiiLayer, _spreadOverlay,
+    ];
+    for (const lg of oldLayers) {
+        if (lg && leafletMap.hasLayer(lg)) leafletMap.removeLayer(lg);
+    }
+    for (const g of _groupStore.values()) {
+        if (g.detailsLayer && leafletMap.hasLayer(g.detailsLayer)) {
+            leafletMap.removeLayer(g.detailsLayer);
+        }
+    }
+
+    enemyLayer = L.layerGroup().addTo(leafletMap);
+    landmarkLayer = L.layerGroup().addTo(leafletMap);
+    connectionLayer = L.layerGroup().addTo(leafletMap);
+    gridLayer = L.layerGroup();
+    territoryLayer = L.layerGroup();
+    stageLabelsLayer = L.layerGroup().addTo(leafletMap);
+    gatherLayer = L.layerGroup().addTo(leafletMap);
+    npcShopLayer = L.layerGroup().addTo(leafletMap);
+    specialShopLayer = L.layerGroup().addTo(leafletMap);
+    pdBoundaryLayer = L.layerGroup().addTo(leafletMap);
+    spawnRadiiLayer = L.layerGroup().addTo(leafletMap);
+    _spreadOverlay = L.layerGroup().addTo(leafletMap);
+
+    _groupStore.clear();
+    _gatherMarkerByKey.clear();
+    _gatherGroupMarkers.clear();
+    _shopMarkerByNpcId.clear();
+    _specialShopMarkerByNpcId.clear();
+    _connectionPoiCacheMap = null;
+    _connectionPoiCache = null;
+    _spotIndex = [];
+    _activeSubGroupId = null;
+    _availableSubGroups = [0];
+    _spotOpenedGroup = null;
+    _sgMarkers = {};
+    clearSpawnRadii();
+    _activeRadiiMarker = null;
+}
+
+function captureCurrentScene() {
+    const cacheKey = mapSceneCacheKey(_loadedMapName, _loadedStid, currentLayer, _tileLayerSel);
+    return {
+        cacheKey,
+        mapName: _loadedMapName,
+        stid: normalizeSceneStid(_loadedStid),
+        floor: currentLayer,
+        tileLayerSel: _tileLayerSel,
+        imgFile: _activeMapImageFile,
+        enemyLayer, landmarkLayer, connectionLayer, gridLayer, territoryLayer,
+        stageLabelsLayer, gatherLayer, npcShopLayer, specialShopLayer,
+        pdBoundaryLayer, spawnRadiiLayer, _spreadOverlay,
+        imageOverlay,
+        groupStore: _groupStore,
+        gatherMarkerByKey: _gatherMarkerByKey,
+        gatherGroupMarkers: _gatherGroupMarkers,
+        shopMarkerByNpcId: _shopMarkerByNpcId,
+        specialShopMarkerByNpcId: _specialShopMarkerByNpcId,
+        connectionPoiCacheMap: _connectionPoiCacheMap,
+        connectionPoiCache: _connectionPoiCache,
+        spotIndex: _spotIndex,
+        currentMapInfo: _currentMapInfo,
+        currentFloorObbs: _currentFloorObbs,
+        activeSubGroupId: _activeSubGroupId,
+        availableSubGroups: _availableSubGroups,
+        spotOpenedGroup: _spotOpenedGroup,
+        sgMarkers: _sgMarkers,
+    };
+}
+
+function applySceneToGlobals(scene) {
+    enemyLayer = scene.enemyLayer;
+    landmarkLayer = scene.landmarkLayer;
+    connectionLayer = scene.connectionLayer;
+    gridLayer = scene.gridLayer;
+    territoryLayer = scene.territoryLayer;
+    stageLabelsLayer = scene.stageLabelsLayer;
+    gatherLayer = scene.gatherLayer;
+    npcShopLayer = scene.npcShopLayer;
+    specialShopLayer = scene.specialShopLayer;
+    pdBoundaryLayer = scene.pdBoundaryLayer;
+    spawnRadiiLayer = scene.spawnRadiiLayer;
+    _spreadOverlay = scene._spreadOverlay;
+    imageOverlay = scene.imageOverlay;
+    _groupStore = scene.groupStore;
+    _gatherMarkerByKey = scene.gatherMarkerByKey;
+    _gatherGroupMarkers = scene.gatherGroupMarkers;
+    _shopMarkerByNpcId = scene.shopMarkerByNpcId;
+    _specialShopMarkerByNpcId = scene.specialShopMarkerByNpcId;
+    _connectionPoiCacheMap = scene.connectionPoiCacheMap;
+    _connectionPoiCache = scene.connectionPoiCache;
+    _spotIndex = scene.spotIndex;
+    _currentMapInfo = scene.currentMapInfo;
+    _currentFloorObbs = scene.currentFloorObbs;
+    _activeSubGroupId = scene.activeSubGroupId;
+    _availableSubGroups = scene.availableSubGroups;
+    _spotOpenedGroup = scene.spotOpenedGroup;
+    _sgMarkers = scene.sgMarkers;
+    currentLayer = scene.floor;
+    _tileLayerSel = scene.tileLayerSel;
+    _activeMapImageFile = scene.imgFile;
+}
+
+function destroyCachedScene(scene) {
+    if (!scene) return;
+    detachSceneFromMap(scene);
+    for (const g of scene.groupStore.values()) {
+        if (g.detailsLayer) {
+            g.detailsLayer.clearLayers();
+            g.detailsLayer = null;
+        }
+    }
+    scene.enemyLayer?.clearLayers();
+    scene.landmarkLayer?.clearLayers();
+    scene.connectionLayer?.clearLayers();
+    scene.gatherLayer?.clearLayers();
+    scene.npcShopLayer?.clearLayers();
+    scene.specialShopLayer?.clearLayers();
+}
+
+function pruneMapSceneCache() {
+    while (_mapSceneCache.size > MAP_SCENE_CACHE_MAX) {
+        const oldestKey = _mapSceneCache.keys().next().value;
+        destroyCachedScene(_mapSceneCache.get(oldestKey));
+        _mapSceneCache.delete(oldestKey);
+    }
+}
+
+function putSceneInCache(scene) {
+    if (!scene) return;
+    _mapSceneCache.delete(scene.cacheKey);
+    _mapSceneCache.set(scene.cacheKey, scene);
+    pruneMapSceneCache();
+}
+
+function stashCurrentSceneInCache() {
+    if (!_loadedMapName || !_currentMapInfo || !mapSceneCacheEnabled()) return;
+    const scene = captureCurrentScene();
+    detachSceneFromMap(scene);
+    putSceneInCache(scene);
+    imageOverlay = null;
+    _activeMapImageFile = null;
+    _currentMapInfo = null;
+}
+
+function takeCachedScene(mapName, stid, floor) {
+    const wantStid = normalizeSceneStid(stid);
+    for (const [key, scene] of _mapSceneCache) {
+        if (scene.mapName === mapName && scene.stid === wantStid && scene.floor === floor) {
+            _mapSceneCache.delete(key);
+            return scene;
+        }
+    }
+    return null;
+}
+
+function invalidateMapSceneCache() {
+    for (const scene of _mapSceneCache.values()) destroyCachedScene(scene);
+    _mapSceneCache.clear();
+}
+
+async function restoreCachedMapScene(scene, mapName, info, stid, isCurrent) {
+    applySceneToGlobals(scene);
+    attachSceneToMap(scene);
+    if (!isCurrent()) return false;
+
+    buildFloorSelector(info);
+    buildTileLayerSelector(info, { activeKey: scene.tileLayerSel });
+    buildStageGroupsPanel(info, stid);
+
+    await nextFrame();
+    fitMapToImage(info);
+    reapplySpread();
+
+    if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
+    return true;
+}
+
 let _loadMapGen = 0;
 
 async function loadMap(mapName) {
@@ -6798,60 +7093,68 @@ async function loadMap(mapName) {
 
     const loadGen = ++_loadMapGen;
     const isCurrent = () => loadGen === _loadMapGen;
+    const stid = currentStageName();
+    const targetFloor = resolveInitialFloor(mapName, stid, info);
+
+    const incomingIdentity = mapSceneIdentity(mapName, stid, targetFloor);
+    const outgoingIdentity = _loadedMapName && _currentMapInfo
+        ? mapSceneIdentity(_loadedMapName, _loadedStid, currentLayer) : null;
+
+    if (outgoingIdentity && outgoingIdentity !== incomingIdentity && mapSceneCacheEnabled()) {
+        stashCurrentSceneInCache();
+    }
 
     _loadedMapName = mapName;
-    _loadedStid = currentStageName();
-    currentLayer = 0;
+    _loadedStid = stid;
 
-    // Update title — always append an ID so the user knows which stage they're on.
-    // Prefer the stid from the URL hash (e.g. "st0200"); fall back to the map name.
-    const stid = currentStageName();
-    const baseName = stid ? stageLabel(info, stid) : (info.name_en ? splitPascalCase(info.name_en) : mapName);
-    const sidNum   = stid ? info.stage_ids?.[stid] : null;
-    const sidStr   = sidNum != null ? ` - sid${String(sidNum).padStart(4, '0')}` : '';
-    const title = baseName + ` (${stid ?? mapName}${sidStr})`;
+    const title = buildMapDocumentTitle(mapName, info, stid);
     document.getElementById('map-title').textContent = title;
     document.title = `${title} — DDON Maps`;
 
+    if (mapSceneCacheEnabled()) {
+        const cached = takeCachedScene(mapName, stid, targetFloor);
+        if (cached) {
+            setMapLoading(true);
+            try {
+                currentLayer = targetFloor;
+                const restored = await restoreCachedMapScene(cached, mapName, info, stid, isCurrent);
+                if (restored && isCurrent()) return;
+                if (!isCurrent()) return;
+                putSceneInCache(cached);
+            } catch (err) {
+                if (!isCurrent()) return;
+                console.error('restore cached map failed:', err);
+                putSceneInCache(cached);
+            } finally {
+                if (isCurrent()) setMapLoading(false);
+            }
+        }
+    }
+
+    createFreshSceneLayers();
+    currentLayer = targetFloor;
     setMapLoading(true);
 
     try {
-        // Phase 1 — map tile only (wait for container size + PNG decode before anything else).
-        await loadMapImagePhase(info);
+        const imgFile = resolveDisplayedMapImageFile(info, currentLayer, null);
+        await loadMapImagePhase(info, imgFile);
         if (!isCurrent()) return;
 
-        // Restore floor after base image is visible.
-        if (info.floor_obbs) {
-            const savedFloor = parseHash().view?.floor;
-            if (savedFloor != null) {
-                currentLayer = savedFloor;
-            } else if (stid) {
-                const arrivalStageNo = parseInt(stid.slice(2), 10);
-                const conns = connectionData[_loadedMapName] ?? [];
-                const arrConn = conns.find(c => c.from_stage === arrivalStageNo && c.x != null && c.z != null);
-                if (arrConn) {
-                    const arrFloor = getEnemyFloor(arrConn.x, arrConn.y ?? 0, arrConn.z, info.floor_obbs);
-                    if (arrFloor !== null) currentLayer = arrFloor;
-                }
-            }
-            if (currentLayer !== 0) {
-                const floorLayer = (info.layers || []).find(l => l.layer === currentLayer && l.img_exists);
-                if (floorLayer) {
-                    swapMapImage(info, floorLayer.img_file);
-                    await waitForImageOverlay(imageOverlay);
-                    await nextFrame();
-                    fitMapToImage(info);
-                }
+        if (info.floor_obbs && currentLayer !== 0) {
+            const floorLayer = (info.layers || []).find(l => l.layer === currentLayer && l.img_exists);
+            if (floorLayer && _activeMapImageFile !== floorLayer.img_file) {
+                swapMapImage(info, floorLayer.img_file);
+                await waitForImageOverlay(imageOverlay);
+                await nextFrame();
+                fitMapToImage(info);
             }
         }
 
         buildFloorSelector(info);
         buildTileLayerSelector(info);
-        buildStageGroupsPanel(info, currentStageName());
+        buildStageGroupsPanel(info, stid);
 
         const { openGroups } = parseHash();
-
-        // Phase 2 — markers / spawns (only after map tile is on screen).
         await loadMapOverlaysPhase(mapName, info, stid, openGroups);
         if (!isCurrent()) return;
     } catch (err) {
@@ -9066,6 +9369,7 @@ loadMap = async function (mapName) {
     // ── Edit mode toggle ──────────────────────────────────────────────────────
     function setEditMode(on) {
         _editMode = on;
+        if (on) invalidateMapSceneCache();
         document.getElementById('edit-mode-btn')?.classList.toggle('active', on);
         const editBtn = document.getElementById('edit-mode-btn');
         if (editBtn) editBtn.title = on ? 'Exit edit mode' : 'Enter edit mode';
