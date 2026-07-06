@@ -3523,7 +3523,7 @@ function classifyConnectionPoi(conn, mapName) {
     if (/\bbasement\b|\bcellar\b|\bdrain(s|age)?\b|\bflood control\b/i.test(lower)) return 'basement';
     if (/\b(underground|channel)\b/i.test(lower) && /\b(waterway|passage|drain|flood)\b/i.test(lower)) return 'basement';
     if (/\bcatacombs?\b/i.test(lower)) return 'cave';
-    if (/\bthe ark\b|\bthe second ark\b/i.test(lower)) return 'ark';
+    if (/\bthe second ark\b|\bthe third ark\b|\bthe ark\b/i.test(lower)) return 'ark';
     if (/\bshop\b|\bstore(?!house)\b|\bbazaar\b|\bmarket\b|\boutfitter\b|\bworkshop\b|\btrading post\b|\btrading company\b/i.test(lower)) return 'shop';
     if (/^house$/i.test(name.trim()) || /\bhouse in the\b|\bhermit's house\b|\bkeeper's house\b|\bchief's home\b|\balchemist's home\b|\bivan's lodge\b/i.test(lower)) return 'house';
     if (/\bfort\b|\bcastle\b|\bgate\b|\bdoor\b/i.test(lower)) return 'door';
@@ -3698,7 +3698,7 @@ let _poiFilters = loadPoiFilters();
 
 function classifyLandmarkPoiCategory(type, lm = null) {
     const spot = lm?.spot_name_en?.trim().toLowerCase();
-    if (spot === 'the ark' || spot === 'the second ark') return 'areaWarp';
+    if (spot === 'the ark' || spot === 'the second ark' || spot === 'the third ark') return 'areaWarp';
     switch (type) {
         case 'TYPE_AREA_WARP':  return 'areaWarp';
         case 'TYPE_OUTPOST':    return 'outpost';
@@ -3827,7 +3827,7 @@ function locationTypeLabel(categoryId) {
 
 let _namedLocationIndex = null;
 let _namedLocationIndexVersion = 0;
-const NAMED_LOCATION_INDEX_VERSION = 5;
+const NAMED_LOCATION_INDEX_VERSION = 6;
 let _pendingNamedLocNav = null;
 
 function namedLocationMatchesEntry(entry, term, exact) {
