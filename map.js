@@ -4052,7 +4052,7 @@ function setAllGatherableFilters(on) {
 
 function _isConnectionVisible(poiCat, isSpecialConnection = false) {
     if (!anyLocationFilterEnabled()) return false;
-    if (isSpecialConnection && _poiFilters.special === false) return false;
+    if (isSpecialConnection && !_isPoiCategoryEnabled('special')) return false;
     if (!poiCat) return true;
     const norm = _normalizePoiFilterCategory(poiCat);
     return _isPoiCategoryEnabled(norm);
@@ -6047,6 +6047,7 @@ function loadConnections(mapName, info) {
     const isDuplicateConnection = (a, b) => {
         if (a.x == null || b.x == null) return false;
         if (Math.hypot(a.x - b.x, a.z - b.z) >= DEDUP_DIST) return false;
+        if ((a.to_map ?? null) !== (b.to_map ?? null)) return false;
         if (a.to_stage === b.to_stage) return true;
         const keyA = connectionLabelKey(a);
         const keyB = connectionLabelKey(b);

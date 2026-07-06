@@ -13,8 +13,16 @@
       "to_map": "lb000_m00"
     },
     {
-      "id": "wdt-st3602-field",
+      "id": "wdt-st3602-field-entrance",
       "map": "field000_m00",
+      "from_stage": 100,
+      "to_stage": 3602,
+      "to_map": "lb000_st3602_m00"
+    },
+    {
+      "id": "wdt-st3602-field-return",
+      "map": "field000_m00",
+      "from_stage": 3602,
       "to_stage": 3602,
       "to_map": "lb000_st3602_m00"
     },
