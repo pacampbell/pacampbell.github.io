@@ -3401,6 +3401,8 @@ function poiIconSrc(categoryId, fallbackIcon) {
 
 const POI_IMG_FILTER      = 'drop-shadow(0 0 1px #000) drop-shadow(0 1px 2px #000)';
 const POI_IMG_FILTER_HOVER = `${POI_IMG_FILTER} brightness(1.3)`;
+/** Purple tint for exchange / appraisal NPCs (SpecialShops.json). */
+const POI_EXCHANGE_SHOP_IMG_FILTER = 'hue-rotate(285deg) saturate(1.45) brightness(1.1)';
 
 function makePoiMapIcon(src, size = 24) {
     const half = size / 2;
@@ -3409,6 +3411,26 @@ function makePoiMapIcon(src, size = 24) {
         html: `<img src="${src}" width="${size}" height="${size}" alt="" `
             + `style="display:block;image-rendering:pixelated;filter:${POI_IMG_FILTER};">`,
         iconSize:    [size, size],
+        iconAnchor:  [half, half],
+        tooltipAnchor: [0, -half],
+    });
+}
+
+/** Same shop mmapicon with purple ring + tint — still uses the shop POI filter. */
+function makeExchangeShopMapIcon(src, size = 22) {
+    const pad = 4;
+    const outer = size + pad;
+    const half = outer / 2;
+    const imgFilter = `${POI_IMG_FILTER} ${POI_EXCHANGE_SHOP_IMG_FILTER}`;
+    return L.divIcon({
+        className: 'poi-map-marker poi-exchange-shop-marker',
+        html: `<div style="position:relative;width:${outer}px;height:${outer}px;display:flex;align-items:center;justify-content:center;">`
+            + `<div style="position:absolute;inset:0;border:2px solid #a855f7;border-radius:50%;`
+            + `box-shadow:0 0 4px rgba(168,85,247,0.7);pointer-events:none;"></div>`
+            + `<img src="${src}" width="${size}" height="${size}" alt="" `
+            + `style="display:block;image-rendering:pixelated;filter:${imgFilter};">`
+            + `</div>`,
+        iconSize:    [outer, outer],
         iconAnchor:  [half, half],
         tooltipAnchor: [0, -half],
     });
@@ -5625,7 +5647,7 @@ function loadSpecialShops(info, stid = null) {
 
             const shopIconSrc = poiMapIconSrc('shop');
             const icon = shopIconSrc
-                ? makePoiMapIcon(shopIconSrc, 22)
+                ? makeExchangeShopMapIcon(shopIconSrc, 22)
                 : L.divIcon({
                     className: '',
                     html: `<div style="width:12px;height:12px;background:${color};border:2px solid #111;transform:rotate(45deg);box-shadow:0 0 4px rgba(192,132,252,0.7);"></div>`,
@@ -5639,6 +5661,7 @@ function loadSpecialShops(info, stid = null) {
                 .addTo(specialShopLayer);
 
             marker._poiCategory = 'shop';
+            marker._poiExchangeShop = true;
             _specialShopMarkerByNpcId.set(`${stageNo}:${npc.NpcId}`, marker);
 
             marker.on('popupclose', () => {
