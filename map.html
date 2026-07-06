@@ -266,6 +266,64 @@
         }
         .map-entry.expanded .expand-arrow { transform: rotate(90deg); }
 
+        .map-loc-section {
+            border-bottom: 1px solid #0f3460;
+            padding-bottom: 6px;
+            margin-bottom: 4px;
+        }
+        .map-loc-header {
+            padding: 8px 16px 4px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #4a90d9;
+        }
+        .map-list-maps-header {
+            margin-top: 4px;
+            padding-top: 10px;
+            border-top: 1px solid #0f3460;
+        }
+        .map-loc-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            padding: 7px 16px 7px 14px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        .map-loc-entry:hover {
+            background: #0f3460;
+            border-left-color: #e94560;
+        }
+        .map-loc-icon {
+            color: #4caf50;
+            font-size: 0.72rem;
+            line-height: 1.4;
+            flex-shrink: 0;
+            width: 10px;
+        }
+        .map-loc-body { flex: 1; min-width: 0; }
+        .map-loc-label {
+            font-size: 0.85rem;
+            color: #e0e0e0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .map-loc-sub {
+            font-size: 0.68rem;
+            color: #8899aa;
+            margin-top: 2px;
+            line-height: 1.3;
+        }
+        .map-loc-more {
+            padding: 4px 16px 8px 36px;
+            font-size: 0.68rem;
+            color: #667;
+            font-style: italic;
+        }
+
         .map-sublist { display: none; }
         .map-sublist.open { display: block; }
 
@@ -1218,7 +1276,7 @@
             </span>
         </h1>
         <div id="search-box">
-            <input type="text" id="map-search" placeholder="Search maps..." autocomplete="off" spellcheck="false" title="Search by name&#10;stageno=200  — match stage number&#10;stageid=2    — match internal stage ID&#10;area=cassardis — match quest area name">
+            <input type="text" id="map-search" placeholder="Search maps or locations…" autocomplete="off" spellcheck="false" title="Maps by name, or named locations (portcrystals, caves, inns, doors)&#10;stageno=200  — match stage number&#10;stageid=2    — match internal stage ID&#10;area=cassardis — match quest area name">
             <button id="map-search-clear" title="Clear search">✕</button>
         </div>
         <div id="map-list"></div>
@@ -1242,10 +1300,9 @@
                         <span class="expand-arrow">▶</span><span>Locations</span>
                     </button>
                     <div class="poi-section-body">
-                        <label class="layer-toggle poi-show-all" title="Toggle all location markers">
+                        <label class="layer-toggle poi-show-all" title="Show or hide all location markers">
                             <input type="checkbox" id="poi-locations-show-all" checked>
-                            <span class="poi-icon"><img class="poi-icon-img" src="resources/mmapicon_slices/44.png" alt="" loading="lazy"></span>
-                            Pathways
+                            Show all
                         </label>
                         <div id="poi-filter-locations" class="layer-list poi-filter-list"></div>
                     </div>

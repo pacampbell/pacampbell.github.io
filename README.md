@@ -1,0 +1,135 @@
+# DDON Interactive Map
+
+Browser-based map for *Dragon's Dogma Online* — enemy spawns, gathering nodes, shops, warps, and named locations. Deployed as a static GitHub Pages site (`map.html`).
+
+**Live map:** open [`map.html`](map.html) on your fork’s GitHub Pages URL.
+
+---
+
+## Quick start
+
+1. Open the map in your browser.
+2. Click **Select Server** (top of sidebar) and choose **Dogma Rising — Normal Channels** (or Revival / Arrowgene / custom URLs).
+3. Search or pick a map in the sidebar, then use the filters below to control what is shown on the map.
+
+Enemy **positions** load from this repo. Enemy **types, levels, and drops** load from the server preset you select (external JSON).
+
+---
+
+## Sidebar search (maps & named locations)
+
+The search box at the top of the sidebar finds:
+
+- **Maps** — by area or stage name (e.g. `Hidell`, `st0100`).
+- **Named locations** — portcrystals (outposts), caves, inns, doors, wells, area warps, and similar POIs on overworld maps.
+
+**Tips**
+
+- Type a few letters; named locations appear under a **Maps** or location section in the results list.
+- Click a result to fly to that point and switch map/stage if needed.
+- Advanced filters (in the search placeholder tooltip):
+  - `stageno=200` — match stage number
+  - `stageid=2` — match internal stage ID
+  - `area=cassardis` — match quest area name
+
+Portcrystal spots dedupe: if both **Outpost** and **Area warp** exist at the same crystal, search prefers **Outpost**.
+
+---
+
+## Map filters (checkboxes)
+
+Three collapsible sections in the sidebar control markers on the **current map**. Each section has a **Show all** toggle plus individual category checkboxes. Choices are saved in your browser.
+
+### Spawns
+
+Filter which **enemy groups** are visible by spawn type:
+
+| Checkbox | Shows |
+|----------|--------|
+| 🩸 Blood orb | Spawns flagged as blood-orb enemies |
+| ⭐ High orb | High-orb spawns |
+| 😴 Dormant / manual | Manual-set / dormant spawns |
+| ☠ Boss | Boss gauge, area boss, or raid boss |
+| 🗝 Key Mobs | Key bearer spawns |
+| · Regular | Normal mobs without special flags |
+| ⚡ Dynamic | Dynamic spawn slots |
+
+Uncheck **Show all** to hide every mob type; check individual boxes to show only what you need.
+
+### Locations
+
+Toggle **connection / landmark** icons on the map:
+
+- **Cave**, **Basement**, **House**, **Well**
+- **Area warp**, **Outpost**, **Door**, **Inn**
+- **Shops & appraisals**
+
+Connections that match a category show the game-style POI icon; uncategorized warps use a door-style icon. **Show all** enables or disables the whole Locations group.
+
+### Gatherables
+
+Toggle gathering node markers:
+
+- Mushrooms, treasure chests, boxes, antiques
+- Grass/herb, flower, sand, shell
+- **Crystal** and **Gemstone** (separate toggles)
+- Spark nodes, water, lumber, **Off nodes**
+
+Only categories you leave checked appear on the map.
+
+---
+
+## Spot Search (🔍 panel)
+
+Open with the **🔍** button or **Ctrl+F**. Search enemies, gathering types, or item drops on the current stage — or across **all stages**.
+
+### Tabs
+
+- **Enemies** — mob name (partial match; `"quotes"` for exact prefix)
+- **Gathering** — gather node types
+- **Items** — drops from enemies, gather nodes, or shops
+
+### Level range (Enemies tab)
+
+Expand **Level range**, set **Min** and/or **Max**, leave blank for no bound. Only enemy rows whose level range overlaps your filter are listed. The badge shows when a filter is active.
+
+### Sort from
+
+Results are ordered by **travel distance** from a sort origin (not alphabetically by area name).
+
+1. **Default:** White Dragon Temple entrance on Hidell Plains.
+2. **Custom:** expand **Sort from** → **Set from map click…**, then click a point on the map. A marker shows the origin. The badge switches to **Custom**.
+
+**Sort order:** path distance → (global only) stage order → level (low to high) → name. Unreachable stages sort after reachable ones.
+
+### Scope
+
+- **This Stage** — current map/stage only.
+- **All Stages** — world-wide search; first use loads spawn position data for all stages (progress message shown).
+
+Click a result to fly to the spawn and highlight it. Multiple locations for the same name use **◀ ▶** to cycle.
+
+---
+
+## Developer panel (optional)
+
+Collapsed **Developer** section at the bottom of the sidebar: spawn IDs on hover, aggro/link radius overlay, grid, territory bounds, edit mode, etc. Not required for normal use.
+
+---
+
+## Data sources
+
+| Source | Role |
+|--------|------|
+| This repo | Map tiles, positions, landmarks, connections, gather points, shops (static JSON) |
+| Server preset | Live spawn tables (`EnemySpawn.json`), gathering CSV, shop JSON |
+
+Presets: **Dogma Rising**, **Revival (live.ddon.org)**, **Arrowgene (default)**, or **Custom** URLs/local files.
+
+---
+
+## Repository scope
+
+This fork focuses on the **interactive map runtime** only (`map.html`, `map.js`, `resources/`, `images/maps/`). Dev tools, quest editor, and wiki build live in the tree but are not part of the deployed map.
+
+Spawn **positions** are lazy-loaded per stage from `resources/enemyPositions/{stageNo}.json` (~20 MB monolith split into on-demand chunks).

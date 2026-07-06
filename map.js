@@ -1,4 +1,3 @@
-import enemyPositions from './resources/enemyPositions.json' with {type: "json"};
 import mapParams from './resources/map_params.json' with {type: "json"};
 import landmarkData from './resources/landmarks.json' with {type: "json"};
 import connectionData from './resources/connections.json' with {type: "json"};
@@ -22,6 +21,58 @@ import worldFlagsExtra from './resources/worldFlagsExtra.json' with {type: "json
 import worldQuestFlags from './resources/worldQuestFlags.json' with {type: "json"};
 import emRadii        from './resources/emRadii.json'        with {type: "json"};
 import stageList      from './resources/stage_list.slt.json' with {type: "json"};
+
+// ── Enemy spawn positions (lazy-loaded per stage from resources/enemyPositions/) ──
+const ENEMY_POSITIONS_DIR = './resources/enemyPositions';
+const ENEMY_POS_BATCH_SIZE = 16;
+const _enemyPosStageCache = new Map();
+const _enemyPosStageLoads = new Map();
+let _enemyPosStageList = null;
+
+const fetchEnemyPositionsIndex = async () => {
+    if (_enemyPosStageList) return _enemyPosStageList;
+    const res = await fetch(`${ENEMY_POSITIONS_DIR}/index.json`);
+    if (!res.ok) throw new Error(`enemy positions index HTTP ${res.status}`);
+    const data = await res.json();
+    _enemyPosStageList = data.stages ?? [];
+    return _enemyPosStageList;
+};
+
+const fetchEnemyPositionsStage = async (stageNo) => {
+    const key = String(stageNo);
+    if (_enemyPosStageCache.has(key)) return _enemyPosStageCache.get(key);
+    if (_enemyPosStageLoads.has(key)) return _enemyPosStageLoads.get(key);
+    const load = fetch(`${ENEMY_POSITIONS_DIR}/${key}.json`)
+        .then(async (res) => (res.ok ? res.json() : null))
+        .then((data) => {
+            _enemyPosStageCache.set(key, data ?? null);
+            _enemyPosStageLoads.delete(key);
+            return data;
+        })
+        .catch(() => {
+            _enemyPosStageCache.set(key, null);
+            _enemyPosStageLoads.delete(key);
+            return null;
+        });
+    _enemyPosStageLoads.set(key, load);
+    return load;
+};
+
+const fetchEnemyPositionsStages = (stageNos) =>
+    Promise.all([...new Set(stageNos.map((n) => String(n)))].map(fetchEnemyPositionsStage));
+
+const enemyPositionsForStage = (stageNo) =>
+    _enemyPosStageCache.get(String(stageNo)) ?? null;
+
+const preloadAllEnemyPositionsStages = async (onProgress) => {
+    const stages = await fetchEnemyPositionsIndex();
+    for (let i = 0; i < stages.length; i += ENEMY_POS_BATCH_SIZE) {
+        const batch = stages.slice(i, i + ENEMY_POS_BATCH_SIZE);
+        await Promise.all(batch.map(fetchEnemyPositionsStage));
+        onProgress?.(Math.min(i + batch.length, stages.length), stages.length);
+    }
+};
+
 const _iconIdSet = new Set(iconIds);
 // Build lookup map: id → named param entry
 const namedParamsById = new Map(namedParamList.map(p => [p.id, p]));
@@ -954,6 +1005,10 @@ function buildSidebar(filter = '') {
     const query = parseSearchQuery(filter);
     const hasFilter = query.conditions.length > 0 || query.text.length > 0;
 
+    if (hasFilter && query.text) {
+        appendNamedLocationSearchResults(listEl, filter);
+    }
+
     // Build one entry per (name, stid) pair — stid suffix intentionally omitted from label.
     // Skip pd piece models (pd###_m##) — internal tileset pieces, not navigable locations.
     const pdPieceRe = /^pd\d+_m\d+$/;
@@ -971,6 +1026,12 @@ function buildSidebar(filter = '') {
 
     if (hasFilter) {
         entries.sort((a, b) => a.label.localeCompare(b.label));
+        if (listEl.querySelector('.map-loc-section')) {
+            const mapsHeader = document.createElement('div');
+            mapsHeader.className = 'map-loc-header map-list-maps-header';
+            mapsHeader.textContent = 'Maps';
+            listEl.appendChild(mapsHeader);
+        }
         renderMapEntries(listEl, entries, currentMap, currentStage);
         return;
     }
@@ -3165,7 +3226,7 @@ function getEnemyFloor(worldX, worldY, worldZ, floorObbs) {
 }
 
 
-function loadEnemySpawns(info, stid = null) {
+async function loadEnemySpawns(info, stid = null) {
     // Tear down all previous group state
     enemyLayer.clearLayers();
     for (const g of _groupStore.values()) {
@@ -3186,12 +3247,13 @@ function loadEnemySpawns(info, stid = null) {
     const filterByFloor = floorObbs !== null;
 
     const stagesToLoad = (stid && info.stages.includes(stid)) ? [stid] : info.stages;
+    await fetchEnemyPositionsStages(stagesToLoad.map((id) => parseInt(id.slice(2), 10)));
 
     // Collect all groups, merging across stages if multiple are loaded
     const byGroupId = new Map(); // groupId string → { territory, items:[{spawn,idx,sg,latlng}], pts:[] }
     for (const stageId of stagesToLoad) {
         const stageNo   = String(parseInt(stageId.slice(2), 10));
-        const stageData = enemyPositions[stageNo];
+        const stageData = enemyPositionsForStage(stageNo);
         if (!stageData) continue;
         for (const [groupId, groupData] of Object.entries(stageData)) {
             const spawns         = groupData.spawns         ?? groupData;  // back-compat
@@ -3478,17 +3540,19 @@ const POI_GATHER_CATEGORIES = [
     { id: 'flower',     label: 'Flower',                      icon: 'flower' },
     { id: 'sand',       label: 'Sand',                        icon: 'sand' },
     { id: 'shell',      label: 'Shell',                       icon: 'shell' },
-    { id: 'crystal',    label: 'Crystal',                     icon: 'crystal' },
+    { id: 'crystal',    label: 'Crystal',                     icon: 'gemstone' },
+    { id: 'gemstone',   label: 'Gemstone',                    icon: 'crystal' },
     { id: 'gatherNode', label: 'Spark',                       icon: 'sparkNode' },
     { id: 'water',      label: 'Water',                       icon: 'water' },
     { id: 'lumber',     label: 'Lumber',                      icon: 'lumber' },
+    { id: 'oneOff',     label: 'Off nodes',                   icon: 'oneOff' },
 ];
 const POI_CATEGORIES = [...POI_LOCATION_CATEGORIES, ...POI_GATHER_CATEGORIES];
 const LANDMARK_POI_CATEGORIES = new Set([
     'areaWarp', 'outpost', 'door', 'house', 'cave', 'basement', 'catacomb', 'elfRuin', 'shrine', 'well', 'ark', 'landmarkOther',
 ]);
 const GATHER_POI_CATEGORIES = new Set([
-    'mushroom', 'treasure', 'box', 'antique', 'grassHerb', 'flower', 'sand', 'shell', 'crystal', 'gatherNode', 'water', 'lumber', 'gatherOther',
+    'mushroom', 'treasure', 'box', 'antique', 'grassHerb', 'flower', 'sand', 'shell', 'crystal', 'gemstone', 'gatherNode', 'water', 'lumber', 'oneOff', 'gatherOther',
 ]);
 const POI_FILTER_DEFAULTS = Object.fromEntries(POI_CATEGORIES.map(c => [c.id, true]));
 
@@ -3513,8 +3577,13 @@ const loadPoiFilters = () => {
             delete parsed.sparkNode;
             delete parsed.dragon;
         }
-        if (parsed.gemstone === false) parsed.crystal = false;
-        delete parsed.gemstone;
+        try {
+            if (!localStorage.getItem('ddon-poi-split-crystal-gemstone')) {
+                // JWL nodes previously shared the combined `crystal` filter toggle.
+                if ('crystal' in parsed) parsed.gemstone = parsed.crystal;
+                localStorage.setItem('ddon-poi-split-crystal-gemstone', '1');
+            }
+        } catch { /* ignore */ }
         // Old pathways / connections layer → all location filters off
         if (parsed.pathway === false || parsed.entrance === false) {
             for (const c of POI_LOCATION_CATEGORIES) parsed[c.id] = false;
@@ -3580,12 +3649,13 @@ function classifyGatherPoiCategory(type) {
     if (type === 'OM_GATHER_SAND') return 'sand';
     if (type === 'OM_GATHER_SHELL') return 'shell';
     if (/^OM_GATHER_CRST_LV/.test(type)) return 'crystal';
-    if (/^OM_GATHER_JWL_LV/.test(type)) return 'crystal';
+    if (/^OM_GATHER_JWL_LV/.test(type)) return 'gemstone';
     if (type === 'OM_GATHER_TWINKLE' || type === 'OM_GATHER_DRAGON' || type === 'OM_GATHER_CORPSE') return 'gatherNode';
     if (type === 'OM_GATHER_WATER') return 'water';
     if (/^OM_GATHER_TREE_LV/.test(type)) return 'lumber';
     if (type === 'OM_GATHER_BOX') return 'box';
     if (type === 'OM_GATHER_ANTIQUE') return 'antique';
+    if (type === 'OM_GATHER_ONE_OFF') return 'oneOff';
     if (type.startsWith('CHEST_') || type.startsWith('OM_GATHER_TREA_') ||
         type.startsWith('OM_GATHER_KEY_')) return 'treasure';
     return 'gatherOther';
@@ -3600,7 +3670,6 @@ function _normalizePoiFilterCategory(category) {
     if (!category) return category;
     if (category === 'itemShop' || category === 'materialShop' || category === 'appraisal') return 'shop';
     if (category === 'sparkNode' || category === 'dragon' || category === 'corpse') return 'gatherNode';
-    if (category === 'gemstone') return 'crystal';
     if (category === 'ark') return 'areaWarp';
     if (category === 'catacomb' || category === 'shrine' || category === 'elfRuin') return 'cave';
     return category;
@@ -3612,7 +3681,7 @@ function poiFilterIconSrc(filterCategoryId) {
 }
 
 function poiMapIconSrc(internalCategory, { uncategorizedConnection = false } = {}) {
-    if (uncategorizedConnection || internalCategory == null) return poiFilterIconSrc('pathway');
+    if (uncategorizedConnection || internalCategory == null) return poiFilterIconSrc('door');
     if (internalCategory === 'ark') return poiIconSrc('ark');
     const filterCat = _normalizePoiFilterCategory(internalCategory) ?? internalCategory;
     return poiFilterIconSrc(filterCat);
@@ -3626,6 +3695,244 @@ function gatherMapIconSrc(gatherType) {
 
 function makeConnectionMarkerIcon(poiCat) {
     return makePoiMapIcon(poiMapIconSrc(poiCat, { uncategorizedConnection: !poiCat }), 22);
+}
+
+// ── Named location search (map sidebar — portcrystals, caves, inns, etc.) ───────
+/** Main overworld field maps only — excludes sfield* spot slices (wrong projection). */
+const isMainWorldFieldMap = (mapName) => /^field\d+_m\d+$/.test(mapName);
+
+const NAMED_LOCATION_CATEGORIES = new Set(POI_LOCATION_CATEGORIES.map(c => c.id));
+const NAMED_LOCATION_RESULT_CAP = 30;
+
+/** Prefer portcrystal outpost over area-warp duplicate sharing the same spot_id. */
+const LANDMARK_SEARCH_TYPE_RANK = {
+    TYPE_OUTPOST:    0,
+    TYPE_AREA_WARP:  1,
+    TYPE_DOOR:       2,
+    TYPE_CAVE:       3,
+    TYPE_WELL:       4,
+    TYPE_BASEMENT:   5,
+    TYPE_SHRINE:     6,
+    TYPE_CATACOMB:   7,
+    TYPE_ELF_RUIN:   8,
+};
+const landmarkSearchTypeRank = (type) => LANDMARK_SEARCH_TYPE_RANK[type] ?? 99;
+
+function stageIdFromNo(stageNo) {
+    if (stageNo == null) return null;
+    return `st${String(stageNo).padStart(4, '0')}`;
+}
+
+function defaultFieldStage(mapName) {
+    const info = mapParams[mapName];
+    if (!info?.stages?.length) return null;
+    if (info.stages.includes('st0100')) return 'st0100';
+    return info.stages[0];
+}
+
+function mapAreaLabel(mapName) {
+    const info = mapParams[mapName];
+    const area = info?.quest_area_name;
+    if (area && area !== 'Unknown') return area;
+    if (info?.name_en) return splitPascalCase(info.name_en);
+    return mapName;
+}
+
+function locationTypeLabel(categoryId) {
+    const norm = _normalizePoiFilterCategory(categoryId) ?? categoryId;
+    return POI_LOCATION_CATEGORIES.find(c => c.id === norm)?.label ?? 'Location';
+}
+
+let _namedLocationIndex = null;
+let _namedLocationIndexVersion = 0;
+const NAMED_LOCATION_INDEX_VERSION = 3;
+let _pendingNamedLocNav = null;
+
+function namedLocationMatchesEntry(entry, term, exact) {
+    const label = entry.label.toLowerCase();
+    if (exact) return label.startsWith(term);
+    if (label.startsWith(term)) return true;
+    const esc = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const wordRe = new RegExp(`\\b${esc}\\b`, 'i');
+    if (wordRe.test(entry.label)) return true;
+    if (entry.labelAlt && wordRe.test(entry.labelAlt)) return true;
+    if (entry.destLabel && wordRe.test(entry.destLabel)) return true;
+    return false;
+}
+
+function buildNamedLocationIndex() {
+    if (_namedLocationIndex && _namedLocationIndexVersion === NAMED_LOCATION_INDEX_VERSION) return;
+    const entries = [];
+    const seen = new Set();
+    const spotBest = new Map();
+
+    const push = (entry) => {
+        const key = `${entry.mapName}:${Math.round(entry.worldX / 50)}:${Math.round(entry.worldZ / 50)}:${entry.label.toLowerCase()}`;
+        if (seen.has(key)) return;
+        seen.add(key);
+        entries.push(entry);
+    };
+
+    for (const [mapName, landmarks] of Object.entries(landmarkData)) {
+        if (!isMainWorldFieldMap(mapName)) continue;
+        for (const lm of landmarks) {
+            if (HIDDEN_LANDMARK_TYPES.has(lm.type)) continue;
+            const label = lm.spot_name_en?.trim();
+            if (!label) continue;
+            const category = classifyLandmarkPoiCategory(lm.type, lm);
+            const filterCat = _normalizePoiFilterCategory(category) ?? category;
+            if (!NAMED_LOCATION_CATEGORIES.has(filterCat)) continue;
+            const entry = {
+                label,
+                labelAlt: lm.spot_name_jp ?? '',
+                typeLabel: locationTypeLabel(filterCat),
+                mapName,
+                stid: defaultFieldStage(mapName),
+                worldX: lm.x,
+                worldZ: lm.z,
+            };
+            if (lm.spot_id != null) {
+                const spotKey = `${mapName}:${lm.spot_id}`;
+                const rank = landmarkSearchTypeRank(lm.type);
+                const prev = spotBest.get(spotKey);
+                if (prev && rank >= prev.rank) continue;
+                spotBest.set(spotKey, { entry, rank });
+            } else {
+                push(entry);
+            }
+        }
+    }
+    for (const { entry } of spotBest.values()) push(entry);
+
+    for (const [sourceMap, conns] of Object.entries(connectionData)) {
+        if (!isMainWorldFieldMap(sourceMap)) continue;
+        for (const conn of conns) {
+            const label = conn.name_en?.trim();
+            if (!label || conn.x == null || conn.z == null) continue;
+            if (!conn.to_map || isMainWorldFieldMap(conn.to_map)) continue;
+            if (/^house$/i.test(label)) continue;
+            const poiCat = classifyConnectionPoi(conn, sourceMap);
+            const filterCat = _normalizePoiFilterCategory(poiCat) ?? poiCat;
+            if (!filterCat || !NAMED_LOCATION_CATEGORIES.has(filterCat)) continue;
+            const destLabel = mapParams[conn.to_map]?.name_en
+                ? splitPascalCase(mapParams[conn.to_map].name_en) : conn.to_map;
+            push({
+                label,
+                labelAlt: '',
+                destLabel,
+                typeLabel: locationTypeLabel(filterCat),
+                mapName: sourceMap,
+                stid: stageIdFromNo(conn.from_stage) ?? defaultFieldStage(sourceMap),
+                worldX: conn.x,
+                worldZ: conn.z,
+            });
+        }
+    }
+
+    _namedLocationIndex = entries;
+    _namedLocationIndexVersion = NAMED_LOCATION_INDEX_VERSION;
+}
+
+function filterNamedLocationEntries(rawFilter) {
+    buildNamedLocationIndex();
+    const query = parseSearchQuery(rawFilter);
+    const { term, exact } = _parseSpotQuery(query.text);
+    if (!term) return [];
+
+    const matches = [];
+    for (const entry of _namedLocationIndex) {
+        if (!namedLocationMatchesEntry(entry, term, exact)) continue;
+        matches.push(entry);
+    }
+
+    matches.sort((a, b) => {
+        const rank = (entry) => {
+            const ll = entry.label.toLowerCase();
+            if (ll === term) return 0;
+            if (ll.startsWith(term)) return 1;
+            return 2;
+        };
+        const rDiff = rank(a) - rank(b);
+        if (rDiff !== 0) return rDiff;
+        const areaDiff = mapAreaLabel(a.mapName).localeCompare(mapAreaLabel(b.mapName));
+        if (areaDiff !== 0) return areaDiff;
+        return a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: 'base' });
+    });
+    return matches;
+}
+
+function navigateToNamedLocation(entry) {
+    const info = mapParams[entry.mapName];
+    if (!info) return;
+    const latlng = worldToPixel(entry.worldX, entry.worldZ, info);
+    const zoom = 1.75;
+    const stid = entry.stid;
+    const sameMap = entry.mapName === _loadedMapName;
+    const sameStage = !stid || stid === currentStageName();
+
+    const persistViewInHash = () => {
+        const mapPart = stid ? `${entry.mapName}:${stid}` : entry.mapName;
+        history.replaceState(null, '', `#${mapPart}@${zoom.toFixed(2)}/${latlng.lat.toFixed(1)}/${latlng.lng.toFixed(1)}!${getLayersHash()}`);
+    };
+
+    if (sameMap && sameStage) {
+        leafletMap.flyTo(latlng, zoom, { duration: 0.45 });
+        _clearSpotHighlights();
+        _addSpotHighlight(latlng);
+        persistViewInHash();
+        return;
+    }
+
+    _pendingNamedLocNav = { latlng };
+    navigateTo(entry.mapName, stid, { zoom, center: latlng });
+}
+
+function appendNamedLocationSearchResults(listEl, rawFilter) {
+    const matches = filterNamedLocationEntries(rawFilter);
+    if (!matches.length) return;
+
+    const section = document.createElement('div');
+    section.className = 'map-loc-section';
+
+    const header = document.createElement('div');
+    header.className = 'map-loc-header';
+    header.textContent = `Named locations (${matches.length})`;
+    section.appendChild(header);
+
+    for (const entry of matches.slice(0, NAMED_LOCATION_RESULT_CAP)) {
+        const el = document.createElement('div');
+        el.className = 'map-loc-entry';
+        el.title = `${entry.typeLabel} · ${mapAreaLabel(entry.mapName)}`;
+
+        const icon = document.createElement('span');
+        icon.className = 'map-loc-icon';
+        icon.textContent = '◆';
+
+        const body = document.createElement('div');
+        body.className = 'map-loc-body';
+
+        const labelEl = document.createElement('div');
+        labelEl.className = 'map-loc-label';
+        labelEl.textContent = entry.label;
+
+        const subEl = document.createElement('div');
+        subEl.className = 'map-loc-sub';
+        subEl.textContent = `${entry.typeLabel} · ${mapAreaLabel(entry.mapName)}`;
+
+        body.append(labelEl, subEl);
+        el.append(icon, body);
+        el.addEventListener('click', () => navigateToNamedLocation(entry));
+        section.appendChild(el);
+    }
+
+    if (matches.length > NAMED_LOCATION_RESULT_CAP) {
+        const more = document.createElement('div');
+        more.className = 'map-loc-more';
+        more.textContent = `${matches.length - NAMED_LOCATION_RESULT_CAP} more — refine search`;
+        section.appendChild(more);
+    }
+
+    listEl.appendChild(section);
 }
 
 function anyLocationFilterEnabled() {
@@ -6377,7 +6684,7 @@ async function loadMapOverlaysPhase(mapName, info, stid, openGroups) {
     loadSpecialShops(info, stid);
     await nextFrame();
 
-    loadEnemySpawns(info, stid);
+    await loadEnemySpawns(info, stid);
 
     if (openGroups?.length) {
         for (const id of openGroups) if (_groupStore.has(id)) _expandGroupCore(_groupStore.get(id));
@@ -6386,13 +6693,22 @@ async function loadMapOverlaysPhase(mapName, info, stid, openGroups) {
     }
 
     _spotOpenedGroup = null;
-    buildSpotIndex(info);
+    await buildSpotIndex(info);
     if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
 
     if (_pendingGlobalNavTarget) {
         const t = _pendingGlobalNavTarget;
         _pendingGlobalNavTarget = null;
         setTimeout(() => _navigateToSpot(t), 300);
+    }
+
+    if (_pendingNamedLocNav) {
+        const { latlng } = _pendingNamedLocNav;
+        _pendingNamedLocNav = null;
+        setTimeout(() => {
+            _clearSpotHighlights();
+            _addSpotHighlight(latlng);
+        }, 400);
     }
 
     fitMapToImage(info);
@@ -6479,7 +6795,10 @@ let _spotOpenedGroup  = null;  // groupId of the enemy group last opened by spot
 const _spotHlLayer  = L.layerGroup().addTo(leafletMap);
 let _spotGlobal       = false; // true = global (all stages) search mode
 let _globalSpotIndex  = [];    // searchable entries across all maps/stages
+let _globalSpotIndexReady = false;
+let _globalSpotIndexPromise = null;
 let _pendingGlobalNavTarget = null; // deferred navigation target after stage switch
+const SPOT_RESULT_CAP = 80;     // max grouped rows rendered (keeps typing responsive)
 const _spotOriginLayer = L.layerGroup().addTo(leafletMap);
 
 function _clearSpotHighlights() {
@@ -6641,12 +6960,13 @@ function _navigateToSpotGlobal(item) {
     }
 }
 
-function buildSpotIndex(info) {
+async function buildSpotIndex(info) {
     _spotIndex = [];
     if (!info.stages?.length) return;
 
     const stid = currentStageName();
     const stagesToLoad = (stid && info.stages.includes(stid)) ? [stid] : info.stages;
+    await fetchEnemyPositionsStages(stagesToLoad.map((id) => parseInt(id.slice(2), 10)));
 
     for (const stageId of stagesToLoad) {
         const stageNo = String(parseInt(stageId.slice(2), 10));
@@ -6654,7 +6974,7 @@ function buildSpotIndex(info) {
         const cache = _enemySpawnCache;  // may be null if promise not yet resolved
 
         // ── Enemies: one entry per emCode per spawn position ────────────────
-        const groups = enemyPositions[stageNo];
+        const groups = enemyPositionsForStage(stageNo);
         if (groups) {
             for (const [groupId, groupData] of Object.entries(groups)) {
                 const spawns = groupData.spawns ?? groupData;  // back-compat: array may be direct
@@ -6800,12 +7120,12 @@ function buildSpotIndex(info) {
 }
 
 // Rebuild spot index as async data caches load (enemy spawns, gather items, shop data)
-function _rebuildSpotIndex() {
-    if (_currentMapInfo) {
-        buildSpotIndex(_currentMapInfo);
+const _rebuildSpotIndex = () => {
+    if (!_currentMapInfo) return;
+    buildSpotIndex(_currentMapInfo).then(() => {
         if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
-    }
-}
+    });
+};
 _enemySpawnPromise  .then(() => {
     _rebuildSpotIndex();
     _rebuildGlobalSpotIndex();
@@ -6829,78 +7149,154 @@ _enemySpawnPromise  .then(() => {
 _gatherItemsPromise .then(() => { _rebuildSpotIndex(); _rebuildGlobalSpotIndex(); }).catch(() => {});
 _shopPromise        .then(() => { _rebuildSpotIndex(); _rebuildGlobalSpotIndex(); }).catch(() => {});
 
-function _buildGlobalSpotIndex() {
-    _globalSpotIndex = [];
-    for (const [mapName, info] of Object.entries(mapParams)) {
-        if (!info.stages?.length) continue;
-        const mapDisplayName = info.name_en ? splitPascalCase(info.name_en) : mapName;
-        for (const stageId of info.stages) {
-            const stageNo = String(parseInt(stageId.slice(2), 10));
-            const serverStageId = stageIds[stageNo];
-            const sLabel = stageLabel(info, stageId);
-            const locationTag = `${mapDisplayName} · ${sLabel}`;
+async function _buildGlobalSpotIndex() {
+    if (_globalSpotIndexReady) return;
+    if (_globalSpotIndexPromise) return _globalSpotIndexPromise;
 
-            // Enemies — same logic as local buildSpotIndex, using global spawn cache
-            const groups = enemyPositions[stageNo];
-            if (groups) {
-                for (const [groupId, groupData] of Object.entries(groups)) {
-                    const spawns = groupData.spawns ?? groupData;
-                    if (!Array.isArray(spawns) || !spawns.length) continue;
-                    for (let i = 0; i < spawns.length; i++) {
-                        const s = spawns[i];
-                        const spawnKey = serverStageId != null ? `${serverStageId},${groupId},${s.posIdx ?? i}` : null;
-                        if (_enemySpawnCache && spawnKey) {
-                            for (const [emCode, lvSet] of groupSpawnLevelsByEmCode(_enemySpawnCache.get(spawnKey) ?? [])) {
-                                const baseName = emNames[emCode]?.name;
-                                if (!baseName) continue;
-                                _globalSpotIndex.push(makeGlobalEnemySpot({
-                                    emCode, lvSet, baseName, groupId, spawnKey,
-                                    worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
-                                    mapName, stageId, stageNo, locationTag,
-                                }));
+    _globalSpotIndexPromise = (async () => {
+        const resultsEl = document.getElementById('spot-results');
+        const showProgress = _spotGlobal && resultsEl;
+        try {
+            await preloadAllEnemyPositionsStages((done, total) => {
+                if (showProgress) {
+                    resultsEl.innerHTML =
+                        `<div class="spot-empty">Loading world spawn index… ${done}/${total}</div>`;
+                }
+            });
+
+            _globalSpotIndex = [];
+            for (const [mapName, info] of Object.entries(mapParams)) {
+                if (!info.stages?.length) continue;
+                const mapDisplayName = info.name_en ? splitPascalCase(info.name_en) : mapName;
+                for (const stageId of info.stages) {
+                    const stageNo = String(parseInt(stageId.slice(2), 10));
+                    const serverStageId = stageIds[stageNo];
+                    const sLabel = stageLabel(info, stageId);
+                    const locationTag = `${mapDisplayName} · ${sLabel}`;
+
+                    // Enemies — same logic as local buildSpotIndex, using global spawn cache
+                    const groups = enemyPositionsForStage(stageNo);
+                    if (groups) {
+                        for (const [groupId, groupData] of Object.entries(groups)) {
+                            const spawns = groupData.spawns ?? groupData;
+                            if (!Array.isArray(spawns) || !spawns.length) continue;
+                            for (let i = 0; i < spawns.length; i++) {
+                                const s = spawns[i];
+                                const spawnKey = serverStageId != null ? `${serverStageId},${groupId},${s.posIdx ?? i}` : null;
+                                if (_enemySpawnCache && spawnKey) {
+                                    for (const [emCode, lvSet] of groupSpawnLevelsByEmCode(_enemySpawnCache.get(spawnKey) ?? [])) {
+                                        const baseName = emNames[emCode]?.name;
+                                        if (!baseName) continue;
+                                        _globalSpotIndex.push(makeGlobalEnemySpot({
+                                            emCode, lvSet, baseName, groupId, spawnKey,
+                                            worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
+                                            mapName, stageId, stageNo, locationTag,
+                                        }));
+                                    }
+                                } else if (s.EmName) {
+                                    const emCode = s.EmName;
+                                    const displayName = emNames[emCode]?.name ?? emCode;
+                                    _globalSpotIndex.push({
+                                        type: 'enemy', name: displayName,
+                                        searchText: `${displayName} ${emCode}`.toLowerCase(),
+                                        worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
+                                        groupId, emCode: null, spawnKey: null,
+                                        mapName, stageId, stageNo, locationTag,
+                                    });
+                                }
                             }
-                        } else if (s.EmName) {
-                            const emCode = s.EmName;
-                            const displayName = emNames[emCode]?.name ?? emCode;
+                        }
+                    }
+
+                    // Enemy drops
+                    if (_enemySpawnCache && serverStageId != null && groups) {
+                        for (const [groupId, groupData] of Object.entries(groups)) {
+                            const spawns = groupData.spawns ?? groupData;
+                            if (!Array.isArray(spawns) || !spawns.length) continue;
+                            for (let i = 0; i < spawns.length; i++) {
+                                const s = spawns[i];
+                                const spawnKey = `${serverStageId},${groupId},${s.posIdx ?? i}`;
+                                const seen = new Set();
+                                for (const e of (_enemySpawnCache.get(spawnKey) ?? [])) {
+                                    if (!e.emCode || !e.drops?.length) continue;
+                                    for (const row of e.drops) {
+                                        const itemId = row[0];
+                                        const dedup = `${itemId}\0${e.emCode}`;
+                                        if (seen.has(dedup)) continue;
+                                        seen.add(dedup);
+                                        const itemName = itemNames[String(itemId)]?.name ?? `Item #${itemId}`;
+                                        const emName   = emNames[e.emCode]?.name ?? e.emCode;
+                                        const qty = row[2] > row[1] ? `×${row[1]}–${row[2]}` : `×${row[1] ?? 1}`;
+                                        const pct = row[5] > 0 && row[5] < 1 ? ` (${Math.round(row[5] * 100)}%)` : '';
+                                        _globalSpotIndex.push({
+                                            type: 'item', source: 'enemy',
+                                            name: itemName,
+                                            searchText: `${itemName} ${itemId}`.toLowerCase(),
+                                            itemId, groupId, emCode: e.emCode, spawnKey,
+                                            dropDesc: `${emName} ${qty}${pct}`,
+                                            worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
+                                            mapName, stageId, stageNo, locationTag,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Gathering spots
+                    const nodes = gatherPoints[stageNo];
+                    if (nodes) {
+                        for (const node of nodes) {
+                            const label = GATHER_LABELS[node.type]
+                                ?? node.type.replace(/^(OM_GATHER_|CHEST_)/, '').replace(/_/g, ' ');
                             _globalSpotIndex.push({
-                                type: 'enemy', name: displayName,
-                                searchText: `${displayName} ${emCode}`.toLowerCase(),
-                                worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
-                                groupId, emCode: null, spawnKey: null,
+                                type: 'gather', name: label,
+                                gatherType: node.type,
+                                searchText: label.toLowerCase(),
+                                worldPos: { x: node.x, y: node.y, z: node.z },
+                                nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
                                 mapName, stageId, stageNo, locationTag,
                             });
                         }
                     }
-                }
-            }
 
-            // Enemy drops
-            if (_enemySpawnCache && serverStageId != null && groups) {
-                for (const [groupId, groupData] of Object.entries(groups)) {
-                    const spawns = groupData.spawns ?? groupData;
-                    if (!Array.isArray(spawns) || !spawns.length) continue;
-                    for (let i = 0; i < spawns.length; i++) {
-                        const s = spawns[i];
-                        const spawnKey = `${serverStageId},${groupId},${s.posIdx ?? i}`;
-                        const seen = new Set();
-                        for (const e of (_enemySpawnCache.get(spawnKey) ?? [])) {
-                            if (!e.emCode || !e.drops?.length) continue;
-                            for (const row of e.drops) {
-                                const itemId = row[0];
-                                const dedup = `${itemId}\0${e.emCode}`;
-                                if (seen.has(dedup)) continue;
-                                seen.add(dedup);
-                                const itemName = itemNames[String(itemId)]?.name ?? `Item #${itemId}`;
-                                const emName   = emNames[e.emCode]?.name ?? e.emCode;
-                                const qty = row[2] > row[1] ? `×${row[1]}–${row[2]}` : `×${row[1] ?? 1}`;
-                                const pct = row[5] > 0 && row[5] < 1 ? ` (${Math.round(row[5] * 100)}%)` : '';
+                    // Shop items (uses globally-loaded shop cache)
+                    if (_shopCache) {
+                        for (const npc of (npcShops[stageNo] ?? [])) {
+                            if (npc.ShopId == null) continue;
+                            const shop = _shopCache.get(npc.ShopId);
+                            if (!shop?.items?.length) continue;
+                            const npcName = npcNames[String(npc.NpcId)] ?? `NPC #${npc.NpcId}`;
+                            for (const it of shop.items) {
+                                if (it.ItemId == null) continue;
+                                const itemName = itemNames[String(it.ItemId)]?.name ?? `Item #${it.ItemId}`;
                                 _globalSpotIndex.push({
-                                    type: 'item', source: 'enemy',
+                                    type: 'item', source: 'shop',
                                     name: itemName,
-                                    searchText: `${itemName} ${itemId}`.toLowerCase(),
-                                    itemId, groupId, emCode: e.emCode, spawnKey,
-                                    dropDesc: `${emName} ${qty}${pct}`,
-                                    worldPos: { x: s.Position.x, y: s.Position.y, z: s.Position.z },
+                                    searchText: `${itemName} ${it.ItemId}`.toLowerCase(),
+                                    itemId: it.ItemId,
+                                    worldPos: { x: npc.Position.x, y: npc.Position.y, z: npc.Position.z },
+                                    shopKey: `${stageNo}:${npc.NpcId}`,
+                                    mapName, stageId, stageNo, locationTag,
+                                });
+                            }
+                        }
+                    }
+
+                    // Gather items (uses globally-loaded gather items cache)
+                    if (_gatherItemsCache && serverStageId != null) {
+                        for (const node of (gatherPoints[stageNo] ?? [])) {
+                            const csvKey = `${serverStageId},${node.groupId},${node.posId}`;
+                            const nodeItems = _gatherItemsCache.get(csvKey) ?? [];
+                            for (const it of nodeItems) {
+                                const itemName = itemNames[String(it.itemId)]?.name ?? `Item #${it.itemId}`;
+                                _globalSpotIndex.push({
+                                    type: 'item', source: 'gather',
+                                    name: itemName,
+                                    searchText: `${itemName} ${it.itemId}`.toLowerCase(),
+                                    itemId: it.itemId,
+                                    worldPos: { x: node.x, y: node.y, z: node.z },
+                                    nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
                                     mapName, stageId, stageNo, locationTag,
                                 });
                             }
@@ -6908,74 +7304,24 @@ function _buildGlobalSpotIndex() {
                     }
                 }
             }
-
-            // Gathering spots
-            const nodes = gatherPoints[stageNo];
-            if (nodes) {
-                for (const node of nodes) {
-                    const label = GATHER_LABELS[node.type]
-                        ?? node.type.replace(/^(OM_GATHER_|CHEST_)/, '').replace(/_/g, ' ');
-                    _globalSpotIndex.push({
-                        type: 'gather', name: label,
-                        gatherType: node.type,
-                        searchText: label.toLowerCase(),
-                        worldPos: { x: node.x, y: node.y, z: node.z },
-                        nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
-                        mapName, stageId, stageNo, locationTag,
-                    });
-                }
-            }
-
-            // Shop items (uses globally-loaded shop cache)
-            if (_shopCache) {
-                for (const npc of (npcShops[stageNo] ?? [])) {
-                    if (npc.ShopId == null) continue;
-                    const shop = _shopCache.get(npc.ShopId);
-                    if (!shop?.items?.length) continue;
-                    const npcName = npcNames[String(npc.NpcId)] ?? `NPC #${npc.NpcId}`;
-                    for (const it of shop.items) {
-                        if (it.ItemId == null) continue;
-                        const itemName = itemNames[String(it.ItemId)]?.name ?? `Item #${it.ItemId}`;
-                        _globalSpotIndex.push({
-                            type: 'item', source: 'shop',
-                            name: itemName,
-                            searchText: `${itemName} ${it.ItemId}`.toLowerCase(),
-                            itemId: it.ItemId,
-                            worldPos: { x: npc.Position.x, y: npc.Position.y, z: npc.Position.z },
-                            shopKey: `${stageNo}:${npc.NpcId}`,
-                            mapName, stageId, stageNo, locationTag,
-                        });
-                    }
-                }
-            }
-
-            // Gather items (uses globally-loaded gather items cache)
-            if (_gatherItemsCache && serverStageId != null) {
-                for (const node of (gatherPoints[stageNo] ?? [])) {
-                    const csvKey = `${serverStageId},${node.groupId},${node.posId}`;
-                    const nodeItems = _gatherItemsCache.get(csvKey) ?? [];
-                    for (const it of nodeItems) {
-                        const itemName = itemNames[String(it.itemId)]?.name ?? `Item #${it.itemId}`;
-                        _globalSpotIndex.push({
-                            type: 'item', source: 'gather',
-                            name: itemName,
-                            searchText: `${itemName} ${it.itemId}`.toLowerCase(),
-                            itemId: it.itemId,
-                            worldPos: { x: node.x, y: node.y, z: node.z },
-                            nodeKey: `${stageNo}:${node.groupId}:${node.posId}`,
-                            mapName, stageId, stageNo, locationTag,
-                        });
-                    }
-                }
-            }
+            _globalSpotIndexReady = true;
+        } finally {
+            _globalSpotIndexPromise = null;
         }
-    }
+    })();
+
+    return _globalSpotIndexPromise;
 }
 
-function _rebuildGlobalSpotIndex() {
-    _buildGlobalSpotIndex();
-    if (_spotGlobal && document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
-}
+const _rebuildGlobalSpotIndex = () => {
+    if (!_globalSpotIndexReady) return;
+    _globalSpotIndexReady = false;
+    _globalSpotIndex = [];
+    _globalSpotIndexPromise = null;
+    _buildGlobalSpotIndex().then(() => {
+        if (_spotGlobal && document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
+    });
+};
 
 // ── Spot search — pure helpers ───────────────────────────────────────────────
 
@@ -7159,17 +7505,7 @@ const spotEntryPathDistSq = (entry, scope = 'local') => {
 const spotGroupPathDistSq = (items, scope = 'local') =>
     Math.min(...items.map(e => spotEntryPathDistSq(e, scope)));
 
-const defaultSpotGroupCompare = (a, b) => {
-    const stDiff = stageOrderKey(a) - stageOrderKey(b);
-    if (stDiff !== 0) return stDiff;
-    if (a.type === 'enemy' && b.type === 'enemy') {
-        const lvDiff = enemyLevelSortKey(a) - enemyLevelSortKey(b);
-        if (lvDiff !== 0) return lvDiff;
-    }
-    return compareSpotResultNames(a, b);
-};
-
-const compareSpotEnemyGroups = (itemsA, itemsB, { scope = 'local' } = {}) => {
+const compareSpotEnemyGroups = (itemsA, itemsB, { scope = 'local', criteria = null } = {}) => {
     const a = itemsA[0];
     const b = itemsB[0];
     if (a.type !== b.type) return compareSpotResultNames(a, b);
@@ -7179,32 +7515,62 @@ const compareSpotEnemyGroups = (itemsA, itemsB, { scope = 'local' } = {}) => {
     const aPath = distA < SPOT_NO_PATH;
     const bPath = distB < SPOT_NO_PATH;
 
+    // 1. Path distance — nearer reachable spawns first
     if (aPath && bPath) {
         const distDiff = distA - distB;
         if (distDiff !== 0) return distDiff;
-    } else if (!aPath || !bPath) {
-        return defaultSpotGroupCompare(a, b);
+    } else if (aPath !== bPath) {
+        return aPath ? -1 : 1;
     }
 
-    return defaultSpotGroupCompare(a, b);
+    // 2. Stage order (global results)
+    if (scope === 'global') {
+        const stDiff = stageOrderKey(a) - stageOrderKey(b);
+        if (stDiff !== 0) return stDiff;
+    }
+
+    // 3. Level — tie-breaker after distance (applies with or without level filter)
+    if (a.type === 'enemy' && b.type === 'enemy') {
+        const lvDiff = enemyLevelSortKey(a) - enemyLevelSortKey(b);
+        if (lvDiff !== 0) return lvDiff;
+    }
+
+    return compareSpotResultNames(a, b);
 };
 
-const compareSpotLocalGroups = (itemsA, itemsB) =>
-    compareSpotEnemyGroups(itemsA, itemsB, { scope: 'local' });
+const compareSpotLocalGroups = (itemsA, itemsB, criteria = null) =>
+    compareSpotEnemyGroups(itemsA, itemsB, { scope: 'local', criteria });
 
-const compareSpotGlobalGroups = (itemsA, itemsB) =>
-    compareSpotEnemyGroups(itemsA, itemsB, { scope: 'global' });
+const compareSpotGlobalGroups = (itemsA, itemsB, criteria = null) =>
+    compareSpotEnemyGroups(itemsA, itemsB, { scope: 'global', criteria });
 
-const orderSpotGroupItems = (items, scope) => {
+const orderSpotGroupItems = (items, scope, criteria = null) => {
     if (!items[0]?.worldPos) return items;
-    const allPath = items.every(e => spotEntryPathDistSq(e, scope) < SPOT_NO_PATH);
-    if (!allPath) return items;
-    return [...items].sort((a, b) => spotEntryPathDistSq(a, scope) - spotEntryPathDistSq(b, scope));
+    return [...items].sort((a, b) => {
+        const distA = spotEntryPathDistSq(a, scope);
+        const distB = spotEntryPathDistSq(b, scope);
+        const aPath = distA < SPOT_NO_PATH;
+        const bPath = distB < SPOT_NO_PATH;
+
+        if (aPath && bPath) {
+            const distDiff = distA - distB;
+            if (distDiff !== 0) return distDiff;
+        } else if (aPath !== bPath) {
+            return aPath ? -1 : 1;
+        }
+
+        if (a.type === 'enemy' && b.type === 'enemy') {
+            const lvDiff = enemyLevelSortKey(a) - enemyLevelSortKey(b);
+            if (lvDiff !== 0) return lvDiff;
+        }
+
+        return 0;
+    });
 };
 
-const sortSpotGroupedResults = (grouped, scope) => {
+const sortSpotGroupedResults = (grouped, scope, criteria = null) => {
     const compare = scope === 'global' ? compareSpotGlobalGroups : compareSpotLocalGroups;
-    return [...grouped.values()].sort(compare);
+    return [...grouped.values()].sort((a, b) => compare(a, b, criteria));
 };
 
 const formatSpotSortOriginLabel = (origin) => {
@@ -7440,11 +7806,14 @@ function _runSpotSearch() {
     const resultsEl = document.getElementById('spot-results');
     if (!resultsEl) return;
 
-    _spotPathDistCache.clear();
     const criteria = readSpotSearchCriteria();
     _clearSpotHighlights();
 
     if (_spotGlobal) {
+        if (_globalSpotIndexPromise && !_globalSpotIndexReady) {
+            resultsEl.innerHTML = `<div class="spot-empty">Loading world spawn index…</div>`;
+            return;
+        }
         if (!criteria.raw) {
             resultsEl.innerHTML = `<div class="spot-empty">Enter a search term to search across all stages.</div>`;
             return;
@@ -7454,7 +7823,7 @@ function _runSpotSearch() {
             resultsEl.innerHTML = formatSpotEmptyMessage(criteria, { global: true });
             return;
         }
-        _renderGlobalResults(matches, resultsEl);
+        _renderGlobalResults(matches, resultsEl, criteria);
         return;
     }
 
@@ -7477,16 +7846,24 @@ function _runSpotSearch() {
         grouped.get(key).push(m);
     }
 
-    const sortedGroups = sortSpotGroupedResults(grouped, 'local');
+    const sortedGroups = sortSpotGroupedResults(grouped, 'local', criteria);
+    const totalGroups = sortedGroups.length;
+    const cappedGroups = sortedGroups.slice(0, SPOT_RESULT_CAP);
 
     const frag = document.createDocumentFragment();
     const summary = document.createElement('div');
     summary.className = 'spot-summary';
-    summary.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${grouped.size} unique`;
+    let summaryText = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${totalGroups} unique`;
+    if (totalGroups > SPOT_RESULT_CAP) {
+        summaryText += ` · showing ${SPOT_RESULT_CAP} (refine search)`;
+    }
+    summary.textContent = summaryText;
     frag.appendChild(summary);
 
-    for (const rawItems of sortedGroups) {
-        const items = orderSpotGroupItems(rawItems, 'local');
+    const enableHoverHl = totalGroups <= 50;
+
+    for (const rawItems of cappedGroups) {
+        const items = orderSpotGroupItems(rawItems, 'local', criteria);
         const first = items[0];
         const multi = items.length > 1;
 
@@ -7548,28 +7925,29 @@ function _runSpotSearch() {
             row.addEventListener('click', () => _navigateToSpot(first));
         }
 
-        row.addEventListener('mouseenter', () => {
-            _clearSpotHighlights();
-            const drawnGroups = new Set();
-            for (const item of items) {
-                if (_currentFloorObbs && item.worldPos) {
-                    const f = getEnemyFloor(item.worldPos.x, item.worldPos.y, item.worldPos.z, _currentFloorObbs);
-                    if (f !== null && f !== currentLayer) continue;
-                }
-                const grp = item.groupId ? _groupStore.get(item.groupId) : null;
-                if (item.groupId && !grp) continue;  // group not on this floor, skip
-                if (grp && !grp.isExpanded) {
-                    // Collapsed: highlight the chip element directly — no separate marker needed
-                    if (!drawnGroups.has(item.groupId)) {
-                        drawnGroups.add(item.groupId);
-                        _addChipHighlight(grp);
+        if (enableHoverHl) {
+            row.addEventListener('mouseenter', () => {
+                _clearSpotHighlights();
+                const drawnGroups = new Set();
+                for (const item of items) {
+                    if (_currentFloorObbs && item.worldPos) {
+                        const f = getEnemyFloor(item.worldPos.x, item.worldPos.y, item.worldPos.z, _currentFloorObbs);
+                        if (f !== null && f !== currentLayer) continue;
                     }
-                } else {
-                    _addSpotHighlight(_resolveSpotLatLng(item));
+                    const grp = item.groupId ? _groupStore.get(item.groupId) : null;
+                    if (item.groupId && !grp) continue;
+                    if (grp && !grp.isExpanded) {
+                        if (!drawnGroups.has(item.groupId)) {
+                            drawnGroups.add(item.groupId);
+                            _addChipHighlight(grp);
+                        }
+                    } else {
+                        _addSpotHighlight(_resolveSpotLatLng(item));
+                    }
                 }
-            }
-        });
-        row.addEventListener('mouseleave', _clearSpotHighlights);
+            });
+            row.addEventListener('mouseleave', _clearSpotHighlights);
+        }
 
         frag.appendChild(row);
     }
@@ -7578,7 +7956,7 @@ function _runSpotSearch() {
     resultsEl.appendChild(frag);
 }
 
-function _renderGlobalResults(matches, resultsEl) {
+function _renderGlobalResults(matches, resultsEl, criteria = null) {
     // Group by name + type + source + stage — each row is one name on one stage
     const grouped = new Map();
     for (const m of matches) {
@@ -7589,18 +7967,23 @@ function _renderGlobalResults(matches, resultsEl) {
         grouped.get(key).push(m);
     }
 
-    // Sort by stage_list order, then level, then name
-    const sortedGroups = sortSpotGroupedResults(grouped, 'global');
+    const sortedGroups = sortSpotGroupedResults(grouped, 'global', criteria);
+    const totalGroups = sortedGroups.length;
+    const cappedGroups = sortedGroups.slice(0, SPOT_RESULT_CAP);
 
     const uniqueNames = new Set(matches.map(m => m.name)).size;
     const frag = document.createDocumentFragment();
     const summary = document.createElement('div');
     summary.className = 'spot-summary';
-    summary.textContent = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${uniqueNames} unique · ${sortedGroups.length} stage entries`;
+    let summaryText = `${matches.length} result${matches.length !== 1 ? 's' : ''} · ${uniqueNames} unique · ${totalGroups} stage entries`;
+    if (totalGroups > SPOT_RESULT_CAP) {
+        summaryText += ` · showing ${SPOT_RESULT_CAP} (refine search)`;
+    }
+    summary.textContent = summaryText;
     frag.appendChild(summary);
 
-    for (const rawItems of sortedGroups) {
-        const items = orderSpotGroupItems(rawItems, 'global');
+    for (const rawItems of cappedGroups) {
+        const items = orderSpotGroupItems(rawItems, 'global', criteria);
         const first = items[0];
         const multi = items.length > 1;
 
@@ -7697,7 +8080,9 @@ function _renderGlobalResults(matches, resultsEl) {
 
     toggle.addEventListener('click', openPanel);
     close.addEventListener('click', closePanel);
-    const _runSpotSearchDebounced = debounce(() => _runSpotSearch(), 200);
+    const _runSpotSearchDebounced = debounce(() => {
+        requestAnimationFrame(() => _runSpotSearch());
+    }, 300);
     input.addEventListener('input', () => {
         if (clearBtn) clearBtn.style.display = input.value ? 'block' : 'none';
         _runSpotSearchDebounced();
@@ -7711,10 +8096,10 @@ function _renderGlobalResults(matches, resultsEl) {
         });
     }
 
-    const onLevelFilterChange = () => {
+    const onLevelFilterChange = debounce(() => {
         syncSpotLevelFilterBadge();
         _runSpotSearch();
-    };
+    }, 250);
 
     const minLevelInput = document.getElementById('spot-min-level');
     const maxLevelInput = document.getElementById('spot-max-level');
@@ -7769,9 +8154,12 @@ function _renderGlobalResults(matches, resultsEl) {
             document.querySelectorAll('.spot-scope').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
             _spotGlobal = btn.dataset.scope === 'global';
-            if (_spotGlobal && !_globalSpotIndex.length) _buildGlobalSpotIndex();
             _clearSpotHighlights();
-            _runSpotSearch();
+            if (_spotGlobal && !_globalSpotIndexReady) {
+                _buildGlobalSpotIndex().then(() => _runSpotSearch());
+            } else {
+                _runSpotSearch();
+            }
         })
     );
 
