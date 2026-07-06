@@ -300,10 +300,10 @@ const MOB_TYPE_DEFAULTS   = {
 const MOB_TYPE_MODES = [
     { id: 'bloodOrb',   html: '🩸', title: 'Blood orb' },
     { id: 'highOrb',    html: '⭐', title: 'High orb' },
-    { id: 'manual',     html: '😴', title: 'Dormant / manual spawns' },
+    { id: 'manual',     html: '😴', title: 'Dormant' },
     { id: 'boss',       html: '☠', title: 'Boss' },
     { id: 'keyBearer',  html: '🗝', title: 'Key Mobs' },
-    { id: 'regular',    html: '·',  title: 'Regular mobs (no special flags)' },
+    { id: 'regular',    html: '',   title: 'Regular' },
     { id: 'dynamic',    html: '⚡', title: 'Dynamic' },
 ];
 
@@ -384,8 +384,12 @@ function initMobTypeFilters() {
         });
         const icon = document.createElement('span');
         icon.className = 'mob-type-icon';
-        icon.textContent = mode.html;
-        label.append(input, icon, document.createTextNode(` ${mode.title}`));
+        if (mode.html) {
+            icon.textContent = mode.html;
+            label.append(input, icon, document.createTextNode(` ${mode.title}`));
+        } else {
+            label.append(input, document.createTextNode(` ${mode.title}`));
+        }
         list.appendChild(label);
     }
     const showAll = document.getElementById('mob-types-show-all');
@@ -3477,6 +3481,11 @@ const SPECIAL_CONNECTION_RULES = specialConnectionRules.connections ?? [];
 const SPECIAL_CONNECTION_NAME_PATTERNS = (specialConnectionRules.name_patterns ?? [])
     .map((pattern) => new RegExp(pattern, 'i'));
 
+// Quest-specific Ark variants; st0573 / st0574 / st0575 are the usual entrances.
+const SUPPRESSED_ARK_DEST_STAGES = new Set([571, 572, 576]);
+const isSuppressedArkConnection = (conn) =>
+    conn.to_stage != null && SUPPRESSED_ARK_DEST_STAGES.has(conn.to_stage);
+
 const matchSpecialConnection = (mapName, conn) => {
     for (const rule of SPECIAL_CONNECTION_RULES) {
         if (rule.map !== mapName) continue;
@@ -3496,6 +3505,88 @@ const connectionDisplayName = (conn) => {
     const name = conn.name_en?.trim();
     return name || `Stage ${conn.to_stage}`;
 };
+
+const connectionExactCoordKey = (conn) =>
+    (conn.x != null && conn.z != null) ? `${conn.x}|${conn.z}` : null;
+
+const connectionDestKey = (conn) => `${conn.to_map ?? ''}|${conn.to_stage ?? ''}`;
+
+function connectionChoiceVisible(choice) {
+    return _isConnectionVisible(choice.poiCat, !!choice.specialRule);
+}
+
+function navigateConnectionChoice(sourceMap, choice) {
+    if (!choice.hasMap) return;
+    navigateTo(
+        choice.navMap,
+        choice.stageId,
+        arrivalView(sourceMap, choice.navMap, choice.fromStage ?? null),
+    );
+}
+
+function buildConnectionChoicePopup(sourceMap, choices, marker) {
+    const wrap = document.createElement('div');
+    wrap.className = 'conn-choice-popup';
+    const title = document.createElement('div');
+    title.className = 'conn-choice-title';
+    title.textContent = 'Choose destination';
+    wrap.appendChild(title);
+    for (const choice of choices) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'conn-choice-btn';
+        const label = document.createElement('span');
+        label.className = 'conn-choice-label';
+        label.textContent = connectionDisplayName(choice.conn);
+        btn.appendChild(label);
+        const sub = document.createElement('span');
+        sub.className = 'conn-choice-sub';
+        sub.textContent = choice.hasMap ? choice.stageId : `No map (${choice.stageId})`;
+        btn.appendChild(sub);
+        btn.addEventListener('click', (e) => {
+            L.DomEvent.stopPropagation(e);
+            if (choice.hasMap) navigateConnectionChoice(sourceMap, choice);
+            marker.closePopup();
+        });
+        wrap.appendChild(btn);
+    }
+    return wrap;
+}
+
+function addConnectionMapMarker(sourceMap, latlng, choices) {
+    const visibleChoices = () => choices.filter(connectionChoiceVisible);
+    const labels = [...new Set(choices.map((c) => connectionDisplayName(c.conn)))];
+    const primary = choices[0];
+    const poiCat = choices.length > 1 ? 'outpost' : (primary.poiCat ?? null);
+    const icon = makeConnectionMarkerIcon(poiCat);
+    const tooltip = labels.length === 1 ? labels[0] : labels.join(' · ');
+
+    const marker = L.marker(latlng, { icon });
+    marker.bindTooltip(tooltip, { permanent: false, direction: 'top', offset: [0, -10] });
+    marker.on('click', (e) => {
+        L.DomEvent.stopPropagation(e);
+        const vis = visibleChoices();
+        if (!vis.length) return;
+        if (vis.length === 1 && !vis[0].hasMap) {
+            marker.bindPopup(`No map data for Stage ${vis[0].conn.to_stage}<br>${vis[0].destName}`).openPopup();
+            return;
+        }
+        if (vis.length === 1) {
+            navigateConnectionChoice(sourceMap, vis[0]);
+            return;
+        }
+        marker.bindPopup(buildConnectionChoicePopup(sourceMap, vis, marker), { maxWidth: 300 }).openPopup();
+    });
+    marker.addTo(connectionLayer);
+    marker._poiCategory = poiCat;
+    marker._poiIsConnection = true;
+    marker._poiConnectionChoices = choices.map((c) => ({
+        poiCat: c.poiCat,
+        isSpecial: !!c.specialRule,
+    }));
+    _applyPoiMarkerVisibility(marker);
+    return marker;
+}
 
 const isCaveLikeConnectionName = (name) => {
     if (!name) return false;
@@ -3525,6 +3616,8 @@ function classifyConnectionPoi(conn, mapName) {
     if (/\bcatacombs?\b/i.test(lower)) return 'cave';
     if (/\bthe second ark\b|\bthe third ark\b|\bthe ark\b/i.test(lower)) return 'ark';
     if (/\bbitterblack\b|\bmaze cove\b/i.test(lower)) return 'areaWarp';
+    if (/^lestania$/i.test(name.trim())) return 'door';
+    if (/^lb\d+_m\d+$/.test(mapName) && conn.to_map && /^field\d+_m\d+$/.test(conn.to_map)) return 'outpost';
     if (/\bshop\b|\bstore(?!house)\b|\bbazaar\b|\bmarket\b|\boutfitter\b|\bworkshop\b|\btrading post\b|\btrading company\b/i.test(lower)) return 'shop';
     if (/^house$/i.test(name.trim()) || /\bhouse in the\b|\bhermit's house\b|\bkeeper's house\b|\bchief's home\b|\balchemist's home\b|\bivan's lodge\b/i.test(lower)) return 'house';
     if (/\bfort\b|\bcastle\b|\bgate\b|\bdoor\b/i.test(lower)) return 'door';
@@ -3598,7 +3691,7 @@ const POI_LOCATION_CATEGORIES = [
     { id: 'door',       label: 'Door',               icon: 'door' },
     { id: 'inn',        label: 'Inn',                icon: 'inn' },
     { id: 'shop',         label: 'Shops & appraisals', icon: 'shop' },
-    { id: 'special',      label: 'Special',            icon: 'door' },
+    { id: 'special',      label: 'Special' },
 ];
 const POI_GATHER_CATEGORIES = [
     { id: 'mushroom',   label: 'Mushrooms',                   icon: 'mushroom' },
@@ -3832,7 +3925,7 @@ function locationTypeLabel(categoryId) {
 
 let _namedLocationIndex = null;
 let _namedLocationIndexVersion = 0;
-const NAMED_LOCATION_INDEX_VERSION = 8;
+const NAMED_LOCATION_INDEX_VERSION = 9;
 let _pendingNamedLocNav = null;
 
 function namedLocationMatchesEntry(entry, term, exact) {
@@ -3898,6 +3991,7 @@ function buildNamedLocationIndex() {
             const label = conn.name_en?.trim();
             if (!label || conn.x == null || conn.z == null) continue;
             if (matchSpecialConnection(sourceMap, conn)) continue;
+            if (isSuppressedArkConnection(conn)) continue;
             if (!conn.to_map) continue;
             if (isMainWorldFieldMap(conn.to_map)) {
                 // Overworld entrances are indexed from the field map; hub layers also list
@@ -4108,9 +4202,14 @@ function _setPoiMarkerVisible(m, visible) {
 function _applyPoiMarkerVisibility(m) {
     const cat = m._poiCategory;
     if (!cat && !m._poiIsConnection) return;
-    const visible = m._poiIsConnection
-        ? _isConnectionVisible(cat, m._poiSpecialConnection)
-        : _isPoiCategoryEnabled(cat);
+    let visible;
+    if (m._poiConnectionChoices?.length) {
+        visible = m._poiConnectionChoices.some((c) => _isConnectionVisible(c.poiCat, c.isSpecial));
+    } else if (m._poiIsConnection) {
+        visible = _isConnectionVisible(cat, m._poiSpecialConnection);
+    } else {
+        visible = _isPoiCategoryEnabled(cat);
+    }
     _setPoiMarkerVisible(m, visible);
 }
 
@@ -4150,8 +4249,10 @@ function _buildPoiFilterList(listEl, categories, { onItemChange } = {}) {
             img.alt = '';
             img.loading = 'lazy';
             icon.appendChild(img);
+            label.append(input, icon, document.createTextNode(` ${cat.label}`));
+        } else {
+            label.append(input, document.createTextNode(` ${cat.label}`));
         }
-        label.append(input, icon, document.createTextNode(` ${cat.label}`));
         listEl.appendChild(label);
     }
 }
@@ -4461,7 +4562,7 @@ const detectActivePreset = () => {
     for (const presetId of Object.keys(_SERVER_PRESETS)) {
         if (presetMatchesStored(presetId)) return presetId;
     }
-    return 'custom';
+    return 'arrowgene';
 };
 
 /** Short sidebar label, e.g. "(Rising)" — omitted for default Arrowgene preset. */
@@ -6059,7 +6160,8 @@ function loadConnections(mapName, info) {
     const stid = currentStageName();
     const activeStageNo = stid ? parseInt(stid.slice(2), 10) : null;
     const stageFiltered = allEntries.filter(c =>
-        c.from_stage == null || activeStageNo == null || c.from_stage === activeStageNo
+        (c.from_stage == null || activeStageNo == null || c.from_stage === activeStageNo)
+        && !isSuppressedArkConnection(c)
     );
 
     // Proximity deduplication: drop duplicate markers at the same map spot.
@@ -6102,6 +6204,7 @@ function loadConnections(mapName, info) {
     }
 
     const unpositioned = [];
+    const positioned = [];
 
     for (const conn of entries) {
         const navMap  = (conn.to_map && mapParams[conn.to_map]) ? conn.to_map : null;
@@ -6132,24 +6235,37 @@ function loadConnections(mapName, info) {
             }
         }
 
-        const latlng = worldToPixel(conn.x, conn.z, info);
-        const specialRule = matchSpecialConnection(mapName, conn);
-        const poiCat = getConnectionPoi(conn, mapName);
-        const icon   = makeConnectionMarkerIcon(poiCat);
-        const label  = connectionDisplayName(conn);
+        positioned.push({
+            conn,
+            navMap,
+            hasMap,
+            stageId,
+            destName,
+            fromStage: conn.from_stage ?? null,
+            latlng: worldToPixel(conn.x, conn.z, info),
+            specialRule: matchSpecialConnection(mapName, conn),
+            poiCat: getConnectionPoi(conn, mapName),
+        });
+    }
 
-        const marker = L.marker(latlng, { icon });
-        marker.bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -10] });
-        if (hasMap) {
-            marker.on('click', () => navigateTo(navMap, stageId, arrivalView(mapName, navMap, conn.from_stage ?? null)));
-        } else {
-            marker.bindPopup(`No map data for Stage ${conn.to_stage}<br>${destName}`);
+    const coordGroups = new Map();
+    for (const item of positioned) {
+        const key = connectionExactCoordKey(item.conn);
+        if (!coordGroups.has(key)) coordGroups.set(key, []);
+        coordGroups.get(key).push(item);
+    }
+
+    for (const group of coordGroups.values()) {
+        const byDest = new Map();
+        for (const item of group) {
+            const dk = connectionDestKey(item.conn);
+            if (!byDest.has(dk)) byDest.set(dk, item);
         }
-        marker.addTo(connectionLayer);
-        marker._poiCategory = poiCat;
-        marker._poiSpecialConnection = !!specialRule;
-        marker._poiIsConnection = true;
-        _applyPoiMarkerVisibility(marker);
+        const choices = [...byDest.values()].sort((a, b) =>
+            connectionDisplayName(a.conn).localeCompare(connectionDisplayName(b.conn))
+            || a.stageId.localeCompare(b.stageId),
+        );
+        addConnectionMapMarker(mapName, choices[0].latlng, choices);
     }
 
     // Render unpositioned exits in the sidebar
