@@ -3816,7 +3816,7 @@ function locationTypeLabel(categoryId) {
 
 let _namedLocationIndex = null;
 let _namedLocationIndexVersion = 0;
-const NAMED_LOCATION_INDEX_VERSION = 3;
+const NAMED_LOCATION_INDEX_VERSION = 4;
 let _pendingNamedLocNav = null;
 
 function namedLocationMatchesEntry(entry, term, exact) {
@@ -3850,6 +3850,7 @@ function buildNamedLocationIndex() {
             if (HIDDEN_LANDMARK_TYPES.has(lm.type)) continue;
             const label = lm.spot_name_en?.trim();
             if (!label) continue;
+            if (/^Darkness\b/i.test(label)) continue;
             const category = classifyLandmarkPoiCategory(lm.type, lm);
             const filterCat = _normalizePoiFilterCategory(category) ?? category;
             if (!NAMED_LOCATION_CATEGORIES.has(filterCat)) continue;
@@ -3880,6 +3881,7 @@ function buildNamedLocationIndex() {
         for (const conn of conns) {
             const label = conn.name_en?.trim();
             if (!label || conn.x == null || conn.z == null) continue;
+            if (matchSpecialConnection(sourceMap, conn)) continue;
             if (!conn.to_map || isMainWorldFieldMap(conn.to_map)) continue;
             if (/^house$/i.test(label)) continue;
             const poiCat = classifyConnectionPoi(conn, sourceMap);

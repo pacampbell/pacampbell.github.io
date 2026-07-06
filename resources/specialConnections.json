@@ -2,7 +2,7 @@
   "version": 1,
   "comment": "Hand-picked temporary dungeon links. Matched connections use the Special filter (default off); labels and icons follow normal location classification.",
   "name_patterns": [
-    "^Darkness Cloaked"
+    "^Darkness"
   ],
   "connections": [
     {
