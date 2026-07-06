@@ -3772,6 +3772,17 @@ function makeConnectionMarkerIcon(poiCat) {
 /** Main overworld field maps only — excludes sfield* spot slices (wrong projection). */
 const isMainWorldFieldMap = (mapName) => /^field\d+_m\d+$/.test(mapName);
 
+/** Maps whose landmarks / stage connections appear in named location search. */
+const isNamedLocationSearchMap = (mapName) => {
+    if (isMainWorldFieldMap(mapName)) return true;
+    const info = mapParams[mapName];
+    if (!info?.img_exists) return false;
+    if (/^sfield/.test(mapName)) return false;
+    // Temple wings, fortresses, and other multi-stage hub layers (e.g. lb003 Cave Harbor).
+    if (/^(?:lb|rm)\d+_m\d+$/.test(mapName)) return true;
+    return false;
+};
+
 const NAMED_LOCATION_CATEGORIES = new Set(POI_LOCATION_CATEGORIES.map(c => c.id));
 const NAMED_LOCATION_RESULT_CAP = 30;
 
@@ -3816,7 +3827,7 @@ function locationTypeLabel(categoryId) {
 
 let _namedLocationIndex = null;
 let _namedLocationIndexVersion = 0;
-const NAMED_LOCATION_INDEX_VERSION = 4;
+const NAMED_LOCATION_INDEX_VERSION = 5;
 let _pendingNamedLocNav = null;
 
 function namedLocationMatchesEntry(entry, term, exact) {
@@ -3845,7 +3856,7 @@ function buildNamedLocationIndex() {
     };
 
     for (const [mapName, landmarks] of Object.entries(landmarkData)) {
-        if (!isMainWorldFieldMap(mapName)) continue;
+        if (!isNamedLocationSearchMap(mapName)) continue;
         for (const lm of landmarks) {
             if (HIDDEN_LANDMARK_TYPES.has(lm.type)) continue;
             const label = lm.spot_name_en?.trim();
@@ -3877,7 +3888,7 @@ function buildNamedLocationIndex() {
     for (const { entry } of spotBest.values()) push(entry);
 
     for (const [sourceMap, conns] of Object.entries(connectionData)) {
-        if (!isMainWorldFieldMap(sourceMap)) continue;
+        if (!isNamedLocationSearchMap(sourceMap)) continue;
         for (const conn of conns) {
             const label = conn.name_en?.trim();
             if (!label || conn.x == null || conn.z == null) continue;
