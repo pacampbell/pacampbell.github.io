@@ -2,7 +2,7 @@
 
 Browser-based map for *Dragon's Dogma Online* — enemy spawns, gathering nodes, shops, warps, and named locations. Deployed as a static GitHub Pages site (`map.html`).
 
-**Live map:** open [`map.html`](map.html) on your fork’s GitHub Pages URL.
+**Live map:** [pacampbell.github.io/map.html](https://pacampbell.github.io/map.html)
 
 ---
 
@@ -118,17 +118,7 @@ Collapsed **Developer** section at the bottom of the sidebar: spawn IDs on hover
 
 | Source | Role |
 |--------|------|
-| This repo | Map tiles, positions, landmarks, connections, gather points, shops (static JSON) |
+| This repo | Map tiles, spawn positions (`resources/enemyPositions/{stageNo}.json`, lazy-loaded per stage), landmarks, connections, gather points, shops (static JSON) |
 | Server preset | Live spawn tables (`EnemySpawn.json`), gathering CSV, shop JSON |
 
 Presets: **Dogma Rising**, **Revival (live.ddon.org)**, **Arrowgene (default)**, or **Custom** URLs/local files.
-
----
-
-## Repository scope
-
-This fork focuses on the **interactive map runtime** only (`map.html`, `map.js`, `resources/`, `images/maps/`). Dev tools, quest editor, and wiki build live in the tree but are not part of the deployed map.
-
-Spawn **positions** are lazy-loaded per stage from `resources/enemyPositions/{stageNo}.json` (~20 MB monolith split into on-demand chunks).
-
-REPORT ANY DUPLICATED OR WRONG LOCATION
