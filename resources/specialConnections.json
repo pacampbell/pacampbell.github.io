@@ -46,6 +46,27 @@
       "from_stage": 1300,
       "to_stage": 200,
       "to_map": "lb000_m00"
+    },
+    {
+      "id": "dark-great-catacombs-field",
+      "map": "field000_m00",
+      "from_stage": 100,
+      "to_stage": 733,
+      "to_map": "st0733"
+    },
+    {
+      "id": "dark-great-catacombs-field-return",
+      "map": "field000_m00",
+      "from_stage": 733,
+      "to_stage": 733,
+      "to_map": "st0733"
+    },
+    {
+      "id": "dark-great-catacombs-exit",
+      "map": "st0733",
+      "from_stage": 733,
+      "to_stage": 100,
+      "to_map": "field000_m00"
     }
   ]
 }
