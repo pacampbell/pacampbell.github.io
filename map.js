@@ -3524,6 +3524,7 @@ function classifyConnectionPoi(conn, mapName) {
     if (/\b(underground|channel)\b/i.test(lower) && /\b(waterway|passage|drain|flood)\b/i.test(lower)) return 'basement';
     if (/\bcatacombs?\b/i.test(lower)) return 'cave';
     if (/\bthe second ark\b|\bthe third ark\b|\bthe ark\b/i.test(lower)) return 'ark';
+    if (/\bbitterblack\b|\bmaze cove\b/i.test(lower)) return 'areaWarp';
     if (/\bshop\b|\bstore(?!house)\b|\bbazaar\b|\bmarket\b|\boutfitter\b|\bworkshop\b|\btrading post\b|\btrading company\b/i.test(lower)) return 'shop';
     if (/^house$/i.test(name.trim()) || /\bhouse in the\b|\bhermit's house\b|\bkeeper's house\b|\bchief's home\b|\balchemist's home\b|\bivan's lodge\b/i.test(lower)) return 'house';
     if (/\bfort\b|\bcastle\b|\bgate\b|\bdoor\b/i.test(lower)) return 'door';
@@ -3827,7 +3828,7 @@ function locationTypeLabel(categoryId) {
 
 let _namedLocationIndex = null;
 let _namedLocationIndexVersion = 0;
-const NAMED_LOCATION_INDEX_VERSION = 6;
+const NAMED_LOCATION_INDEX_VERSION = 7;
 let _pendingNamedLocNav = null;
 
 function namedLocationMatchesEntry(entry, term, exact) {
@@ -3895,9 +3896,8 @@ function buildNamedLocationIndex() {
             if (matchSpecialConnection(sourceMap, conn)) continue;
             if (!conn.to_map || isMainWorldFieldMap(conn.to_map)) continue;
             if (/^house$/i.test(label)) continue;
-            const poiCat = classifyConnectionPoi(conn, sourceMap);
+            const poiCat = classifyConnectionPoi(conn, sourceMap) ?? 'door';
             const filterCat = _normalizePoiFilterCategory(poiCat) ?? poiCat;
-            if (!filterCat || !NAMED_LOCATION_CATEGORIES.has(filterCat)) continue;
             const destLabel = mapParams[conn.to_map]?.name_en
                 ? splitPascalCase(mapParams[conn.to_map].name_en) : conn.to_map;
             push({
