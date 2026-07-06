@@ -1,10 +1,9 @@
 {
   "version": 1,
-  "comment": "Hand-picked event / temporary dungeon links. Matched connections use eventDungeon filter (default off) and custom labels.",
+  "comment": "Hand-picked temporary dungeon links. Matched connections use the Special filter (default off); labels and icons follow normal location classification.",
   "connections": [
     {
       "id": "wdt-breya-field",
-      "label": "WDT — Breya Coast entrance (event)",
       "map": "field000_m00",
       "from_stage": 103,
       "to_stage": 200,
@@ -12,14 +11,12 @@
     },
     {
       "id": "wdt-st3602-field",
-      "label": "WDT — Special dungeon (st3602)",
       "map": "field000_m00",
       "to_stage": 3602,
       "to_map": "lb000_st3602_m00"
     },
     {
       "id": "wdt-breya-temple-exit",
-      "label": "Breya Coast exit (event)",
       "map": "lb000_m00",
       "from_stage": 200,
       "to_stage": 103,
@@ -27,7 +24,6 @@
     },
     {
       "id": "wdt-hidell-catacombs",
-      "label": "Hidell Catacombs (event)",
       "map": "lb000_m00",
       "from_stage": 200,
       "to_stage": 1300,
@@ -35,7 +31,6 @@
     },
     {
       "id": "wdt-hidell-catacombs-return",
-      "label": "WDT — from Hidell Catacombs",
       "map": "st1300",
       "from_stage": 1300,
       "to_stage": 200,

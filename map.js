@@ -3464,9 +3464,7 @@ const matchSpecialConnection = (mapName, conn) => {
     return null;
 };
 
-const connectionDisplayName = (conn, mapName = null) => {
-    const special = mapName ? matchSpecialConnection(mapName, conn) : null;
-    if (special?.label) return special.label;
+const connectionDisplayName = (conn) => {
     const name = conn.name_en?.trim();
     return name || `Stage ${conn.to_stage}`;
 };
@@ -3571,7 +3569,7 @@ const POI_LOCATION_CATEGORIES = [
     { id: 'door',       label: 'Door',               icon: 'door' },
     { id: 'inn',        label: 'Inn',                icon: 'inn' },
     { id: 'shop',         label: 'Shops & appraisals', icon: 'shop' },
-    { id: 'eventDungeon', label: 'Event / special',    icon: 'basement' },
+    { id: 'special',      label: 'Special',            icon: 'door' },
 ];
 const POI_GATHER_CATEGORIES = [
     { id: 'mushroom',   label: 'Mushrooms',                   icon: 'mushroom' },
@@ -3591,13 +3589,13 @@ const POI_GATHER_CATEGORIES = [
 ];
 const POI_CATEGORIES = [...POI_LOCATION_CATEGORIES, ...POI_GATHER_CATEGORIES];
 const LANDMARK_POI_CATEGORIES = new Set([
-    'areaWarp', 'outpost', 'door', 'house', 'cave', 'basement', 'catacomb', 'elfRuin', 'shrine', 'well', 'ark', 'eventDungeon', 'landmarkOther',
+    'areaWarp', 'outpost', 'door', 'house', 'cave', 'basement', 'catacomb', 'elfRuin', 'shrine', 'well', 'ark', 'landmarkOther',
 ]);
 const GATHER_POI_CATEGORIES = new Set([
     'mushroom', 'treasure', 'box', 'antique', 'grassHerb', 'flower', 'sand', 'shell', 'crystal', 'gemstone', 'gatherNode', 'water', 'lumber', 'oneOff', 'gatherOther',
 ]);
 const POI_FILTER_DEFAULTS = Object.fromEntries(POI_CATEGORIES.map(c => [c.id, true]));
-POI_FILTER_DEFAULTS.eventDungeon = false;
+POI_FILTER_DEFAULTS.special = false;
 
 const loadPoiFilters = () => {
     try {
@@ -3646,6 +3644,8 @@ const loadPoiFilters = () => {
                 localStorage.setItem('ddon-poi-migrated-connections', '1');
             }
         } catch { /* ignore */ }
+        if ('eventDungeon' in parsed && !('special' in parsed)) parsed.special = parsed.eventDungeon;
+        delete parsed.eventDungeon;
         if (parsed.appraisal === false) parsed.shop = false;
         delete parsed.appraisal;
         // Removed categories fold into cave
@@ -4022,8 +4022,9 @@ function setAllGatherableFilters(on) {
     applyAllPoiVisibility();
 }
 
-function _isConnectionVisible(poiCat) {
+function _isConnectionVisible(poiCat, isSpecialConnection = false) {
     if (!anyLocationFilterEnabled()) return false;
+    if (isSpecialConnection && _poiFilters.special === false) return false;
     if (!poiCat) return true;
     const norm = _normalizePoiFilterCategory(poiCat);
     return _isPoiCategoryEnabled(norm);
@@ -4057,7 +4058,7 @@ function _applyPoiMarkerVisibility(m) {
     const cat = m._poiCategory;
     if (!cat && !m._poiIsConnection) return;
     const visible = m._poiIsConnection
-        ? _isConnectionVisible(cat)
+        ? _isConnectionVisible(cat, m._poiSpecialConnection)
         : _isPoiCategoryEnabled(cat);
     _setPoiMarkerVisible(m, visible);
 }
@@ -6053,7 +6054,7 @@ function loadConnections(mapName, info) {
         const navMap  = (conn.to_map && mapParams[conn.to_map]) ? conn.to_map : null;
         const hasMap  = !!navMap;
         const stageId = `st${String(conn.to_stage).padStart(4, '0')}`;
-        const destName = connectionDisplayName(conn, mapName) + ` (${stageId})`;
+        const destName = connectionDisplayName(conn) + ` (${stageId})`;
 
         // Unpositioned connections (pd stage exits, etc.) go in the sidebar list
         if (conn.x == null || conn.z == null) {
@@ -6080,9 +6081,9 @@ function loadConnections(mapName, info) {
 
         const latlng = worldToPixel(conn.x, conn.z, info);
         const specialRule = matchSpecialConnection(mapName, conn);
-        const poiCat = specialRule ? 'eventDungeon' : getConnectionPoi(conn, mapName);
+        const poiCat = getConnectionPoi(conn, mapName);
         const icon   = makeConnectionMarkerIcon(poiCat);
-        const label  = connectionDisplayName(conn, mapName);
+        const label  = connectionDisplayName(conn);
 
         const marker = L.marker(latlng, { icon });
         marker.bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -10] });
@@ -6093,6 +6094,7 @@ function loadConnections(mapName, info) {
         }
         marker.addTo(connectionLayer);
         marker._poiCategory = poiCat;
+        marker._poiSpecialConnection = !!specialRule;
         marker._poiIsConnection = true;
         _applyPoiMarkerVisibility(marker);
     }
