@@ -22,6 +22,7 @@ The search box at the top of the sidebar finds:
 
 - **Maps** — by area or stage name (e.g. `Hidell`, `st0100`).
 - **Named locations** — portcrystals (outposts), caves, inns, doors, wells, area warps, and similar POIs on overworld maps.
+- <img width="425" height="366" alt="image" src="https://github.com/user-attachments/assets/06e7cbdc-2dda-45f5-b933-642510f23cd3" />
 
 **Tips**
 
@@ -44,25 +45,15 @@ Three collapsible sections in the sidebar control markers on the **current map**
 
 Filter which **enemy groups** are visible by spawn type:
 
-| Checkbox | Shows |
-|----------|--------|
-| 🩸 Blood orb | Spawns flagged as blood-orb enemies |
-| ⭐ High orb | High-orb spawns |
-| 😴 Dormant / manual | Manual-set / dormant spawns |
-| ☠ Boss | Boss gauge, area boss, or raid boss |
-| 🗝 Key Mobs | Key bearer spawns |
-| · Regular | Normal mobs without special flags |
-| ⚡ Dynamic | Dynamic spawn slots |
+<img width="395" height="179" alt="image" src="https://github.com/user-attachments/assets/10829509-0c9a-4d01-ad5c-d4316418062d" />
+
 
 Uncheck **Show all** to hide every mob type; check individual boxes to show only what you need.
 
 ### Locations
 
 Toggle **connection / landmark** icons on the map:
-
-- **Cave**, **Basement**, **House**, **Well**
-- **Area warp**, **Outpost**, **Door**, **Inn**
-- **Shops & appraisals**
+<img width="401" height="162" alt="image" src="https://github.com/user-attachments/assets/3ab1f091-f223-41c8-9743-c131398b18ef" />
 
 Connections that match a category show the game-style POI icon; uncategorized warps use a door-style icon. **Show all** enables or disables the whole Locations group.
 
@@ -70,10 +61,8 @@ Connections that match a category show the game-style POI icon; uncategorized wa
 
 Toggle gathering node markers:
 
-- Mushrooms, treasure chests, boxes, antiques
-- Grass/herb, flower, sand, shell
-- **Crystal** and **Gemstone** (separate toggles)
-- Spark nodes, water, lumber, **Off nodes**
+<img width="398" height="216" alt="image" src="https://github.com/user-attachments/assets/25357ab8-8325-4e62-9165-34980aaa38ec" />
+
 
 Only categories you leave checked appear on the map.
 
@@ -84,6 +73,7 @@ Only categories you leave checked appear on the map.
 Open with the **🔍** button or **Ctrl+F**. Search enemies, gathering types, or item drops on the current stage — or across **all stages**.
 
 ### Tabs
+<img width="310" height="103" alt="image" src="https://github.com/user-attachments/assets/09724c48-c845-4d06-a5a2-3f776689bbf0" />
 
 - **Enemies** — mob name (partial match; `"quotes"` for exact prefix)
 - **Gathering** — gather node types
@@ -92,6 +82,7 @@ Open with the **🔍** button or **Ctrl+F**. Search enemies, gathering types, or
 ### Level range (Enemies tab)
 
 Expand **Level range**, set **Min** and/or **Max**, leave blank for no bound. Only enemy rows whose level range overlaps your filter are listed. The badge shows when a filter is active.
+<img width="308" height="155" alt="image" src="https://github.com/user-attachments/assets/91cdd327-950e-48a8-ac27-d864a1b60229" />
 
 ### Sort from
 
@@ -99,6 +90,7 @@ Results are ordered by **travel distance** from a sort origin (not alphabeticall
 
 1. **Default:** White Dragon Temple entrance on Hidell Plains.
 2. **Custom:** expand **Sort from** → **Set from map click…**, then click a point on the map. A marker shows the origin. The badge switches to **Custom**.
+<img width="362" height="262" alt="image" src="https://github.com/user-attachments/assets/7825658e-bfa0-4954-82ca-0eb0a5bf705c" />
 
 **Sort order:** path distance → (global only) stage order → level (low to high) → name. Unreachable stages sort after reachable ones.
 
@@ -133,3 +125,5 @@ Presets: **Dogma Rising**, **Revival (live.ddon.org)**, **Arrowgene (default)**,
 This fork focuses on the **interactive map runtime** only (`map.html`, `map.js`, `resources/`, `images/maps/`). Dev tools, quest editor, and wiki build live in the tree but are not part of the deployed map.
 
 Spawn **positions** are lazy-loaded per stage from `resources/enemyPositions/{stageNo}.json` (~20 MB monolith split into on-demand chunks).
+
+REPORT ANY DUPLICATED OR WRONG LOCATION
