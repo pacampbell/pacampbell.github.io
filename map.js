@@ -3474,6 +3474,8 @@ const LANDMARK_TYPE_TO_POI = {
 };
 
 const SPECIAL_CONNECTION_RULES = specialConnectionRules.connections ?? [];
+const SPECIAL_CONNECTION_NAME_PATTERNS = (specialConnectionRules.name_patterns ?? [])
+    .map((pattern) => new RegExp(pattern, 'i'));
 
 const matchSpecialConnection = (mapName, conn) => {
     for (const rule of SPECIAL_CONNECTION_RULES) {
@@ -3482,6 +3484,10 @@ const matchSpecialConnection = (mapName, conn) => {
         if (rule.to_stage != null && conn.to_stage !== rule.to_stage) continue;
         if (rule.to_map != null && conn.to_map !== rule.to_map) continue;
         return rule;
+    }
+    const name = conn.name_en?.trim();
+    if (name && SPECIAL_CONNECTION_NAME_PATTERNS.some((re) => re.test(name))) {
+        return { id: 'name-pattern' };
     }
     return null;
 };
