@@ -1,6 +1,7 @@
 import mapParams from './resources/map_params.json' with {type: "json"};
 import landmarkData from './resources/landmarks.json' with {type: "json"};
 import connectionData from './resources/connections.json' with {type: "json"};
+import specialConnectionRules from './resources/specialConnections.json' with {type: "json"};
 import gatherPoints from './resources/gatherPoints.json' with {type: "json"};
 import stageIds from './resources/stageIds.json' with {type: "json"};
 import itemNames from './resources/itemNames.json' with {type: "json"};
@@ -28,6 +29,7 @@ const ENEMY_POS_BATCH_SIZE = 16;
 const _enemyPosStageCache = new Map();
 const _enemyPosStageLoads = new Map();
 let _enemyPosStageList = null;
+let _enemyPosStageSet  = null;
 
 const fetchEnemyPositionsIndex = async () => {
     if (_enemyPosStageList) return _enemyPosStageList;
@@ -35,25 +37,35 @@ const fetchEnemyPositionsIndex = async () => {
     if (!res.ok) throw new Error(`enemy positions index HTTP ${res.status}`);
     const data = await res.json();
     _enemyPosStageList = data.stages ?? [];
+    _enemyPosStageSet = new Set(_enemyPosStageList);
     return _enemyPosStageList;
+};
+
+const ensureEnemyPosStageSet = async () => {
+    if (_enemyPosStageSet) return _enemyPosStageSet;
+    await fetchEnemyPositionsIndex();
+    return _enemyPosStageSet ?? new Set();
 };
 
 const fetchEnemyPositionsStage = async (stageNo) => {
     const key = String(stageNo);
     if (_enemyPosStageCache.has(key)) return _enemyPosStageCache.get(key);
     if (_enemyPosStageLoads.has(key)) return _enemyPosStageLoads.get(key);
-    const load = fetch(`${ENEMY_POSITIONS_DIR}/${key}.json`)
-        .then(async (res) => (res.ok ? res.json() : null))
-        .then((data) => {
-            _enemyPosStageCache.set(key, data ?? null);
-            _enemyPosStageLoads.delete(key);
-            return data;
-        })
-        .catch(() => {
+    const load = ensureEnemyPosStageSet().then(async (set) => {
+        if (!set.has(key)) {
             _enemyPosStageCache.set(key, null);
-            _enemyPosStageLoads.delete(key);
             return null;
-        });
+        }
+        const res = await fetch(`${ENEMY_POSITIONS_DIR}/${key}.json`);
+        const data = res.ok ? await res.json() : null;
+        _enemyPosStageCache.set(key, data);
+        return data;
+    }).catch(() => {
+        _enemyPosStageCache.set(key, null);
+        return null;
+    }).finally(() => {
+        _enemyPosStageLoads.delete(key);
+    });
     _enemyPosStageLoads.set(key, load);
     return load;
 };
@@ -3439,7 +3451,22 @@ const LANDMARK_TYPE_TO_POI = {
     TYPE_ELF_RUIN: 'elfRuin',
 };
 
-const connectionDisplayName = (conn) => {
+const SPECIAL_CONNECTION_RULES = specialConnectionRules.connections ?? [];
+
+const matchSpecialConnection = (mapName, conn) => {
+    for (const rule of SPECIAL_CONNECTION_RULES) {
+        if (rule.map !== mapName) continue;
+        if (rule.from_stage != null && conn.from_stage !== rule.from_stage) continue;
+        if (rule.to_stage != null && conn.to_stage !== rule.to_stage) continue;
+        if (rule.to_map != null && conn.to_map !== rule.to_map) continue;
+        return rule;
+    }
+    return null;
+};
+
+const connectionDisplayName = (conn, mapName = null) => {
+    const special = mapName ? matchSpecialConnection(mapName, conn) : null;
+    if (special?.label) return special.label;
     const name = conn.name_en?.trim();
     return name || `Stage ${conn.to_stage}`;
 };
@@ -3543,7 +3570,8 @@ const POI_LOCATION_CATEGORIES = [
     { id: 'outpost',    label: 'Outpost',            icon: 'outpost' },
     { id: 'door',       label: 'Door',               icon: 'door' },
     { id: 'inn',        label: 'Inn',                icon: 'inn' },
-    { id: 'shop',       label: 'Shops & appraisals', icon: 'shop' },
+    { id: 'shop',         label: 'Shops & appraisals', icon: 'shop' },
+    { id: 'eventDungeon', label: 'Event / special',    icon: 'basement' },
 ];
 const POI_GATHER_CATEGORIES = [
     { id: 'mushroom',   label: 'Mushrooms',                   icon: 'mushroom' },
@@ -3563,12 +3591,13 @@ const POI_GATHER_CATEGORIES = [
 ];
 const POI_CATEGORIES = [...POI_LOCATION_CATEGORIES, ...POI_GATHER_CATEGORIES];
 const LANDMARK_POI_CATEGORIES = new Set([
-    'areaWarp', 'outpost', 'door', 'house', 'cave', 'basement', 'catacomb', 'elfRuin', 'shrine', 'well', 'ark', 'landmarkOther',
+    'areaWarp', 'outpost', 'door', 'house', 'cave', 'basement', 'catacomb', 'elfRuin', 'shrine', 'well', 'ark', 'eventDungeon', 'landmarkOther',
 ]);
 const GATHER_POI_CATEGORIES = new Set([
     'mushroom', 'treasure', 'box', 'antique', 'grassHerb', 'flower', 'sand', 'shell', 'crystal', 'gemstone', 'gatherNode', 'water', 'lumber', 'oneOff', 'gatherOther',
 ]);
 const POI_FILTER_DEFAULTS = Object.fromEntries(POI_CATEGORIES.map(c => [c.id, true]));
+POI_FILTER_DEFAULTS.eventDungeon = false;
 
 const loadPoiFilters = () => {
     try {
@@ -6024,7 +6053,7 @@ function loadConnections(mapName, info) {
         const navMap  = (conn.to_map && mapParams[conn.to_map]) ? conn.to_map : null;
         const hasMap  = !!navMap;
         const stageId = `st${String(conn.to_stage).padStart(4, '0')}`;
-        const destName = (conn.name_en || `Stage ${conn.to_stage}`) + ` (${stageId})`;
+        const destName = connectionDisplayName(conn, mapName) + ` (${stageId})`;
 
         // Unpositioned connections (pd stage exits, etc.) go in the sidebar list
         if (conn.x == null || conn.z == null) {
@@ -6050,9 +6079,10 @@ function loadConnections(mapName, info) {
         }
 
         const latlng = worldToPixel(conn.x, conn.z, info);
-        const poiCat = getConnectionPoi(conn, mapName);
+        const specialRule = matchSpecialConnection(mapName, conn);
+        const poiCat = specialRule ? 'eventDungeon' : getConnectionPoi(conn, mapName);
         const icon   = makeConnectionMarkerIcon(poiCat);
-        const label  = connectionDisplayName(conn);
+        const label  = connectionDisplayName(conn, mapName);
 
         const marker = L.marker(latlng, { icon });
         marker.bindTooltip(label, { permanent: false, direction: 'top', offset: [0, -10] });
