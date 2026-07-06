@@ -3089,7 +3089,11 @@ let _gatherHighlightedSet = new Set();   // markers currently highlighted
 function _clearGatherHighlight() {
     for (const m of _gatherHighlightedSet) {
         const el = m.getElement()?.firstElementChild;
-        if (el) { el.style.outline = ''; el.style.outlineOffset = ''; el.style.boxShadow = '0 0 3px rgba(0,0,0,0.7)'; }
+        if (!el) continue;
+        el.style.outline = '';
+        el.style.outlineOffset = '';
+        el.style.boxShadow = '';
+        if (el.tagName === 'IMG') el.style.filter = POI_IMG_FILTER;
     }
     _gatherHighlightedSet.clear();
 }
@@ -3100,7 +3104,14 @@ function _applyGatherHighlight(markers) {
     for (const m of markers) {
         if (m._poiHidden) continue;
         const el = m.getElement()?.firstElementChild;
-        if (el) { el.style.outline = '2px solid #fff'; el.style.outlineOffset = '2px'; el.style.boxShadow = '0 0 6px 2px rgba(255,255,255,0.8)'; }
+        if (!el) continue;
+        if (el.tagName === 'IMG') {
+            el.style.filter = POI_IMG_FILTER_HOVER;
+        } else {
+            el.style.outline = '2px solid #fff';
+            el.style.outlineOffset = '2px';
+            el.style.boxShadow = '0 0 6px 2px rgba(255,255,255,0.8)';
+        }
         _gatherHighlightedSet.add(m);
     }
 }
@@ -3376,12 +3387,15 @@ function poiIconSrc(categoryId, fallbackIcon) {
     return null;
 }
 
+const POI_IMG_FILTER      = 'drop-shadow(0 0 1px #000) drop-shadow(0 1px 2px #000)';
+const POI_IMG_FILTER_HOVER = `${POI_IMG_FILTER} brightness(1.3)`;
+
 function makePoiMapIcon(src, size = 24) {
     const half = size / 2;
     return L.divIcon({
         className: 'poi-map-marker',
         html: `<img src="${src}" width="${size}" height="${size}" alt="" `
-            + `style="display:block;image-rendering:pixelated;filter:drop-shadow(0 0 1px #000) drop-shadow(0 1px 2px #000);">`,
+            + `style="display:block;image-rendering:pixelated;filter:${POI_IMG_FILTER};">`,
         iconSize:    [size, size],
         iconAnchor:  [half, half],
         tooltipAnchor: [0, -half],
