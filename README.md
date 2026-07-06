@@ -22,7 +22,8 @@ The search box at the top of the sidebar finds:
 
 - **Maps** — by area or stage name (e.g. `Hidell`, `st0100`).
 - **Named locations** — portcrystals (outposts), caves, inns, doors, wells, area warps, and similar POIs on overworld maps.
-- <img width="425" height="366" alt="image" src="https://github.com/user-attachments/assets/06e7cbdc-2dda-45f5-b933-642510f23cd3" />
+  
+<img width="425" height="366" alt="image" src="https://github.com/user-attachments/assets/06e7cbdc-2dda-45f5-b933-642510f23cd3" />
 
 **Tips**
 
@@ -53,6 +54,7 @@ Uncheck **Show all** to hide every mob type; check individual boxes to show only
 ### Locations
 
 Toggle **connection / landmark** icons on the map:
+
 <img width="401" height="162" alt="image" src="https://github.com/user-attachments/assets/3ab1f091-f223-41c8-9743-c131398b18ef" />
 
 Connections that match a category show the game-style POI icon; uncategorized warps use a door-style icon. **Show all** enables or disables the whole Locations group.
@@ -73,6 +75,7 @@ Only categories you leave checked appear on the map.
 Open with the **🔍** button or **Ctrl+F**. Search enemies, gathering types, or item drops on the current stage — or across **all stages**.
 
 ### Tabs
+
 <img width="310" height="103" alt="image" src="https://github.com/user-attachments/assets/09724c48-c845-4d06-a5a2-3f776689bbf0" />
 
 - **Enemies** — mob name (partial match; `"quotes"` for exact prefix)
@@ -82,6 +85,7 @@ Open with the **🔍** button or **Ctrl+F**. Search enemies, gathering types, or
 ### Level range (Enemies tab)
 
 Expand **Level range**, set **Min** and/or **Max**, leave blank for no bound. Only enemy rows whose level range overlaps your filter are listed. The badge shows when a filter is active.
+
 <img width="308" height="155" alt="image" src="https://github.com/user-attachments/assets/91cdd327-950e-48a8-ac27-d864a1b60229" />
 
 ### Sort from
@@ -90,6 +94,7 @@ Results are ordered by **travel distance** from a sort origin (not alphabeticall
 
 1. **Default:** White Dragon Temple entrance on Hidell Plains.
 2. **Custom:** expand **Sort from** → **Set from map click…**, then click a point on the map. A marker shows the origin. The badge switches to **Custom**.
+
 <img width="362" height="262" alt="image" src="https://github.com/user-attachments/assets/7825658e-bfa0-4954-82ca-0eb0a5bf705c" />
 
 **Sort order:** path distance → (global only) stage order → level (low to high) → name. Unreachable stages sort after reachable ones.
