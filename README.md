@@ -102,11 +102,15 @@ Results are grouped by how many search terms matched:
 | **2/2** | Every searched mob has at least one matching spawn on that stage |
 | **1/2** | Only one mob matched on that stage (see level filter below) |
 
+<img width="338" height="525" alt="image" src="https://github.com/user-attachments/assets/38bdc828-4035-4d9a-bc4f-1f6ed56e8c46" />
+
 Click a row to fly to the nearest matching spawn. Use **◀ ▶** to cycle through **all** matching spawns on that stage (each mob’s locations, in sort order).
 
 ### Stage roster (This Stage, empty search)
 
 On **This Stage** with the **Enemies** tab, leave the search box empty to see every enemy type on the current stage. Click a row to jump to the nearest spawn; **◀ ▶** appears when that mob has multiple locations.
+
+<img width="348" height="701" alt="image" src="https://github.com/user-attachments/assets/dde6b478-26b1-4dcd-ae67-c5aeb2546a4c" />
 
 ### Level range (Enemies tab)
 
