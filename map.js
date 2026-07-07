@@ -8218,15 +8218,33 @@ const setSpotLevelSectionExpanded = (expanded) => {
 };
 
 function _parseSpotQuery(raw) {
-    if (raw.length > 2 && raw.startsWith('"') && raw.endsWith('"'))
-        return { term: raw.slice(1, -1), exact: true };
-    return { term: raw, exact: false };
+    if (!raw) return { term: '', terms: [], exact: false };
+    if (raw.length > 2 && raw.startsWith('"') && raw.endsWith('"') && raw.indexOf('"', 1) === raw.length - 1) {
+        const inner = raw.slice(1, -1);
+        return { term: inner, terms: [inner], exact: true };
+    }
+    const parts = raw.split(/\s*[,+]\s*/).map((s) => s.trim()).filter(Boolean);
+    const terms = parts.map((p) => {
+        if (p.length > 2 && p.startsWith('"') && p.endsWith('"')) return p.slice(1, -1);
+        return p;
+    });
+    return { term: terms[0] ?? '', terms, exact: false };
 }
 
 function _spotEntryMatches(e, term, exact) {
     if (!term) return true;
-    if (exact) return e.name.toLowerCase().startsWith(term);
-    return e.searchText.includes(term);
+    if (exact) {
+        const name = e.name.toLowerCase();
+        return name.startsWith(term) || e.searchText.startsWith(term);
+    }
+    if (!e.searchText.includes(term)) return false;
+    if (e.type === 'enemy') {
+        const base = spotEnemyBaseName(e).toLowerCase();
+        const esc = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        if (new RegExp(`\\b${esc}\\b`, 'i').test(base)) return true;
+        if (e.emCode && e.emCode.toLowerCase().includes(term)) return true;
+    }
+    return true;
 }
 
 const enemyLevelRange = (levels) => {
@@ -8255,7 +8273,7 @@ const makeIndexedEnemySpot = ({ emCode, lvSet, baseName, groupId, ...rest }) => 
     return {
         type: 'enemy',
         name,
-        searchText: `${baseName} ${label}`.toLowerCase(),
+        searchText: `${baseName} ${emCode} ${label}`.toLowerCase(),
         minLv,
         maxLv,
         emCode,
@@ -8271,7 +8289,7 @@ const makeGlobalEnemySpot = ({ emCode, lvSet, baseName, ...rest }) => {
     return {
         type: 'enemy',
         name,
-        searchText: `${baseName} ${label}`.toLowerCase(),
+        searchText: `${baseName} ${emCode} ${label}`.toLowerCase(),
         minLv,
         maxLv,
         emCode,
@@ -8280,13 +8298,17 @@ const makeGlobalEnemySpot = ({ emCode, lvSet, baseName, ...rest }) => {
 };
 
 const readSpotSearchCriteria = () => {
-    const raw = (document.getElementById('spot-search-input')?.value ?? '').trim().toLowerCase();
-    const { term, exact } = _parseSpotQuery(raw);
+    const rawInput = (document.getElementById('spot-search-input')?.value ?? '').trim();
+    const parsed = _parseSpotQuery(rawInput.toLowerCase());
+    const terms = parsed.terms.map((t) => t.toLowerCase());
     const { minLevel, maxLevel } = readSpotLevelBounds();
     return {
-        raw,
-        term,
-        exact,
+        raw: rawInput.toLowerCase(),
+        rawDisplay: rawInput,
+        term: (terms[0] ?? '').toLowerCase(),
+        terms,
+        exact: parsed.exact,
+        multiTerm: terms.length >= 2,
         filter: document.querySelector('.spot-tab.active')?.dataset.filter ?? 'enemy',
         minLevel,
         maxLevel,
@@ -8301,24 +8323,360 @@ const meetsSpotLevelFilter = (entry, filter, bounds) =>
 const matchesSpotCriteria = (entry, criteria) =>
     meetsSpotType(entry, criteria.filter)
     && meetsSpotLevelFilter(entry, criteria.filter, criteria)
-    && _spotEntryMatches(entry, criteria.term, criteria.exact);
+    && (criteria.multiTerm || _spotEntryMatches(entry, criteria.term, criteria.exact));
+
+const spotEnemyBaseName = (entry) => {
+    if (entry.emCode && emNames[entry.emCode]?.name) return emNames[entry.emCode].name;
+    return entry.name.replace(/\s+Lv[\d.-]+$/, '');
+};
+
+function* iterStagesForMultiMob(scope) {
+    if (scope === 'global') {
+        for (const [mapName, info] of Object.entries(mapParams)) {
+            if (!info.stages?.length) continue;
+            const mapDisplayName = info.name_en ? splitPascalCase(info.name_en) : mapName;
+            for (const stageId of info.stages) {
+                const stageNo = String(parseInt(stageId.slice(2), 10));
+                const sLabel = stageLabel(info, stageId);
+                yield {
+                    stageNo,
+                    stageId,
+                    mapName,
+                    info,
+                    locationTag: `${mapDisplayName} · ${sLabel}`,
+                };
+            }
+        }
+        return;
+    }
+    if (!_currentMapInfo?.stages?.length) return;
+    const stid = currentStageName();
+    const stages = (stid && _currentMapInfo.stages.includes(stid))
+        ? [stid]
+        : _currentMapInfo.stages;
+    for (const stageId of stages) {
+        const stageNo = String(parseInt(stageId.slice(2), 10));
+        yield {
+            stageNo,
+            stageId,
+            mapName: _loadedMapName,
+            info: _currentMapInfo,
+            locationTag: stageLabel(_currentMapInfo, stageId),
+        };
+    }
+}
+
+function collectMultiMobStageMatches(criteria, scope) {
+    const { terms } = criteria;
+    if (terms.length < 2) return [];
+
+    const cache = _enemySpawnCache;
+    const buckets = new Map();
+
+    for (const { stageNo, stageId, mapName, info, locationTag } of iterStagesForMultiMob(scope)) {
+        const groups = enemyPositionsForStage(stageNo);
+        if (!groups) continue;
+        const serverStageId = stageIds[stageNo];
+        const key = scope === 'global' ? `${mapName}\0${stageId}` : stageId;
+
+        for (const [groupId, groupData] of Object.entries(groups)) {
+            const spawns = groupData.spawns ?? groupData;
+            if (!Array.isArray(spawns)) continue;
+            for (let i = 0; i < spawns.length; i++) {
+                const s = spawns[i];
+                const spawnKey = serverStageId != null
+                    ? `${serverStageId},${groupId},${s.posIdx ?? i}`
+                    : null;
+                const latlng = worldToPixel(s.Position.x, s.Position.z, info);
+                const worldPos = { x: s.Position.x, y: s.Position.y, z: s.Position.z };
+
+                const rows = cache && spawnKey
+                    ? [...groupSpawnLevelsByEmCode(cache.get(spawnKey) ?? [])]
+                        .map(([emCode, lvSet]) => ({ emCode, lvSet, baseName: emNames[emCode]?.name }))
+                    : s.EmName
+                        ? [{ emCode: s.EmName, lvSet: new Set(), baseName: emNames[s.EmName]?.name ?? s.EmName }]
+                        : [];
+
+                for (const { emCode, lvSet, baseName } of rows) {
+                    if (!baseName) continue;
+                    const entry = scope === 'global'
+                        ? {
+                            ...makeGlobalEnemySpot({
+                                emCode, lvSet, baseName, groupId, spawnKey, worldPos,
+                                mapName, stageId, stageNo, locationTag,
+                            }),
+                            latlng,
+                            groupId,
+                        }
+                        : makeIndexedEnemySpot({
+                            emCode, lvSet, baseName, groupId,
+                            latlng, spawnKey, worldPos, stageId,
+                        });
+
+                    if (!meetsSpotLevelFilter(entry, 'enemy', criteria)) continue;
+
+                    let termHit = false;
+                    for (const term of terms) {
+                        if (_spotEntryMatches(entry, term, criteria.exact)) {
+                            termHit = true;
+                            break;
+                        }
+                    }
+                    if (!termHit) continue;
+
+                    if (!buckets.has(key)) {
+                        buckets.set(key, {
+                            key,
+                            stageNo,
+                            stageId,
+                            mapName,
+                            locationTag,
+                            termsMatched: new Set(),
+                            entries: [],
+                        });
+                    }
+                    const bucket = buckets.get(key);
+                    bucket.entries.push(entry);
+                    for (const term of terms) {
+                        if (_spotEntryMatches(entry, term, criteria.exact)) {
+                            bucket.termsMatched.add(term);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    const compareGroups = scope === 'global' ? compareSpotGlobalGroups : compareSpotLocalGroups;
+    const results = [];
+    for (const bucket of buckets.values()) {
+        if (!bucket.termsMatched.size) continue;
+        bucket.matchCount = bucket.termsMatched.size;
+        bucket.totalTerms = terms.length;
+        results.push(bucket);
+    }
+
+    results.sort((a, b) => {
+        if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+        const itemsA = orderSpotGroupItems(a.entries, scope, criteria);
+        const itemsB = orderSpotGroupItems(b.entries, scope, criteria);
+        return compareGroups(itemsA, itemsB, criteria);
+    });
+    return results;
+}
+
+function findRosterEnemySpots(row) {
+    const term = row.baseName.toLowerCase();
+    return _spotIndex.filter((e) => {
+        if (e.type !== 'enemy') return false;
+        if (row.emCode && e.emCode === row.emCode) return true;
+        return _spotEntryMatches(e, term, false);
+    });
+}
+
+function buildStageEnemyRoster() {
+    const byKey = new Map();
+    for (const entry of _spotIndex) {
+        if (entry.type !== 'enemy') continue;
+        const baseName = spotEnemyBaseName(entry);
+        const key = entry.emCode ?? baseName.toLowerCase();
+        if (!byKey.has(key)) {
+            byKey.set(key, {
+                baseName,
+                emCode: entry.emCode,
+                levels: new Set(),
+                groupIds: new Set(),
+            });
+        }
+        const row = byKey.get(key);
+        if (entry.minLv != null) row.levels.add(entry.minLv);
+        if (entry.maxLv != null) row.levels.add(entry.maxLv);
+        if (entry.groupId != null) row.groupIds.add(entry.groupId);
+    }
+    return [...byKey.values()]
+        .map((row) => {
+            const { label } = enemyLevelRange(row.levels);
+            return {
+                ...row,
+                displayName: enemyDisplayName(row.baseName, label),
+                searchName: row.baseName,
+            };
+        })
+        .sort((a, b) => a.baseName.localeCompare(b.baseName, undefined, { sensitivity: 'base' }));
+}
 
 const filterSpotEntries = (entries, criteria) =>
     entries.filter(entry => matchesSpotCriteria(entry, criteria));
 
 const formatSpotEmptyMessage = (criteria, { global = false } = {}) => {
     const levelNote = formatSpotLevelFilterNote(criteria);
+    const label = criteria.rawDisplay || criteria.raw;
     if (global) {
-        return `<div class="spot-empty">No matches for <em>${criteria.raw}</em>${levelNote} across all stages.</div>`;
+        return `<div class="spot-empty">No matches for <em>${label}</em>${levelNote} across all stages.</div>`;
     }
     if (criteria.raw) {
-        return `<div class="spot-empty">No matches for <em>${criteria.raw}</em>${levelNote}.</div>`;
+        return `<div class="spot-empty">No matches for <em>${label}</em>${levelNote}.</div>`;
     }
     if (criteria.filter === 'enemy' && hasActiveSpotLevelFilter(criteria)) {
         return `<div class="spot-empty">${formatSpotLevelEmptyMessage(criteria)}</div>`;
     }
     return `<div class="spot-empty">No matches${levelNote}.</div>`;
 };
+
+const formatSpotMultiEmptyMessage = (criteria, { global = false } = {}) => {
+    const levelNote = formatSpotLevelFilterNote(criteria);
+    const scope = global ? ' across all stages' : ' on this stage';
+    const termsLabel = criteria.rawDisplay || criteria.terms.join(', ');
+    return `<div class="spot-empty">No stages match <em>${termsLabel}</em>${levelNote}${scope}.</div>`;
+};
+
+/** ◀ 1/N ▶ controls — shared by single, multi-mob, and roster spot rows. */
+function wireSpotRowNavigation(row, items, navigate) {
+    if (!items.length) return;
+    if (items.length === 1) {
+        row.addEventListener('click', () => navigate(items[0]));
+        return;
+    }
+
+    let idx = -1;
+    const nav = document.createElement('div');
+    nav.className = 'spot-nav';
+    nav.style.cssText = 'display:flex;align-items:center;gap:2px;flex-shrink:0';
+    nav.innerHTML =
+        `<button class="spot-nav-btn spot-prev" title="Previous">◀</button>`
+        + `<span class="spot-nav-pos" style="font-size:0.68rem;color:#667;min-width:28px;text-align:center">1/${items.length}</span>`
+        + `<button class="spot-nav-btn spot-next" title="Next">▶</button>`;
+
+    const preview = row.querySelector('.spot-preview');
+    if (preview) row.insertBefore(nav, preview);
+    else row.appendChild(nav);
+
+    const posEl = nav.querySelector('.spot-nav-pos');
+    const goTo = (i) => {
+        idx = (i + items.length) % items.length;
+        posEl.textContent = `${idx + 1}/${items.length}`;
+        navigate(items[idx]);
+    };
+
+    nav.querySelector('.spot-prev').addEventListener('click', (e) => {
+        e.stopPropagation();
+        goTo(idx <= 0 ? items.length - 1 : idx - 1);
+    });
+    nav.querySelector('.spot-next').addEventListener('click', (e) => {
+        e.stopPropagation();
+        goTo(idx + 1);
+    });
+    row.addEventListener('click', (e) => {
+        if (e.target.closest('.spot-nav')) return;
+        goTo(idx < 0 ? 0 : idx + 1);
+    });
+}
+
+function _renderStageEnemyRoster(resultsEl) {
+    const roster = buildStageEnemyRoster();
+    if (!roster.length) {
+        resultsEl.innerHTML = '<div class="spot-empty">No enemy data for this stage yet.</div>';
+        return;
+    }
+
+    const frag = document.createDocumentFragment();
+    const summary = document.createElement('div');
+    summary.className = 'spot-summary';
+    summary.textContent = `${roster.length} enemy type${roster.length !== 1 ? 's' : ''} on this stage · click to go`;
+    frag.appendChild(summary);
+
+    const hdr = document.createElement('div');
+    hdr.className = 'spot-section-header';
+    hdr.textContent = 'Stage roster';
+    frag.appendChild(hdr);
+
+    for (const row of roster) {
+        const el = document.createElement('div');
+        el.className = 'spot-result-row spot-roster-row';
+        const matches = findRosterEnemySpots(row);
+        const items = orderSpotGroupItems(matches, 'local', readSpotSearchCriteria());
+        const multi = items.length > 1;
+        el.title = multi ? `${row.baseName} · ${items.length} locations` : `Go to ${row.baseName}`;
+        const groupLabel = multi
+            ? `${items.length} locations`
+            : `${row.groupIds.size} group${row.groupIds.size !== 1 ? 's' : ''}`;
+        el.innerHTML =
+            `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
+            + `<span class="spot-result-name">${row.displayName}</span>`
+            + `<span class="spot-result-count">${groupLabel}</span>`;
+        wireSpotRowNavigation(el, items, _navigateToSpot);
+        frag.appendChild(el);
+    }
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(frag);
+}
+
+function _renderMultiMobResults(matches, resultsEl, criteria, scope) {
+    const byCount = new Map();
+    for (const g of matches) {
+        if (!byCount.has(g.matchCount)) byCount.set(g.matchCount, []);
+        byCount.get(g.matchCount).push(g);
+    }
+
+    const frag = document.createDocumentFragment();
+    const summary = document.createElement('div');
+    summary.className = 'spot-summary';
+    summary.textContent = `${matches.length} stage${matches.length !== 1 ? 's' : ''} · ${criteria.terms.length} enemies searched`;
+    frag.appendChild(summary);
+
+    const navigate = scope === 'global' ? _navigateToSpotGlobal : _navigateToSpot;
+
+    for (const count of [...byCount.keys()].sort((a, b) => b - a)) {
+        const section = byCount.get(count);
+        const hdr = document.createElement('div');
+        hdr.className = 'spot-section-header';
+        hdr.textContent = count === criteria.terms.length
+            ? `All ${count} matched (${section.length})`
+            : `${count} of ${criteria.terms.length} matched (${section.length})`;
+        frag.appendChild(hdr);
+
+        for (const g of section) {
+            const items = orderSpotGroupItems(g.entries, scope, criteria);
+            const matchedNames = [...g.termsMatched].map((term) => {
+                const hit = items.find((e) => _spotEntryMatches(e, term, criteria.exact));
+                return hit ? spotEnemyBaseName(hit) : term;
+            }).sort((a, b) => a.localeCompare(b));
+
+            const locLabel = g.locationTag;
+            const badge = `${g.matchCount}/${g.totalTerms}`;
+            const multi = items.length > 1;
+
+            const row = document.createElement('div');
+            row.className = 'spot-result-row';
+            row.title = matchedNames.join(', ');
+            row.innerHTML =
+                `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
+                + `<span class="spot-result-name">${locLabel}</span>`
+                + `<span class="spot-multi-badge">${badge}</span>`
+                + `<div class="spot-preview">${matchedNames.map((n) => `<b>${n}</b>`).join('<br>')}`
+                + (multi ? `<br><span style="color:#667">×${items.length} locations</span>` : '')
+                + `<br><span style="color:#667">${locLabel}</span></div>`;
+
+            wireSpotRowNavigation(row, items, navigate);
+            row.addEventListener('mouseenter', () => {
+                if (scope === 'global') return;
+                _clearSpotHighlights();
+                _addSpotHighlight(_resolveSpotLatLng(items[0]));
+                const grp = items[0].groupId ? _groupStore.get(items[0].groupId) : null;
+                if (grp) _addChipHighlight(grp);
+            });
+            row.addEventListener('mouseleave', () => {
+                if (scope === 'global') return;
+                _clearSpotHighlights();
+            });
+            frag.appendChild(row);
+        }
+    }
+
+    resultsEl.innerHTML = '';
+    resultsEl.appendChild(frag);
+}
 
 function _runSpotSearch() {
     const resultsEl = document.getElementById('spot-results');
@@ -8336,6 +8694,15 @@ function _runSpotSearch() {
             resultsEl.innerHTML = `<div class="spot-empty">Enter a search term to search across all stages.</div>`;
             return;
         }
+        if (criteria.multiTerm && criteria.filter === 'enemy') {
+            const groupMatches = collectMultiMobStageMatches(criteria, 'global');
+            if (!groupMatches.length) {
+                resultsEl.innerHTML = formatSpotMultiEmptyMessage(criteria, { global: true });
+                return;
+            }
+            _renderMultiMobResults(groupMatches, resultsEl, criteria, 'global');
+            return;
+        }
         const matches = filterSpotEntries(_globalSpotIndex, criteria);
         if (!matches.length) {
             resultsEl.innerHTML = formatSpotEmptyMessage(criteria, { global: true });
@@ -8346,7 +8713,21 @@ function _runSpotSearch() {
     }
 
     if (!criteria.raw) {
+        if (criteria.filter === 'enemy') {
+            _renderStageEnemyRoster(resultsEl);
+            return;
+        }
         resultsEl.innerHTML = `<div class="spot-empty">Enter a search term to search this stage.</div>`;
+        return;
+    }
+
+    if (criteria.multiTerm && criteria.filter === 'enemy') {
+        const groupMatches = collectMultiMobStageMatches(criteria, 'local');
+        if (!groupMatches.length) {
+            resultsEl.innerHTML = formatSpotMultiEmptyMessage(criteria);
+            return;
+        }
+        _renderMultiMobResults(groupMatches, resultsEl, criteria, 'local');
         return;
     }
 
@@ -8407,41 +8788,16 @@ function _runSpotSearch() {
         row.className = 'spot-result-row';
         row.title = first.name;
 
+        row.innerHTML =
+            `${dotHtml}<span class="spot-result-name">${first.name}</span>`
+            + (multi ? '' : `<div class="spot-preview">${previewHtml}</div>`);
         if (multi) {
-            // ◀ name  1/N ▶
-            let idx = -1;  // -1 = not yet visited; first row click goes to 0, subsequent advance
-            const updatePos = (posEl) => { posEl.textContent = `${idx + 1}/${items.length}`; };
-            row.innerHTML =
-                `${dotHtml}<span class="spot-result-name">${first.name}</span>`
-                + `<div class="spot-nav" style="display:flex;align-items:center;gap:2px;flex-shrink:0">`
-                + `<button class="spot-nav-btn spot-prev" title="Previous">◀</button>`
-                + `<span class="spot-nav-pos" style="font-size:0.68rem;color:#667;min-width:28px;text-align:center">1/${items.length}</span>`
-                + `<button class="spot-nav-btn spot-next" title="Next">▶</button>`
-                + `</div>`
-                + `<div class="spot-preview">${previewHtml}</div>`;
-
-            const posEl  = row.querySelector('.spot-nav-pos');
-            const prev   = row.querySelector('.spot-prev');
-            const next   = row.querySelector('.spot-next');
-
-            const goTo = (i) => {
-                idx = (i + items.length) % items.length;
-                updatePos(posEl);
-                _navigateToSpot(items[idx]);
-            };
-
-            prev.addEventListener('click', e => { e.stopPropagation(); goTo(idx <= 0 ? items.length - 1 : idx - 1); });
-            next.addEventListener('click', e => { e.stopPropagation(); goTo(idx + 1); });
-            // Row click: first click goes to 0, subsequent clicks advance to next (wraps)
-            row.addEventListener('click', e => {
-                if (e.target.closest('.spot-nav')) return;  // ignore clicks on the nav buttons
-                goTo(idx < 0 ? 0 : idx + 1);
-            });
-        } else {
-            row.innerHTML = `${dotHtml}<span class="spot-result-name">${first.name}</span>`
-                + `<div class="spot-preview">${previewHtml}</div>`;
-            row.addEventListener('click', () => _navigateToSpot(first));
+            const preview = document.createElement('div');
+            preview.className = 'spot-preview';
+            preview.innerHTML = previewHtml;
+            row.appendChild(preview);
         }
+        wireSpotRowNavigation(row, items, _navigateToSpot);
 
         if (enableHoverHl) {
             row.addEventListener('mouseenter', () => {
@@ -8503,7 +8859,6 @@ function _renderGlobalResults(matches, resultsEl, criteria = null) {
     for (const rawItems of cappedGroups) {
         const items = orderSpotGroupItems(rawItems, 'global', criteria);
         const first = items[0];
-        const multi = items.length > 1;
 
         const dotHtml = first.type === 'gather'
             ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GATHER_COLORS[first.gatherType] ?? '#aaa'};flex-shrink:0"></span>`
@@ -8519,44 +8874,12 @@ function _renderGlobalResults(matches, resultsEl, criteria = null) {
         row.className = 'spot-result-row';
         row.title = `${first.name} — ${first.locationTag}`;
 
-        if (multi) {
-            let idx = -1;
-            row.innerHTML =
-                `${dotHtml}<div style="flex:1;min-width:0">`
-                + `<div class="spot-result-name">${first.name}</div>`
-                + `<div class="spot-stage-sub">${first.locationTag}</div>`
-                + `</div>`
-                + `<div class="spot-nav" style="display:flex;align-items:center;gap:2px;flex-shrink:0">`
-                + `<button class="spot-nav-btn spot-prev" title="Previous">◀</button>`
-                + `<span class="spot-nav-pos" style="font-size:0.68rem;color:#667;min-width:32px;text-align:center">×${items.length}</span>`
-                + `<button class="spot-nav-btn spot-next" title="Next">▶</button>`
-                + `</div>`;
-
-            const posEl   = row.querySelector('.spot-nav-pos');
-            const stageSub = row.querySelector('.spot-stage-sub');
-            const prev    = row.querySelector('.spot-prev');
-            const next    = row.querySelector('.spot-next');
-
-            const goTo = (i) => {
-                idx = (i + items.length) % items.length;
-                posEl.textContent = `${idx + 1}/${items.length}`;
-                _navigateToSpotGlobal(items[idx]);
-            };
-
-            prev.addEventListener('click', e => { e.stopPropagation(); goTo(idx <= 0 ? items.length - 1 : idx - 1); });
-            next.addEventListener('click', e => { e.stopPropagation(); goTo(idx + 1); });
-            row.addEventListener('click', e => {
-                if (e.target.closest('.spot-nav')) return;
-                goTo(idx < 0 ? 0 : idx + 1);
-            });
-        } else {
-            row.innerHTML =
-                `${dotHtml}<div style="flex:1;min-width:0">`
-                + `<div class="spot-result-name">${first.name}</div>`
-                + `<div class="spot-stage-sub">${first.locationTag}</div>`
-                + `</div>`;
-            row.addEventListener('click', () => _navigateToSpotGlobal(first));
-        }
+        row.innerHTML =
+            `${dotHtml}<div style="flex:1;min-width:0">`
+            + `<div class="spot-result-name">${first.name}</div>`
+            + `<div class="spot-stage-sub">${first.locationTag}</div>`
+            + `</div>`;
+        wireSpotRowNavigation(row, items, _navigateToSpotGlobal);
         // No hover highlight effects in global mode (results may be on other stages)
 
         frag.appendChild(row);

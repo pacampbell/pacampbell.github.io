@@ -82,11 +82,39 @@ Open with the **🔍** button or **Ctrl+F**. Search enemies, gathering types, or
 - **Gathering** — gather node types
 - **Items** — drops from enemies, gather nodes, or shops
 
+### Multi-enemy search (Enemies tab)
+
+Search several mobs at once by separating names with a **comma** or **+**:
+
+- `Behemoth, Angules`
+- `Goblin Dragon + Colossus`
+
+Matching is **per stage** (dungeon/area), not per spawn group. If both mobs appear anywhere on the same stage — even in different groups — that stage shows **2/2** under **All matched**.
+
+Results are grouped by how many search terms matched:
+
+| Badge | Meaning |
+|-------|---------|
+| **2/2** | Every searched mob has at least one matching spawn on that stage |
+| **1/2** | Only one mob matched on that stage (see level filter below) |
+
+Click a row to fly to the nearest matching spawn. Use **◀ ▶** to cycle through **all** matching spawns on that stage (each mob’s locations, in sort order).
+
+### Stage roster (This Stage, empty search)
+
+On **This Stage** with the **Enemies** tab, leave the search box empty to see every enemy type on the current stage. Click a row to jump to the nearest spawn; **◀ ▶** appears when that mob has multiple locations.
+
 ### Level range (Enemies tab)
 
-Expand **Level range**, set **Min** and/or **Max**, leave blank for no bound. Only enemy rows whose level range overlaps your filter are listed. The badge shows when a filter is active.
+Expand **Level range**, set **Min** and/or **Max**, leave blank for no bound. Only enemy spawns whose level range **overlaps** your filter count as matches. The badge shows when a filter is active.
 
 <img width="308" height="155" alt="image" src="https://github.com/user-attachments/assets/91cdd327-950e-48a8-ac27-d864a1b60229" />
+
+**With multi-enemy search**, each mob is checked separately against the level filter. Example: **Min 30**, search `Goblin, Behemoth` — Goblin Lv 43 counts, Behemoth Lv 10 does not → stage shows **1/2**, not **2/2**. Arrows only cycle spawns that pass the filter.
+
+Spawns with **no level data** in the server preset are not excluded by the level filter.
+
+**Note:** The empty-search stage roster lists all enemy types and does not apply the level filter (the filter applies when you type a search).
 
 ### Sort from
 
@@ -99,12 +127,14 @@ Results are ordered by **travel distance** from a sort origin (not alphabeticall
 
 **Sort order:** path distance → (global only) stage order → level (low to high) → name. Unreachable stages sort after reachable ones.
 
+**Sort from** affects **order only** — it does not hide results. The same ordering applies inside **◀ ▶** navigation: **1/N** is always the nearest matching spawn from your origin.
+
 ### Scope
 
 - **This Stage** — current map/stage only.
 - **All Stages** — world-wide search; first use loads spawn position data for all stages (progress message shown).
 
-Click a result to fly to the spawn and highlight it. Multiple locations for the same name use **◀ ▶** to cycle.
+Click a result to fly to the spawn and highlight it. Multiple locations for the same name — or multiple matches on a multi-enemy row — use **◀ ▶** to cycle.
 
 ---
 

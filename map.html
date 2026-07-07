@@ -1192,6 +1192,24 @@
             color: #556; font-size: 0.7rem;
             border-bottom: 1px solid #0d1b35;
         }
+        .spot-section-header {
+            padding: 6px 8px 2px;
+            color: #89c;
+            font-size: 0.68rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+        .spot-multi-badge {
+            flex-shrink: 0;
+            font-size: 0.65rem;
+            color: #cde;
+            background: #1a4a7a;
+            border: 1px solid #2a5a8a;
+            border-radius: 3px;
+            padding: 1px 5px;
+        }
+        .spot-roster-row .spot-result-count { color: #778; }
         .spot-result-row {
             position: relative;
             display: flex; align-items: center; gap: 6px;
@@ -1429,7 +1447,7 @@
                 <button id="spot-panel-close" title="Close (Esc)">✕</button>
             </div>
             <div id="spot-search-wrap">
-                <input type="text" id="spot-search-input" placeholder="Enemy, item or gathering type…" autocomplete="off" spellcheck="false" title='Use "quotes" for an exact match — e.g. "Healing Potion"'>
+                <input type="text" id="spot-search-input" placeholder="Enemy name… use comma for multiple" autocomplete="off" spellcheck="false" title='Search one enemy, or several separated by commas — e.g. Goblin Dragon, Colossus. Use "quotes" for exact match.'>
                 <button id="spot-search-clear" title="Clear search">✕</button>
             </div>
             <div id="spot-filter-tabs">
@@ -1467,7 +1485,7 @@
                 <button class="spot-scope active" data-scope="local">This Stage</button>
                 <button class="spot-scope" data-scope="global">All Stages</button>
             </div>
-            <div id="spot-results"><div class="spot-empty">Type to search enemies or gathering points on this map.</div></div>
+            <div id="spot-results"><div class="spot-empty">Enemies on this stage appear below when the Enemies tab is active.</div></div>
         </div>
     </div>
 </div>
