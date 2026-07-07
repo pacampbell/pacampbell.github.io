@@ -518,20 +518,13 @@ function updateEnemyVisibility() {
 const LAYER_PREFS_KEY = 'ddon-maps-layers';
 const DEV_PREFS_KEY     = 'ddon-dev-prefs';
 const DEV_PANEL_KEY     = 'ddon-dev-panel-open';
-const DEV_SECTION_OPEN_KEY = 'ddon-dev-section-open';
 
-const DEV_SECTION_DEFAULTS = { labels: false, overlays: false, waves: false, tools: true };
-
-let _devShowSpawnIds       = false;
-let _devShowGroupIds       = false;
-let _devShowGroupCounts    = false;
-let _devLegacyGroupChips   = false;
-let _devShowCoords         = false;
-
+let _devMobSpawnLabels   = false;
 const DYNAMIC_ENEMY_LABEL = 'Dynamic Enemy';
 let _enemySpawnDataLoaded  = false;
 
-const useLegacyGroupChips = () => _devLegacyGroupChips;
+const useLegacyGroupChips = () => _devMobSpawnLabels;
+const useMobSpawnDevLabels = () => _devMobSpawnLabels;
 
 const loadDevPrefs = () => {
     try {
@@ -540,37 +533,70 @@ const loadDevPrefs = () => {
     } catch { return {}; }
 };
 
+const readMobSpawnLabelsPref = (devPrefs) => {
+    if (devPrefs.mobSpawnLabels != null) return !!devPrefs.mobSpawnLabels;
+    return !!(devPrefs.showSpawnIds || devPrefs.showGroupIds || devPrefs.showGroupCounts
+        || devPrefs.legacyGroupChips);
+};
+
 const saveDevPrefs = () => {
-    const prefs = {
-        showSpawnIds:     _devShowSpawnIds,
-        showGroupIds:     _devShowGroupIds,
-        showGroupCounts:  _devShowGroupCounts,
-        legacyGroupChips:    _devLegacyGroupChips,
-        showCoords:          _devShowCoords,
-    };
+    const prefs = { mobSpawnLabels: _devMobSpawnLabels };
     try { localStorage.setItem(DEV_PREFS_KEY, JSON.stringify(prefs)); } catch { /* ignore */ }
 };
 
 const applyDevDisplayPrefs = () => {
-    document.body.classList.toggle('dev-coords-on', _devShowCoords);
+    document.body.classList.add('dev-coords-on');
 };
 
+const territoryLayerEnabled = () => useMobSpawnDevLabels();
+
+function ensureGroupTerritoryRect(g) {
+    if (g.territoryRect || !g.territory || !useMobSpawnDevLabels()) return;
+    const info = _currentMapInfo;
+    if (!info) return;
+    const { xMin, xMax, zMin, zMax } = g.territory;
+    const sw = worldToPixel(xMin, zMin, info);
+    const ne = worldToPixel(xMax, zMax, info);
+    g.territoryRect = L.rectangle([sw, ne], {
+        color:       g.color,
+        weight:      2,
+        opacity:     0.85,
+        fillColor:   g.color,
+        fillOpacity: 0.08,
+        dashArray:   '8 4',
+        interactive: false,
+    });
+}
+
+function removeGroupTerritoryRect(g) {
+    if (!g.territoryRect) return;
+    detachTerritoryRect(g);
+    g.territoryRect = null;
+}
+
+function removeAllGroupTerritoryRects() {
+    for (const g of _groupStore.values()) removeGroupTerritoryRect(g);
+}
+
 const syncTerritoryLayer = () => {
-    const on = document.getElementById('layer-territory')?.checked;
-    if (!on) {
+    if (!territoryLayerEnabled()) {
         territoryLayer.clearLayers();
         if (leafletMap.hasLayer(territoryLayer)) leafletMap.removeLayer(territoryLayer);
         return;
     }
     territoryLayer.clearLayers();
     for (const g of _groupStore.values()) {
-        if (g.isExpanded && g.territoryRect) territoryLayer.addLayer(g.territoryRect);
+        if (!g.isExpanded || !g.territory) continue;
+        ensureGroupTerritoryRect(g);
+        if (g.territoryRect) territoryLayer.addLayer(g.territoryRect);
     }
     if (territoryLayer.getLayers().length) leafletMap.addLayer(territoryLayer);
 };
 
 const attachTerritoryRect = (g) => {
-    if (!document.getElementById('layer-territory')?.checked || !g.territoryRect) return;
+    if (!territoryLayerEnabled()) return;
+    ensureGroupTerritoryRect(g);
+    if (!g.territoryRect) return;
     territoryLayer.addLayer(g.territoryRect);
     if (!leafletMap.hasLayer(territoryLayer)) leafletMap.addLayer(territoryLayer);
 };
@@ -611,47 +637,69 @@ const refreshMobTooltips = () => {
     }
 };
 
-const applyMobDisplayMode = () => {
-    const legacy = useLegacyGroupChips();
-    const expandBtn = document.getElementById('btn-expand-collapse');
-    if (expandBtn) expandBtn.style.display = legacy ? '' : 'none';
+let _mobDisplayModeJob = 0;
+const MOB_EXPAND_CHUNK = 12;
 
-    if (!legacy) {
-        let expandedAny = false;
-        for (const g of _groupStore.values()) {
-            if (!g.isExpanded) {
-                _expandGroupCore(g, { skipFilter: true });
-                expandedAny = true;
-            }
-        }
-        if (expandedAny) applySubGroupFilter();
-    }
-
+const applyMobDisplayModeFinish = (legacy) => {
     for (const g of _groupStore.values()) {
+        if (legacy) ensureGroupStructureLayers(g);
+        else removeGroupStructureLayers(g);
         if (!g.labelMarker) continue;
         const showChip = legacy;
         g.labelMarker.setOpacity(showChip ? 1 : 0);
         g.labelMarker.options.interactive = showChip;
         const chipEl = g.labelMarker.getElement();
         if (chipEl) chipEl.style.pointerEvents = showChip ? '' : 'none';
-        if (g.detailsLayer) {
-            for (const layer of g.detailsLayer.getLayers()) {
-                if (layer._spawn) continue;
-                if (legacy) layer.setStyle(layer._origStyle ?? {});
-                else {
-                    if (!layer._origStyle) {
-                        layer._origStyle = {
-                            opacity: layer.options.opacity ?? 0.75,
-                            fillOpacity: layer.options.fillOpacity ?? 0.1,
-                        };
-                    }
-                    layer.setStyle({ opacity: 0, fillOpacity: 0 });
-                }
-            }
-        }
+        syncGroupStructureVisibility(g, true);
     }
     refreshGroupChipIcons();
     reapplySpread();
+    _updateExpandCollapseBtn();
+    if (!legacy) removeAllGroupTerritoryRects();
+    syncTerritoryLayer();
+};
+
+const applyMobDisplayMode = () => {
+    const jobId = ++_mobDisplayModeJob;
+    const legacy = useLegacyGroupChips();
+    const expandBtn = document.getElementById('btn-expand-collapse');
+    if (expandBtn) expandBtn.style.display = legacy ? '' : 'none';
+
+    if (legacy) {
+        applyMobDisplayModeFinish(true);
+        return;
+    }
+
+    // Player mode — expand any collapsed groups in chunks so the UI stays responsive.
+    const pending = [..._groupStore.values()].filter(g => !g.isExpanded);
+
+    for (const g of _groupStore.values()) {
+        removeGroupStructureLayers(g);
+        if (!g.labelMarker) continue;
+        g.labelMarker.setOpacity(0);
+        g.labelMarker.options.interactive = false;
+        const chipEl = g.labelMarker.getElement();
+        if (chipEl) chipEl.style.pointerEvents = 'none';
+    }
+
+    if (!pending.length) {
+        applyMobDisplayModeFinish(false);
+        return;
+    }
+
+    let idx = 0;
+    const expandChunk = () => {
+        if (jobId !== _mobDisplayModeJob) return;
+        const end = Math.min(idx + MOB_EXPAND_CHUNK, pending.length);
+        for (; idx < end; idx++) _expandGroupCore(pending[idx], { skipFilter: true });
+        if (idx < pending.length) {
+            setTimeout(expandChunk, 0);
+            return;
+        }
+        applySubGroupFilter();
+        applyMobDisplayModeFinish(false);
+    };
+    expandChunk();
 };
 
 // Returns the !-suffix string: layer flags + optional ;groupId,groupId,...
@@ -659,7 +707,7 @@ const applyMobDisplayMode = () => {
 function getLayersHash() {
     let s = '';
     if (document.getElementById('layer-grid').checked)          s += 'g';
-    if (document.getElementById('layer-territory')?.checked)    s += 't';
+    if (useMobSpawnDevLabels())                                 s += 't';
     if (document.getElementById('layer-radii').checked)         s += 'i';
     if (document.getElementById('sidebar').classList.contains('collapsed')) s += 's';
     const openIds = [..._groupStore.values()]
@@ -687,9 +735,8 @@ function updateLayersInHash() {
 
 function saveLayerPrefs() {
     const prefs = {
-        grid:         document.getElementById('layer-grid').checked,
-        territory:    document.getElementById('layer-territory')?.checked ?? false,
-        radii:        document.getElementById('layer-radii').checked,
+        grid:  document.getElementById('layer-grid').checked,
+        radii: document.getElementById('layer-radii').checked,
     };
     try { localStorage.setItem(LAYER_PREFS_KEY, JSON.stringify(prefs)); } catch (_) {}
     updateLayersInHash();
@@ -712,14 +759,10 @@ function loadLayerPrefs() {
     const isOn = (key, defaultOn) => key in prefs ? prefs[key] : defaultOn;
 
     document.getElementById('layer-grid').checked          = isOn('grid',         false);
-    const layerTerritory = document.getElementById('layer-territory');
-    if (layerTerritory) layerTerritory.checked = isOn('territory', false);
     document.getElementById('layer-radii').checked         = isOn('radii',         false);
 
     if (document.getElementById('layer-grid').checked)
         leafletMap.addLayer(gridLayer);
-    if (document.getElementById('layer-territory')?.checked)
-        syncTerritoryLayer();
     if (!anyMobTypeEnabled())
         updateEnemyVisibility();
     if (isOn('sidebarHidden', false))
@@ -729,10 +772,6 @@ function loadLayerPrefs() {
 // ── Layer toggles ──────────────────────────────────────────────────────────────
 document.getElementById('layer-grid').addEventListener('change', e => {
     e.target.checked ? leafletMap.addLayer(gridLayer) : leafletMap.removeLayer(gridLayer);
-    saveLayerPrefs();
-});
-document.getElementById('layer-territory')?.addEventListener('change', () => {
-    syncTerritoryLayer();
     saveLayerPrefs();
 });
 document.getElementById('layer-radii').addEventListener('change', e => {
@@ -1173,6 +1212,30 @@ function navigateTo(mapName, stid = null, view = null) {
     window.location.hash = hash;
 }
 
+/** Ensure hash names a valid map + stage so the first load is never blank. */
+function ensureInitialHash() {
+    const raw = window.location.hash.slice(1);
+    const parsed = parseHash();
+    const mapName = (parsed.name && mapParams[parsed.name]) ? parsed.name : 'field000_m00';
+    const info = mapParams[mapName];
+    const stid = (parsed.stid && info?.stages?.includes(parsed.stid))
+        ? parsed.stid
+        : defaultFieldStage(mapName);
+
+    const targetBase = stid ? `${mapName}:${stid}` : mapName;
+    const [beforeLayers = ''] = raw.split('!');
+    const [basePart = ''] = beforeLayers.split('@');
+    if (!raw || basePart !== targetBase) {
+        let hash = targetBase;
+        if (parsed.view) {
+            hash += `@${parsed.view.zoom.toFixed(2)}/${parsed.view.center.lat.toFixed(1)}/${parsed.view.center.lng.toFixed(1)}`;
+            if (parsed.view.floor != null) hash += `/${parsed.view.floor}`;
+        }
+        if (raw.includes('!')) hash += raw.slice(raw.indexOf('!'));
+        history.replaceState(null, '', `#${hash}`);
+    }
+}
+
 // Track last-loaded map+stid so hashchange can skip reloads on view-only updates.
 let _loadedMapName = null;
 let _loadedStid = null;
@@ -1363,8 +1426,8 @@ function makeChipIcon(groupId, _color, count, expanded, yOffset = 10, isKeyBeare
     if (isKeyBearerGroup) glows.push('0 0 7px 2px rgba(255,210,0,0.85)');
     const shadowStyle = glows.length ? `box-shadow:0 0 4px rgba(0,0,0,0.7),${glows.join(',')};` : '';
     const titleAttr = [isBossGroup ? 'Contains boss enemy' : '', isKeyBearerGroup ? 'Key bearer group' : ''].filter(Boolean).join(' · ');
-    const groupPart = _devShowGroupIds ? `G${groupId}${_devShowGroupCounts ? ' ' : ''}` : '';
-    const countPart = _devShowGroupCounts ? `<span class="chip-count">${count}</span>` : '';
+    const groupPart = useMobSpawnDevLabels() ? `G${groupId} ` : '';
+    const countPart = useMobSpawnDevLabels() ? `<span class="chip-count">${count}</span>` : '';
     return L.divIcon({
         className: '',
         html: `<div class="group-chip${expanded ? ' chip-open' : ''}" style="color:${chipColor};${shadowStyle}"${titleAttr ? ` title="${titleAttr}"` : ''}><span class="chip-arrow${expanded ? ' open' : ''}">&#9654;</span>${groupPart}${countPart}</div>`,
@@ -1531,14 +1594,10 @@ const spawnHasMobLabel = (spawnCache, spawnKey, spawn) => {
     return resolveSpawnMobLabel(spawnCache, spawnKey, spawn) != null;
 };
 
-// Build the details layer (hull + territory + spawn dots) for a group entry.
-// Does NOT add the layer to the map — that is done by expandGroup.
-function buildGroupDetails(g) {
-    const info  = _currentMapInfo;
-    const layer = L.layerGroup();
-
-    // Hull (legacy group-chip mode only)
-    if (useLegacyGroupChips() && g.pts.length >= 3) {
+// Add convex hull / link polyline for a group (legacy group-chip mode only).
+function addGroupStructureLayers(g, layer) {
+    g.hullPts = null;
+    if (g.pts.length >= 3) {
         const hull = convexHull(g.pts);
         if (hull.length >= 3) {
             const poly = L.polygon(hull.map(([px, py]) => xy(px, py)), {
@@ -1550,31 +1609,64 @@ function buildGroupDetails(g) {
                 dashArray:   '6 4',
                 interactive: false,  // pointer-events:none so canvas markers stay clickable
             });
+            poly._isGroupStructure = true;
             layer.addLayer(poly);
             g.hullPts = hull;  // stored for map-level middle-click collapse
         }
-    } else if (useLegacyGroupChips() && g.pts.length === 2) {
-        L.polyline(g.pts.map(([px, py]) => xy(px, py)), {
+    } else if (g.pts.length === 2) {
+        const line = L.polyline(g.pts.map(([px, py]) => xy(px, py)), {
             color: g.color, weight: 1.5, opacity: 0.65, dashArray: '4 3', interactive: false,
-        }).addTo(layer);
-    }
-
-    // Territory rectangle — stored separately so it respects the territory layer toggle
-    g.territoryRect = null;
-    if (g.territory) {
-        const { xMin, xMax, zMin, zMax } = g.territory;
-        const sw = worldToPixel(xMin, zMin, info);
-        const ne = worldToPixel(xMax, zMax, info);
-        g.territoryRect = L.rectangle([sw, ne], {
-            color:       g.color,
-            weight:      2,
-            opacity:     0.85,
-            fillColor:   g.color,
-            fillOpacity: 0.08,
-            dashArray:   '8 4',
-            interactive: false,
         });
+        line._isGroupStructure = true;
+        layer.addLayer(line);
     }
+}
+
+const groupHasStructureLayers = (g) =>
+    g.detailsLayer?.getLayers().some(l => l._isGroupStructure) ?? false;
+
+// Lazy-build hulls when legacy chips are enabled (e.g. toggled on after initial expand).
+function ensureGroupStructureLayers(g) {
+    if (!useLegacyGroupChips() || !g.detailsLayer || groupHasStructureLayers(g)) return;
+    addGroupStructureLayers(g, g.detailsLayer);
+}
+
+function removeGroupStructureLayers(g) {
+    if (!g.detailsLayer) return;
+    for (const layer of [...g.detailsLayer.getLayers()]) {
+        if (layer._isGroupStructure) g.detailsLayer.removeLayer(layer);
+    }
+    g.hullPts = null;
+}
+
+function syncGroupStructureVisibility(g, groupVisible) {
+    if (!g.detailsLayer) return;
+    const show = groupVisible && useLegacyGroupChips();
+    for (const layer of g.detailsLayer.getLayers()) {
+        if (!layer._isGroupStructure) continue;
+        if (show) {
+            layer.setStyle(layer._origStyle ?? {});
+        } else {
+            if (!layer._origStyle) {
+                layer._origStyle = {
+                    opacity: layer.options.opacity ?? 0.75,
+                    fillOpacity: layer.options.fillOpacity ?? 0.1,
+                };
+            }
+            layer.setStyle({ opacity: 0, fillOpacity: 0 });
+        }
+    }
+}
+
+// Build the details layer (hull + territory + spawn dots) for a group entry.
+// Does NOT add the layer to the map — that is done by expandGroup.
+function buildGroupDetails(g) {
+    const info  = _currentMapInfo;
+    const layer = L.layerGroup();
+
+    if (useLegacyGroupChips()) addGroupStructureLayers(g, layer);
+
+    g.territoryRect = null;
 
     // Spawn circleMarkers
     g.sgMarkers = {};
@@ -2016,7 +2108,7 @@ function buildGroupDetails(g) {
             const orbBadge  = (e0?.isBloodOrbEnemy && e0?.bloodOrbs ? ' 🩸' : '') + (e0?.isHighOrbEnemy && e0?.highOrbs ? ' ⭐' : '');
             const manualBadge = e0?.isManualSet ? ' 😴' : '';
             const bossBadge = (e0?.isBossGauge || e0?.isAreaBoss || e0?.raidBossId > 0) ? ' <span style="color:#ff4444" title="Boss enemy">☠</span>' : '';
-            const idPart = _devShowSpawnIds ? `${g.groupId}.${idx} [SS:${sg}]` : '';
+            const idPart = useMobSpawnDevLabels() ? `${g.groupId}.${idx} [SS:${sg}]` : '';
             const core = [mobLabel, idPart].filter(Boolean).join(' — ');
             return `${core || DYNAMIC_ENEMY_LABEL}${orbBadge}${manualBadge}${bossBadge}${isKeyBearer ? ' <span style="color:#c8a000;font-size:16px;">🗝</span>' : ''}`;
         };
@@ -2864,6 +2956,7 @@ function buildGroupDetails(g) {
 // reapplySpread or updateLayersInHash — used by bulk operations.
 function _expandGroupCore(g, { skipFilter = false } = {}) {
     if (!g.detailsLayer) buildGroupDetails(g);
+    else if (useLegacyGroupChips()) ensureGroupStructureLayers(g);
     const enemiesOn = anyMobTypeEnabled();
     if (enemiesOn) g.detailsLayer.addTo(leafletMap);
     g.isExpanded = true;
@@ -2915,13 +3008,28 @@ const _spawnSubGroupId = (spawn) =>
     (spawn?.SubGroupNo == null || spawn.SubGroupNo === -1) ? 0 : spawn.SubGroupNo + 1;
 
 function _computeAvailableSubGroups() {
-    const sgSet = new Set([0]);
+    const counts = new Map();
     for (const g of _groupStore.values()) {
-        if (g.areaSpawn) sgSet.add(1);
-        for (const { spawn } of g.items) sgSet.add(_spawnSubGroupId(spawn));
+        for (const { spawn } of g.items) {
+            const id = _spawnSubGroupId(spawn);
+            counts.set(id, (counts.get(id) ?? 0) + 1);
+        }
+        if (g.areaSpawn) {
+            const n = g.items.filter(({ spawn }) =>
+                spawn.SubGroupNo == null || spawn.SubGroupNo === -1,
+            ).length;
+            if (n > 0) counts.set(1, (counts.get(1) ?? 0) + n);
+        }
     }
-    _availableSubGroups = [...sgSet].sort((a, b) => a - b);
+    _availableSubGroups = [...counts.keys()].sort((a, b) => a - b);
+    if (_activeSubGroupId != null && !_availableSubGroups.includes(_activeSubGroupId)) {
+        _activeSubGroupId = null;
+    }
     _renderSubGroupSelector();
+}
+
+function stageHasSpawnWaves() {
+    return _availableSubGroups.length > 1;
 }
 
 function _setMarkerVisible(m, visible) {
@@ -2943,19 +3051,8 @@ function _setGroupVisible(g, visible) {
     g.labelMarker.options.interactive = showChip;
     const chipEl = g.labelMarker.getElement();
     if (chipEl) chipEl.style.pointerEvents = showChip ? '' : 'none';
-    // Hull and other structure layers in an expanded detailsLayer
-    if (g.detailsLayer) {
-        for (const layer of g.detailsLayer.getLayers()) {
-            if (layer._spawn) continue;  // skip spawn markers — handled separately
-            const showHull = visible && useLegacyGroupChips();
-            if (showHull) {
-                layer.setStyle(layer._origStyle ?? {});
-            } else {
-                if (!layer._origStyle) layer._origStyle = { opacity: layer.options.opacity ?? 0.75, fillOpacity: layer.options.fillOpacity ?? 0.1 };
-                layer.setStyle({ opacity: 0, fillOpacity: 0 });
-            }
-        }
-    }
+    // Hull / link polyline visibility (legacy group-chip mode only)
+    syncGroupStructureVisibility(g, visible);
 }
 
 function applySubGroupFilter() {
@@ -2984,13 +3081,17 @@ function applySubGroupFilter() {
 function _renderSubGroupSelector() {
     const bar = document.getElementById('subgroup-bar');
     if (!bar) return;
-    if (_availableSubGroups.length <= 1) { bar.style.display = 'none'; return; }
+    if (!stageHasSpawnWaves()) {
+        bar.style.display = 'none';
+        bar.innerHTML = '';
+        return;
+    }
     bar.style.display = 'flex';
     const pill = (sg, label) => {
         const on = sg === _activeSubGroupId;
         return `<button class="sg-filter-btn" data-sg="${sg === null ? '' : sg}" style="font-size:10px;padding:1px 8px;border-radius:10px;cursor:pointer;border:1px solid;${on ? 'background:#4a90d9;color:#fff;border-color:#357abd' : 'background:#2a3a5a;color:#9ab;border-color:#3a5a7a'}">${label}</button>`;
     };
-    bar.innerHTML = `<span style="font-size:9px;color:#778;text-transform:uppercase;letter-spacing:0.4px;margin-right:4px;align-self:center">SubGroup</span>` +
+    bar.innerHTML = `<span style="font-size:9px;color:#778;text-transform:uppercase;letter-spacing:0.4px;margin-right:4px;align-self:center">Spawn waves</span>` +
         pill(null, 'All') + _availableSubGroups.map(sg => pill(sg, sg)).join('');
     bar.querySelectorAll('.sg-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -3254,6 +3355,7 @@ function getEnemyFloor(worldX, worldY, worldZ, floorObbs) {
 
 
 async function loadEnemySpawns(info, stid = null) {
+    ++_mobDisplayModeJob; // cancel any in-flight group expansion from a prior map
     // Tear down all previous group state
     enemyLayer.clearLayers();
     for (const g of _groupStore.values()) {
@@ -3265,6 +3367,7 @@ async function loadEnemySpawns(info, stid = null) {
     territoryLayer.clearLayers();
     clearSpawnRadii();
     _activeSubGroupId = null;
+    _availableSubGroups = [];
     _renderSubGroupSelector();
     _currentMapInfo   = info;
     _currentFloorObbs = info.floor_obbs ?? null;
@@ -3602,36 +3705,85 @@ function finalizeConnectionPoi(poiCat) {
     return poiCat;
 }
 
+function normalizeShopName(name) {
+    return String(name ?? '').toLowerCase().replace(/['']/g, '').replace(/\s+/g, ' ').trim();
+}
+
+let _interiorShopNamesByStage = null;
+function interiorShopNamesByStage() {
+    if (_interiorShopNamesByStage) return _interiorShopNamesByStage;
+    _interiorShopNamesByStage = new Map();
+    const add = (stageNo, label) => {
+        const norm = normalizeShopName(label);
+        if (!norm) return;
+        if (!_interiorShopNamesByStage.has(stageNo)) _interiorShopNamesByStage.set(stageNo, new Set());
+        _interiorShopNamesByStage.get(stageNo).add(norm);
+    };
+    for (const [stageNo, npcs] of Object.entries(npcShops)) {
+        if (!isAccessibleShopStage(stageNo)) continue;
+        for (const npc of npcs) {
+            const npcName = npcShopDisplayName(npc.NpcId);
+            const funcLabel = NPC_FUNC_LABELS[npc.InstitutionFunctionId] ?? '';
+            add(stageNo, resolveShopLabel(stageNo, npcName, funcLabel));
+        }
+    }
+    for (const [stageNo, npcs] of Object.entries(npcSpecialShops)) {
+        if (!isAccessibleShopStage(stageNo)) continue;
+        for (const npc of npcs) {
+            const npcName = npcShopDisplayName(npc.NpcId, npc.NpcName);
+            const shopType = npc.ShopTypeName
+                ? splitPascalCase(String(npc.ShopTypeName).replace(/Exchange/g, ' Exchange '))
+                : 'Appraisals';
+            add(stageNo, resolveShopLabel(stageNo, npcName, shopType));
+        }
+    }
+    return _interiorShopNamesByStage;
+}
+
+/** Field entrance to a building whose shop NPC inside uses the same name. */
+function connectionHasInteriorShopMatch(conn) {
+    if (conn.to_stage == null) return false;
+    const label = conn.name_en?.trim();
+    if (!label) return false;
+    const names = interiorShopNamesByStage().get(String(conn.to_stage));
+    return names?.has(normalizeShopName(label)) ?? false;
+}
+
+function applyInteriorShopEntranceOverride(conn, poiCat) {
+    if (poiCat === 'shop' && connectionHasInteriorShopMatch(conn)) return 'house';
+    return poiCat;
+}
+
 function classifyConnectionPoi(conn, mapName) {
     const name = conn.name_en ?? '';
     const lower = name.toLowerCase();
 
-    if (/\bbowmaster's secret lodge\b/i.test(lower)) return 'cave';
-    if (/\bterrace\b/i.test(lower)) return 'cave';
-    if (/\binn\b/i.test(name)) return 'inn';
-    if (/\bwell\b/i.test(lower)) return 'well';
-    if (/\bshrine\b|\bchapel\b/i.test(lower)) return 'cave';
-    if (/\bbasement\b|\bcellar\b|\bdrain(s|age)?\b|\bflood control\b/i.test(lower)) return 'basement';
-    if (/\b(underground|channel)\b/i.test(lower) && /\b(waterway|passage|drain|flood)\b/i.test(lower)) return 'basement';
-    if (/\bcatacombs?\b/i.test(lower)) return 'cave';
-    if (/\bthe second ark\b|\bthe third ark\b|\bthe ark\b/i.test(lower)) return 'ark';
-    if (/\bbitterblack\b|\bmaze cove\b/i.test(lower)) return 'areaWarp';
-    if (/^lestania$/i.test(name.trim())) return 'door';
-    if (/^lb\d+_m\d+$/.test(mapName) && conn.to_map && /^field\d+_m\d+$/.test(conn.to_map)) return 'outpost';
-    if (/\bshop\b|\bstore(?!house)\b|\bbazaar\b|\bmarket\b|\boutfitter\b|\bworkshop\b|\btrading post\b|\btrading company\b/i.test(lower)) return 'shop';
-    if (/^house$/i.test(name.trim()) || /\bhouse in the\b|\bhermit's house\b|\bkeeper's house\b|\bchief's home\b|\balchemist's home\b|\bivan's lodge\b/i.test(lower)) return 'house';
-    if (/\bfort\b|\bcastle\b|\bgate\b|\bdoor\b/i.test(lower)) return 'door';
-    if (isCaveLikeConnectionName(name)) return 'cave';
+    if (/\bbowmaster's secret lodge\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'cave');
+    if (/\bterrace\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'cave');
+    if (/\binn\b/i.test(name)) return applyInteriorShopEntranceOverride(conn, 'inn');
+    if (/\bwell\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'well');
+    if (/\bshrine\b|\bchapel\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'cave');
+    if (/\bbasement\b|\bcellar\b|\bdrain(s|age)?\b|\bflood control\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'basement');
+    if (/\b(underground|channel)\b/i.test(lower) && /\b(waterway|passage|drain|flood)\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'basement');
+    if (/\bcatacombs?\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'cave');
+    if (/\bthe second ark\b|\bthe third ark\b|\bthe ark\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'ark');
+    if (/\bbitterblack\b|\bmaze cove\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'areaWarp');
+    if (/^lestania$/i.test(name.trim())) return applyInteriorShopEntranceOverride(conn, 'door');
+    if (/^lb\d+_m\d+$/.test(mapName) && conn.to_map && /^field\d+_m\d+$/.test(conn.to_map)) return applyInteriorShopEntranceOverride(conn, 'outpost');
+    if (/\bshop\b|\bstore(?!house)\b|\bbazaar\b|\bmarket\b|\boutfitter\b|\bworkshop\b|\btrading post\b|\btrading company\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'shop');
+    if (/^house$/i.test(name.trim()) || /\bhouse in the\b|\bhermit's house\b|\bkeeper's house\b|\bchief's home\b|\balchemist's home\b|\bivan's lodge\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'house');
+    if (/\bfort\b|\bcastle\b|\bgate\b|\bdoor\b/i.test(lower)) return applyInteriorShopEntranceOverride(conn, 'door');
+    if (isCaveLikeConnectionName(name)) return applyInteriorShopEntranceOverride(conn, 'cave');
 
     const landmarks = landmarkData[mapName];
-    if (!landmarks || conn.x == null || conn.z == null) return null;
+    if (!landmarks || conn.x == null || conn.z == null) return applyInteriorShopEntranceOverride(conn, null);
     for (const lm of landmarks) {
         const poiCat = LANDMARK_TYPE_TO_POI[lm.type];
         if (!poiCat) continue;
         if (Math.hypot(lm.x - conn.x, lm.z - conn.z) >= connectionMatchDist(poiCat)) continue;
-        return finalizeConnectionPoi(poiCat);
+        return applyInteriorShopEntranceOverride(conn, finalizeConnectionPoi(poiCat));
     }
-    return null;
+    return applyInteriorShopEntranceOverride(conn, null);
 }
 
 // Per-map cache — avoids re-classifying every connection for each landmark (O(n²) on load).
@@ -3866,21 +4018,6 @@ function makeConnectionMarkerIcon(poiCat) {
 /** Main overworld field maps only — excludes sfield* spot slices (wrong projection). */
 const isMainWorldFieldMap = (mapName) => /^field\d+_m\d+$/.test(mapName);
 
-/** Hub / fortress layer maps (not overworld fields). */
-const isHubLayerMap = (mapName) => {
-    if (isMainWorldFieldMap(mapName)) return false;
-    const info = mapParams[mapName];
-    if (!info?.img_exists) return false;
-    if (/^sfield/.test(mapName)) return false;
-    return /^(?:lb|rm)\d+_m\d+$/.test(mapName);
-};
-
-/** Maps whose landmarks / stage connections appear in named location search. */
-const isNamedLocationSearchMap = (mapName) => {
-    if (isMainWorldFieldMap(mapName)) return true;
-    return isHubLayerMap(mapName);
-};
-
 const NAMED_LOCATION_CATEGORIES = new Set(POI_LOCATION_CATEGORIES.map(c => c.id));
 const NAMED_LOCATION_RESULT_CAP = 30;
 
@@ -3925,7 +4062,7 @@ function locationTypeLabel(categoryId) {
 
 let _namedLocationIndex = null;
 let _namedLocationIndexVersion = 0;
-const NAMED_LOCATION_INDEX_VERSION = 9;
+const NAMED_LOCATION_INDEX_VERSION = 17;
 let _pendingNamedLocNav = null;
 
 function namedLocationMatchesEntry(entry, term, exact) {
@@ -3936,8 +4073,154 @@ function namedLocationMatchesEntry(entry, term, exact) {
     const wordRe = new RegExp(`\\b${esc}\\b`, 'i');
     if (wordRe.test(entry.label)) return true;
     if (entry.labelAlt && wordRe.test(entry.labelAlt)) return true;
-    if (entry.destLabel && wordRe.test(entry.destLabel)) return true;
     return false;
+}
+
+function namedLocationEntryIconSrc(entry) {
+    return poiMapIconSrc(entry.poiCat, { uncategorizedConnection: entry.isConnection && !entry.poiCat });
+}
+
+let _stageNoToMap = null;
+function stageNoToMapLookup() {
+    if (_stageNoToMap) return _stageNoToMap;
+    _stageNoToMap = new Map();
+    for (const [mapName, info] of Object.entries(mapParams)) {
+        if (!info.img_exists || !info.stages?.length) continue;
+        for (const stageId of info.stages) {
+            _stageNoToMap.set(String(parseInt(stageId.slice(2), 10)), { mapName, info, stageId });
+        }
+    }
+    return _stageNoToMap;
+}
+
+function npcShopDisplayName(npcId, fallback = '') {
+    const raw = npcNames[String(npcId)];
+    if (typeof raw === 'string') return raw;
+    return raw?.name ?? fallback;
+}
+
+let _stageOfficialNames = null;
+function stageOfficialNameLookup() {
+    if (_stageOfficialNames) return _stageOfficialNames;
+    _stageOfficialNames = new Map();
+    for (const entry of stageList.StageListInfoList ?? []) {
+        const name = entry.StageName?.En?.trim();
+        if (name) _stageOfficialNames.set(String(entry.StageNo), name);
+    }
+    return _stageOfficialNames;
+}
+
+let _shopCountByStage = null;
+function shopCountByStage() {
+    if (_shopCountByStage) return _shopCountByStage;
+    _shopCountByStage = new Map();
+    for (const [stageNo, npcs] of Object.entries(npcShops)) {
+        if (!isAccessibleShopStage(stageNo)) continue;
+        _shopCountByStage.set(stageNo, (_shopCountByStage.get(stageNo) ?? 0) + npcs.length);
+    }
+    for (const [stageNo, npcs] of Object.entries(npcSpecialShops)) {
+        if (!isAccessibleShopStage(stageNo)) continue;
+        _shopCountByStage.set(stageNo, (_shopCountByStage.get(stageNo) ?? 0) + npcs.length);
+    }
+    return _shopCountByStage;
+}
+
+const GENERIC_SHOP_PLACE_NAMES = new Set([
+    'house', 'lestania', 'cave harbor', 'hidden area', 'breya coast',
+]);
+
+function isDedicatedShopStageName(name) {
+    if (!name || GENERIC_SHOP_PLACE_NAMES.has(name.toLowerCase())) return false;
+    return /\b(shop|store|workshop|bazaar|market|outfitter|trading|merchant|appraisal|inn|lodge|general store|arms and armor)\b/i.test(name);
+}
+
+function possessiveNpcName(npcName) {
+    const trimmed = npcName?.trim();
+    if (!trimmed) return '';
+    return /s$/i.test(trimmed) ? `${trimmed}'` : `${trimmed}'s`;
+}
+
+function npcShopLabel(npcName, funcLabel) {
+    if (!npcName) return funcLabel || 'Shop';
+    const pos = possessiveNpcName(npcName);
+    if (!funcLabel || funcLabel === 'Shop') return `${pos} Shop`;
+    return `${pos} ${funcLabel}`;
+}
+
+function resolveShopLabel(stageNo, npcName, funcLabel) {
+    const official = stageOfficialNameLookup().get(stageNo);
+    const shopCount = shopCountByStage().get(stageNo) ?? 1;
+    if (shopCount === 1 && isDedicatedShopStageName(official)) return official;
+    return npcShopLabel(npcName, funcLabel);
+}
+
+function shopNamedLocationAlt(shopLabel, npcName, funcLabel) {
+    const parts = [];
+    if (npcName && !shopLabel.toLowerCase().includes(npcName.toLowerCase())) parts.push(npcName);
+    if (funcLabel && !shopLabel.toLowerCase().includes(funcLabel.toLowerCase())) parts.push(funcLabel);
+    return parts.join(' · ');
+}
+
+function namedLocationAreaLabel(entry) {
+    const area = mapAreaLabel(entry.mapName);
+    if (entry.poiCat === 'shop' && !entry.isConnection) return area;
+    if (!entry.stid) return area;
+    const info = mapParams[entry.mapName];
+    if (!info) return area;
+    const sLabel = stageLabel(info, entry.stid);
+    const mapLabel = info.name_en ? splitPascalCase(info.name_en) : entry.mapName;
+    if (sLabel && sLabel !== mapLabel) return `${area} · ${sLabel}`;
+    return area;
+}
+
+function indexShopNamedLocations(push) {
+    const stageLookup = stageNoToMapLookup();
+    for (const [stageNo, npcs] of Object.entries(npcShops)) {
+        if (!isAccessibleShopStage(stageNo)) continue;
+        const loc = stageLookup.get(stageNo);
+        if (!loc) continue;
+        const { mapName, stageId } = loc;
+        for (const npc of npcs) {
+            const npcName = npcShopDisplayName(npc.NpcId);
+            const funcLabel = NPC_FUNC_LABELS[npc.InstitutionFunctionId] ?? '';
+            const shopLabel = resolveShopLabel(stageNo, npcName, funcLabel);
+            push({
+                label: shopLabel,
+                labelAlt: shopNamedLocationAlt(shopLabel, npcName, funcLabel),
+                typeLabel: locationTypeLabel('shop'),
+                poiCat: 'shop',
+                isConnection: false,
+                mapName,
+                stid: stageId,
+                worldX: npc.Position.x,
+                worldZ: npc.Position.z,
+            });
+        }
+    }
+    for (const [stageNo, npcs] of Object.entries(npcSpecialShops)) {
+        if (!isAccessibleShopStage(stageNo)) continue;
+        const loc = stageLookup.get(stageNo);
+        if (!loc) continue;
+        const { mapName, stageId } = loc;
+        for (const npc of npcs) {
+            const npcName = npcShopDisplayName(npc.NpcId, npc.NpcName);
+            const shopType = npc.ShopTypeName
+                ? splitPascalCase(String(npc.ShopTypeName).replace(/Exchange/g, ' Exchange '))
+                : 'Appraisals';
+            const shopLabel = resolveShopLabel(stageNo, npcName, shopType);
+            push({
+                label: shopLabel,
+                labelAlt: shopNamedLocationAlt(shopLabel, npcName, shopType),
+                typeLabel: locationTypeLabel('shop'),
+                poiCat: 'shop',
+                isConnection: false,
+                mapName,
+                stid: stageId,
+                worldX: npc.Position.x,
+                worldZ: npc.Position.z,
+            });
+        }
+    }
 }
 
 function buildNamedLocationIndex() {
@@ -3954,7 +4237,7 @@ function buildNamedLocationIndex() {
     };
 
     for (const [mapName, landmarks] of Object.entries(landmarkData)) {
-        if (!isNamedLocationSearchMap(mapName)) continue;
+        if (!isMainWorldFieldMap(mapName)) continue;
         for (const lm of landmarks) {
             if (HIDDEN_LANDMARK_TYPES.has(lm.type)) continue;
             const label = lm.spot_name_en?.trim();
@@ -3967,6 +4250,8 @@ function buildNamedLocationIndex() {
                 label,
                 labelAlt: lm.spot_name_jp ?? '',
                 typeLabel: locationTypeLabel(filterCat),
+                poiCat: category,
+                isConnection: false,
                 mapName,
                 stid: defaultFieldStage(mapName),
                 worldX: lm.x,
@@ -3986,29 +4271,24 @@ function buildNamedLocationIndex() {
     for (const { entry } of spotBest.values()) push(entry);
 
     for (const [sourceMap, conns] of Object.entries(connectionData)) {
-        if (!isNamedLocationSearchMap(sourceMap)) continue;
+        if (!isMainWorldFieldMap(sourceMap)) continue;
         for (const conn of conns) {
             const label = conn.name_en?.trim();
             if (!label || conn.x == null || conn.z == null) continue;
             if (matchSpecialConnection(sourceMap, conn)) continue;
             if (isSuppressedArkConnection(conn)) continue;
-            if (!conn.to_map) continue;
-            if (isMainWorldFieldMap(conn.to_map)) {
-                // Overworld entrances are indexed from the field map; hub layers also list
-                // named exits back to fields (e.g. Bloodbane Isle from Cave Harbor).
-                if (isMainWorldFieldMap(sourceMap)) continue;
-                if (/^lestania$/i.test(label)) continue;
-            }
+            // Overworld entrances are indexed from the field map only. Hub/dungeon exits
+            // back to fields (e.g. "Farana Plains" from rm011) duplicate field-side hits.
+            if (!conn.to_map || isMainWorldFieldMap(conn.to_map)) continue;
             if (/^house$/i.test(label)) continue;
             const poiCat = classifyConnectionPoi(conn, sourceMap) ?? 'door';
             const filterCat = _normalizePoiFilterCategory(poiCat) ?? poiCat;
-            const destLabel = mapParams[conn.to_map]?.name_en
-                ? splitPascalCase(mapParams[conn.to_map].name_en) : conn.to_map;
             push({
                 label,
                 labelAlt: '',
-                destLabel,
                 typeLabel: locationTypeLabel(filterCat),
+                poiCat,
+                isConnection: true,
                 mapName: sourceMap,
                 stid: stageIdFromNo(conn.from_stage) ?? defaultFieldStage(sourceMap),
                 worldX: conn.x,
@@ -4016,6 +4296,8 @@ function buildNamedLocationIndex() {
             });
         }
     }
+
+    indexShopNamedLocations(push);
 
     _namedLocationIndex = entries;
     _namedLocationIndexVersion = NAMED_LOCATION_INDEX_VERSION;
@@ -4090,11 +4372,21 @@ function appendNamedLocationSearchResults(listEl, rawFilter) {
     for (const entry of matches.slice(0, NAMED_LOCATION_RESULT_CAP)) {
         const el = document.createElement('div');
         el.className = 'map-loc-entry';
-        el.title = `${entry.typeLabel} · ${mapAreaLabel(entry.mapName)}`;
+        el.title = `${entry.typeLabel} · ${namedLocationAreaLabel(entry)}`;
 
         const icon = document.createElement('span');
-        icon.className = 'map-loc-icon';
-        icon.textContent = '◆';
+        icon.className = 'map-loc-icon poi-icon';
+        const iconSrc = namedLocationEntryIconSrc(entry);
+        if (iconSrc) {
+            const img = document.createElement('img');
+            img.className = 'poi-icon-img';
+            img.src = iconSrc;
+            img.alt = '';
+            img.loading = 'lazy';
+            icon.appendChild(img);
+        } else {
+            icon.textContent = '◆';
+        }
 
         const body = document.createElement('div');
         body.className = 'map-loc-body';
@@ -4105,7 +4397,7 @@ function appendNamedLocationSearchResults(listEl, rawFilter) {
 
         const subEl = document.createElement('div');
         subEl.className = 'map-loc-sub';
-        subEl.textContent = `${entry.typeLabel} · ${mapAreaLabel(entry.mapName)}`;
+        subEl.textContent = `${entry.typeLabel} · ${namedLocationAreaLabel(entry)}`;
 
         body.append(labelEl, subEl);
         el.append(icon, body);
@@ -4823,6 +5115,11 @@ const NPC_FUNC_LABELS = {
     19: 'Orb Exchange (Crests)',                     20: 'Orb Exchange (Materials)',
     57: 'Play Point Shop',   74: 'Adventure Pass Shop',  97: 'Bitterblack Shop',
 };
+/** Unreachable shop instances — duplicate WDT (3602) and Megado clones (471/472). */
+const INACCESSIBLE_SHOP_STAGE_NOS = new Set(['3602', '471', '472']);
+function isAccessibleShopStage(stageNo) {
+    return !INACCESSIBLE_SHOP_STAGE_NOS.has(String(stageNo));
+}
 const NPC_FUNC_COLORS = {
     3: '#ffd700',  4: '#4caf50',  5: '#2196f3',  6: '#ff9800',
     8: '#e91e63',  9: '#9c27b0', 19: '#00bcd4', 20: '#00bcd4',
@@ -5318,6 +5615,7 @@ function loadNpcShops(info, stid = null) {
 
     for (const stageId of stagesToLoad) {
         const stageNo = String(parseInt(stageId.slice(2), 10));
+        if (!isAccessibleShopStage(stageNo)) continue;
         const npcs    = npcShops[stageNo];
         if (!npcs) continue;
 
@@ -5518,6 +5816,7 @@ function loadSpecialShops(info, stid = null) {
 
     for (const stageId of stagesToLoad) {
         const stageNo = String(parseInt(stageId.slice(2), 10));
+        if (!isAccessibleShopStage(stageNo)) continue;
         const npcs    = npcSpecialShops[stageNo];
         if (!npcs) continue;
 
@@ -7232,7 +7531,20 @@ async function loadMap(mapName) {
 
     const loadGen = ++_loadMapGen;
     const isCurrent = () => loadGen === _loadMapGen;
-    const stid = currentStageName();
+    let stid = currentStageName();
+    if (info.stages?.length && (!stid || !info.stages.includes(stid))) {
+        stid = defaultFieldStage(mapName);
+        const parsed = parseHash();
+        let hash = stid ? `${mapName}:${stid}` : mapName;
+        if (parsed.view) {
+            hash += `@${parsed.view.zoom.toFixed(2)}/${parsed.view.center.lat.toFixed(1)}/${parsed.view.center.lng.toFixed(1)}`;
+            if (parsed.view.floor != null) hash += `/${parsed.view.floor}`;
+        }
+        const layersSuffix = window.location.hash.includes('!')
+            ? window.location.hash.slice(window.location.hash.indexOf('!')) : '';
+        history.replaceState(null, '', `#${hash}${layersSuffix}`);
+        _loadedStid = stid;
+    }
     const targetFloor = resolveInitialFloor(mapName, stid, info);
 
     const incomingIdentity = mapSceneIdentity(mapName, stid, targetFloor);
@@ -7611,7 +7923,7 @@ async function buildSpotIndex(info) {
         }
 
         // ── Items: shop NPCs ─────────────────────────────────────────────────
-        if (_shopCache) {
+        if (_shopCache && isAccessibleShopStage(stageNo)) {
             for (const npc of (npcShops[stageNo] ?? [])) {
                 if (npc.ShopId == null) continue;
                 const shop = _shopCache.get(npc.ShopId);
@@ -7779,7 +8091,7 @@ async function _buildGlobalSpotIndex() {
                     }
 
                     // Shop items (uses globally-loaded shop cache)
-                    if (_shopCache) {
+                    if (_shopCache && isAccessibleShopStage(stageNo)) {
                         for (const npc of (npcShops[stageNo] ?? [])) {
                             if (npc.ShopId == null) continue;
                             const shop = _shopCache.get(npc.ShopId);
@@ -10598,9 +10910,7 @@ window.addEventListener('beforeunload', e => {
 });
 
 // ── Init ──────────────────────────────────────────────────────────────────────
-if (!location.hash || location.hash === '#') {
-    history.replaceState(null, '', '#field000_m00:st0100');
-}
+ensureInitialHash();
 
 async function bootstrapMapApp() {
     initMobTypeFilters();
@@ -10628,10 +10938,10 @@ async function bootstrapMapApp() {
     await loadMap(currentMapName());
     watchMapContainerSize();
     checkLocalSources();
+    refitActiveMapView();
 }
 
 bootstrapMapApp();
-window.addEventListener('load', () => fitMapToImage(mapParams[_loadedMapName]), { once: true });
 window.addEventListener('resize', () => leafletMap.invalidateSize({ animate: false }));
 
 // ── Developer panel ───────────────────────────────────────────────────────────
@@ -10641,86 +10951,24 @@ function initDevPanel() {
     const panelBody   = document.getElementById('dev-panel-body');
     if (!devPanel || !panelToggle || !panelBody) return;
 
-    const loadDevSectionOpen = () => {
-        try {
-            const raw = localStorage.getItem(DEV_SECTION_OPEN_KEY);
-            return raw ? JSON.parse(raw) : {};
-        } catch { return {}; }
-    };
-    const saveDevSectionOpen = (state) => {
-        try { localStorage.setItem(DEV_SECTION_OPEN_KEY, JSON.stringify(state)); } catch { /* ignore */ }
-    };
-
     const devPrefs = loadDevPrefs();
-    _devShowSpawnIds     = devPrefs.showSpawnIds     ?? false;
-    _devShowGroupIds     = devPrefs.showGroupIds     ?? false;
-    _devShowGroupCounts  = devPrefs.showGroupCounts  ?? false;
-    _devLegacyGroupChips = devPrefs.legacyGroupChips ?? false;
-    _devShowCoords       = devPrefs.showCoords       ?? false;
+    _devMobSpawnLabels = readMobSpawnLabelsPref(devPrefs);
+    if (parseHash().layers?.territory || loadLayerPrefs()?.territory) _devMobSpawnLabels = true;
 
-    const spawnEl  = document.getElementById('dev-show-spawn-ids');
-    const groupEl  = document.getElementById('dev-show-group-ids');
-    const countEl  = document.getElementById('dev-show-group-counts');
-    const legacyEl = document.getElementById('dev-legacy-group-chips');
-    const coordsEl = document.getElementById('dev-show-coords');
-    if (spawnEl)  spawnEl.checked  = _devShowSpawnIds;
-    if (groupEl)  groupEl.checked  = _devShowGroupIds;
-    if (countEl)  countEl.checked  = _devShowGroupCounts;
-    if (legacyEl) legacyEl.checked = _devLegacyGroupChips;
-    if (coordsEl) coordsEl.checked = _devShowCoords;
+    const mobLabelsEl = document.getElementById('dev-mob-spawn-labels');
+    if (mobLabelsEl) mobLabelsEl.checked = _devMobSpawnLabels;
     applyDevDisplayPrefs();
-    applyMobDisplayMode();
 
-    spawnEl?.addEventListener('change', () => {
-        _devShowSpawnIds = spawnEl.checked;
+    mobLabelsEl?.addEventListener('change', () => {
+        _devMobSpawnLabels = mobLabelsEl.checked;
         saveDevPrefs();
-        refreshMobTooltips();
-    });
-    groupEl?.addEventListener('change', () => {
-        _devShowGroupIds = groupEl.checked;
-        saveDevPrefs();
-        refreshGroupChipIcons();
-    });
-    countEl?.addEventListener('change', () => {
-        _devShowGroupCounts = countEl.checked;
-        saveDevPrefs();
-        refreshGroupChipIcons();
-    });
-    legacyEl?.addEventListener('change', () => {
-        _devLegacyGroupChips = legacyEl.checked;
-        saveDevPrefs();
-        if (_devLegacyGroupChips) _collapseAllGroups();
-        else _expandAllGroups();
+        if (_devMobSpawnLabels) _collapseAllGroups();
+        else removeAllGroupTerritoryRects();
         applyMobDisplayMode();
-    });
-    coordsEl?.addEventListener('change', () => {
-        _devShowCoords = coordsEl.checked;
-        saveDevPrefs();
-        applyDevDisplayPrefs();
-    });
-
-    const sectionOpen = loadDevSectionOpen();
-    const setDevSectionOpen = (section, open) => {
-        section.classList.toggle('expanded', open);
-        const toggle = section.querySelector('.dev-section-toggle');
-        if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    };
-    devPanel.querySelectorAll('.dev-section').forEach(section => {
-        const key = section.dataset.devSection;
-        if (!key) return;
-        const startOpen = key in sectionOpen
-            ? sectionOpen[key] === true
-            : (DEV_SECTION_DEFAULTS[key] ?? false);
-        setDevSectionOpen(section, startOpen);
-        section.querySelector('.dev-section-toggle')?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            const open = section.classList.toggle('expanded');
-            sectionOpen[key] = open;
-            saveDevSectionOpen(sectionOpen);
-            const toggle = section.querySelector('.dev-section-toggle');
-            if (toggle) toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-        });
+        syncTerritoryLayer();
+        refreshMobTooltips();
+        refreshGroupChipIcons();
+        saveLayerPrefs();
     });
 
     const setPanelOpen = (open) => {

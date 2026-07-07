@@ -21,7 +21,7 @@ Enemy **positions** load from this repo. Enemy **types, levels, and drops** load
 The search box at the top of the sidebar finds:
 
 - **Maps** — by area or stage name (e.g. `Hidell`, `st0100`).
-- **Named locations** — portcrystals (outposts), caves, inns, doors, wells, area warps, and similar POIs on overworld maps.
+- **Named locations** — portcrystals (outposts), caves, inns, doors, wells, area warps, **shops**, and similar POIs on field maps (including shop NPCs inside buildings). Results use the same POI icons as the map. A field **door** to a building whose interior shop shares the same name is indexed as a **House**, not a second shop entry.
   
 <img width="425" height="366" alt="image" src="https://github.com/user-attachments/assets/06e7cbdc-2dda-45f5-b933-642510f23cd3" />
 
@@ -50,6 +50,10 @@ Filter which **enemy groups** are visible by spawn type:
 
 
 Uncheck **Show all** to hide every mob type; check individual boxes to show only what you need.
+
+**Spawn waves** — on stages with more than one spawn subgroup, a pill bar appears under the mob-type list (**All**, then **1**, **2**, …). Pick a wave to show only spawns from that subgroup; **All** shows every wave. Area-spawn groups count toward wave **1** when the stage uses the default subgroup layout.
+
+Enemy positions are **lazy-loaded** per stage when you open a map (or when spot search needs all stages), which keeps the initial page load small.
 
 ### Locations
 
@@ -140,7 +144,21 @@ Click a result to fly to the spawn and highlight it. Multiple locations for the 
 
 ## Developer panel (optional)
 
-Collapsed **Developer** section at the bottom of the sidebar: spawn IDs on hover, aggro/link radius overlay, grid, territory bounds, edit mode, etc. Not required for normal use.
+Collapsed **Developer** section at the bottom of the sidebar. Not required for normal use.
+
+| Option | What it does |
+|--------|----------------|
+| **Technical spawn labels** | Per-spawn ID labels, **G#** group chips with counts, legacy group chips, expand/collapse hull outlines, and **territory bounds** on expanded groups (territory is no longer a separate layer toggle) |
+| **Aggro / link radius** | Click a spawn on the map to draw its aggro and link radii |
+| **Grid** | World-coordinate grid overlay |
+| **✎ Edit** | Toggle edit mode for gather/shop/connection markers |
+| **Expand all groups / Collapse all groups** | Expand or collapse every spawn group at once |
+
+**Tips**
+
+- With technical labels on: click a **G#** chip to expand that group; **middle-click** the hull outline to collapse.
+- **Cursor coordinates** are always shown in the bottom-right of the map (no dev toggle).
+- **Alt+click** the map to log world coordinates to the browser console.
 
 ---
 

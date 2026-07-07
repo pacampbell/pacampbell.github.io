@@ -297,11 +297,7 @@
             border-left-color: #e94560;
         }
         .map-loc-icon {
-            color: #4caf50;
-            font-size: 0.72rem;
-            line-height: 1.4;
             flex-shrink: 0;
-            width: 10px;
         }
         .map-loc-body { flex: 1; min-width: 0; }
         .map-loc-label {
@@ -476,40 +472,9 @@
             text-align: center;
         }
         #dev-panel.expanded #dev-panel-toggle .expand-arrow { transform: rotate(90deg); }
-        #dev-panel-body { display: none; padding: 0 0 8px; }
+        #dev-panel-body { display: none; padding: 4px 16px 8px; }
         #dev-panel.expanded #dev-panel-body { display: block; }
-        .dev-section { border-top: 1px solid #0f3460; }
-        .dev-section:first-child { border-top: none; }
-        .dev-section-toggle {
-            width: 100%;
-            padding: 6px 16px;
-            background: none;
-            border: none;
-            color: #666;
-            font-size: 0.68rem;
-            font-weight: 700;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            cursor: pointer;
-            text-align: left;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .dev-section-toggle:hover { color: #aaa; background: #1a2848; }
-        .dev-section.expanded .dev-section-toggle { color: #888; }
-        .dev-section-toggle .expand-arrow {
-            font-size: 0.55rem;
-            color: #888;
-            flex-shrink: 0;
-            transition: transform 0.15s;
-            width: 10px;
-            text-align: center;
-        }
-        .dev-section.expanded .dev-section-toggle .expand-arrow { transform: rotate(90deg); }
-        .dev-section-body { display: none; padding: 0 16px 4px; }
-        .dev-section.expanded .dev-section-body { display: block; }
-        .dev-option-list { display: flex; flex-direction: column; gap: 2px; }
+        #dev-panel-body .dev-option-list { display: flex; flex-direction: column; gap: 2px; }
         .dev-btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
         .dev-action-btn {
             flex: 1;
@@ -532,7 +497,7 @@
             color: #666;
             line-height: 1.6;
         }
-        #subgroup-bar { flex-wrap: wrap; gap: 3px; margin-top: 4px; align-items: center; }
+        #subgroup-bar { flex-wrap: wrap; gap: 3px; margin-top: 6px; align-items: center; }
         body.dev-coords-on #coord-display { display: block; }
 
         /* ── Map container ── */
@@ -627,7 +592,7 @@
         }
 
         #coord-display {
-            display: none;
+            display: block;
             position: absolute;
             bottom: 8px;
             left: 8px;
@@ -1311,6 +1276,7 @@
                             Show all
                         </label>
                         <div id="mob-type-filter-list" class="layer-list poi-filter-list"></div>
+                        <div id="subgroup-bar" style="display:none"></div>
                     </div>
                 </div>
                 <div class="poi-section expanded" id="locations-section" data-poi-section="locations">
@@ -1349,82 +1315,28 @@
                 <span class="expand-arrow">▶</span><span>Developer</span>
             </button>
             <div id="dev-panel-body">
-                <div class="dev-section" data-dev-section="labels">
-                    <button type="button" class="dev-section-toggle" aria-expanded="false">
-                        <span class="expand-arrow">▶</span><span>Mob labels</span>
-                    </button>
-                    <div class="dev-section-body">
-                        <div class="dev-option-list">
-                            <label class="layer-toggle" title="Show group.index and spawn-set codes on hover">
-                                <input type="checkbox" id="dev-show-spawn-ids">
-                                Spawn IDs (7.4, SS:202)
-                            </label>
-                            <label class="layer-toggle" title="Show G317 on group chips (legacy mode)">
-                                <input type="checkbox" id="dev-show-group-ids">
-                                Group IDs (G317)
-                            </label>
-                            <label class="layer-toggle" title="Show position count on group chips (legacy mode)">
-                                <input type="checkbox" id="dev-show-group-counts">
-                                Group counts (16)
-                            </label>
-                            <label class="layer-toggle" title="Use expand/collapse group chips instead of showing all mobs directly">
-                                <input type="checkbox" id="dev-legacy-group-chips">
-                                Legacy group chips
-                            </label>
-                        </div>
-                    </div>
+                <div class="dev-option-list">
+                    <label class="layer-toggle" title="Spawn IDs, group chips (G#), counts, expand/collapse hulls, and territory bounds on expanded groups">
+                        <input type="checkbox" id="dev-mob-spawn-labels">
+                        Technical spawn labels
+                    </label>
+                    <label class="layer-toggle">
+                        <input type="checkbox" id="layer-radii">
+                        Aggro / link radius
+                    </label>
+                    <label class="layer-toggle">
+                        <input type="checkbox" id="layer-grid">
+                        Grid
+                    </label>
                 </div>
-
-                <div class="dev-section" data-dev-section="overlays">
-                    <button type="button" class="dev-section-toggle" aria-expanded="false">
-                        <span class="expand-arrow">▶</span><span>Overlays</span>
-                    </button>
-                    <div class="dev-section-body">
-                        <div class="dev-option-list">
-                            <label class="layer-toggle">
-                                <input type="checkbox" id="layer-radii">
-                                Aggro / link radius
-                            </label>
-                            <label class="layer-toggle">
-                                <input type="checkbox" id="layer-grid">
-                                Grid
-                            </label>
-                            <label class="layer-toggle">
-                                <input type="checkbox" id="layer-territory">
-                                Territory bounds
-                            </label>
-                            <label class="layer-toggle">
-                                <input type="checkbox" id="dev-show-coords">
-                                Cursor coordinates
-                            </label>
-                        </div>
-                    </div>
+                <div class="dev-btn-row">
+                    <button type="button" id="edit-mode-btn" class="dev-action-btn" title="Toggle edit mode">✎ Edit</button>
                 </div>
-
-                <div class="dev-section" data-dev-section="waves">
-                    <button type="button" class="dev-section-toggle" aria-expanded="false">
-                        <span class="expand-arrow">▶</span><span>Spawn waves</span>
-                    </button>
-                    <div class="dev-section-body">
-                        <div id="subgroup-bar" style="display:none"></div>
-                    </div>
-                </div>
-
-                <div class="dev-section" data-dev-section="tools">
-                    <button type="button" class="dev-section-toggle" aria-expanded="false">
-                        <span class="expand-arrow">▶</span><span>Tools</span>
-                    </button>
-                    <div class="dev-section-body">
-                        <div class="dev-btn-row">
-                            <button type="button" id="edit-mode-btn" class="dev-action-btn" title="Toggle edit mode">✎ Edit</button>
-                        </div>
-                        <button type="button" id="btn-expand-collapse" class="dev-action-btn" style="width:100%;margin-top:6px">Expand all groups</button>
-                        <div class="dev-help">
-                            Legacy group chips: click chip to expand · middle-click hull to collapse<br>
-                            Aggro / link radius: click a spawn on the map<br>
-                            Alt+click map to log world coordinates
-                        </div>
-                    </div>
+                <button type="button" id="btn-expand-collapse" class="dev-action-btn" style="width:100%;margin-top:6px">Expand all groups</button>
+                <div class="dev-help">
+                    Technical labels: click chip to expand · middle-click hull to collapse · territory on expanded groups<br>
+                    Aggro / link radius: click a spawn on the map<br>
+                    Alt+click map to log world coordinates
                 </div>
             </div>
         </div>
