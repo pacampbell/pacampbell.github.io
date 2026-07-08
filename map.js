@@ -548,29 +548,10 @@ const applyDevDisplayPrefs = () => {
     document.body.classList.add('dev-coords-on');
 };
 
-const territoryLayerEnabled = () => useMobSpawnDevLabels();
-
-function ensureGroupTerritoryRect(g) {
-    if (g.territoryRect || !g.territory || !useMobSpawnDevLabels()) return;
-    const info = _currentMapInfo;
-    if (!info) return;
-    const { xMin, xMax, zMin, zMax } = g.territory;
-    const sw = worldToPixel(xMin, zMin, info);
-    const ne = worldToPixel(xMax, zMax, info);
-    g.territoryRect = L.rectangle([sw, ne], {
-        color:       g.color,
-        weight:      2,
-        opacity:     0.85,
-        fillColor:   g.color,
-        fillOpacity: 0.08,
-        dashArray:   '8 4',
-        interactive: false,
-    });
-}
-
+// Territory bounds exist in spawn position data but are not drawn — same as upstream
+// pacampbell.github.io. Most groups store stage-sized defaults (~130 km), not a tight
+// trigger zone, so rectangles were misleading when expand-all was used in dev mode.
 function removeGroupTerritoryRect(g) {
-    if (!g.territoryRect) return;
-    detachTerritoryRect(g);
     g.territoryRect = null;
 }
 
@@ -579,35 +560,8 @@ function removeAllGroupTerritoryRects() {
 }
 
 const syncTerritoryLayer = () => {
-    if (!territoryLayerEnabled()) {
-        territoryLayer.clearLayers();
-        if (leafletMap.hasLayer(territoryLayer)) leafletMap.removeLayer(territoryLayer);
-        return;
-    }
     territoryLayer.clearLayers();
-    for (const g of _groupStore.values()) {
-        if (!g.isExpanded || !g.territory) continue;
-        ensureGroupTerritoryRect(g);
-        if (g.territoryRect) territoryLayer.addLayer(g.territoryRect);
-    }
-    if (territoryLayer.getLayers().length) leafletMap.addLayer(territoryLayer);
-};
-
-const attachTerritoryRect = (g) => {
-    if (!territoryLayerEnabled()) return;
-    ensureGroupTerritoryRect(g);
-    if (!g.territoryRect) return;
-    territoryLayer.addLayer(g.territoryRect);
-    if (!leafletMap.hasLayer(territoryLayer)) leafletMap.addLayer(territoryLayer);
-};
-
-const detachTerritoryRect = (g) => {
-    if (g.territoryRect && territoryLayer.hasLayer(g.territoryRect)) {
-        territoryLayer.removeLayer(g.territoryRect);
-    }
-    if (!territoryLayer.getLayers().length && leafletMap.hasLayer(territoryLayer)) {
-        leafletMap.removeLayer(territoryLayer);
-    }
+    if (leafletMap.hasLayer(territoryLayer)) leafletMap.removeLayer(territoryLayer);
 };
 
 const refreshGroupChipIcons = () => {
@@ -908,6 +862,131 @@ const SIDEBAR_WORLD_GROUPS = [
 ];
 const SIDEBAR_GROUPED_AREA_IDS = new Set(SIDEBAR_WORLD_GROUPS.flatMap(g => g.areas));
 
+/** Major overworld jumps — continent → region (matches in-game world menu). */
+const MAJOR_LOCATION_CONTINENTS = [
+    {
+        id: 'lestania',
+        label: 'Lestania',
+        regions: [
+            { map: 'field000_m00', stid: 'st0100', label: 'Lestania', sid: 1 },
+            { map: 'rm110_m00',    stid: 'st0410', label: 'Mergoda Ruins', sid: 76 },
+        ],
+    },
+    {
+        id: 'bloodbane',
+        label: 'Bloodbane Isle',
+        regions: [
+            { map: 'field003_m00', stid: 'st0110', label: 'Bloodbane Isle', sid: 335 },
+            { map: 'field003_m00', stid: 'st0111', label: 'Precipice', sid: 336 },
+            { map: 'field003_m00', stid: 'st0112', label: 'Summit', sid: 337 },
+        ],
+    },
+    {
+        id: 'phindym',
+        label: 'Phindym',
+        regions: [
+            { map: 'field004_m00', stid: 'st0121', label: 'Elan Water Grove', sid: 372 },
+            { map: 'field004_m00', stid: 'st0120', label: 'Farana Plains', sid: 371 },
+            { map: 'field004_m00', stid: 'st0123', label: 'Morrow Forest', sid: 374 },
+            { map: 'field004_m00', stid: 'st0122', label: 'Kingal Canyon', sid: 373 },
+        ],
+    },
+    {
+        id: 'acre-selund',
+        label: 'Acre Selund',
+        regions: [
+            { map: 'field005_m00', stid: 'st0130', label: 'Rathnite Foothills', sid: 461 },
+            { map: 'field005_m00', stid: 'st0131', label: 'Rathnite Foothills Lakeside', sid: 462 },
+            { map: 'field005_m00', stid: 'st0132', label: 'Feryana Wilderness', sid: 463 },
+            { map: 'field005_m00', stid: 'st0137', label: 'Feryana Wilderness (Lookout Castle)', sid: 579 },
+            { map: 'field005_m00', stid: 'st0133', label: 'Megadosys Plateau', sid: 464 },
+            { map: 'field005_m00', stid: 'st0134', label: 'Urteca Mountains', sid: 465 },
+        ],
+    },
+];
+
+const majorLocKey = (map, stid) => `${map}:${stid}`;
+
+let _majorLocSyncing = false;
+
+function populateMajorRegionSelect(continentId, { preserveRegion = '' } = {}) {
+    const regionEl = document.getElementById('major-region-select');
+    if (!regionEl) return;
+    regionEl.innerHTML = '';
+    regionEl.appendChild(new Option('— Region —', ''));
+    if (!continentId) {
+        regionEl.disabled = true;
+        return;
+    }
+    const continent = MAJOR_LOCATION_CONTINENTS.find((c) => c.id === continentId);
+    if (!continent) {
+        regionEl.disabled = true;
+        return;
+    }
+    regionEl.disabled = false;
+    for (const region of continent.regions) {
+        const val = majorLocKey(region.map, region.stid);
+        const opt = new Option(region.label, val);
+        opt.title = `${region.stid} · sid ${String(region.sid).padStart(4, '0')}`;
+        regionEl.appendChild(opt);
+    }
+    if (preserveRegion && [...regionEl.options].some((o) => o.value === preserveRegion)) {
+        regionEl.value = preserveRegion;
+    }
+}
+
+function syncMajorLocSelectors() {
+    const continentEl = document.getElementById('major-continent-select');
+    const regionEl = document.getElementById('major-region-select');
+    if (!continentEl || !regionEl) return;
+
+    const map = currentMapName();
+    const stid = currentStageName();
+    let matchedContinent = '';
+    let matchedRegion = '';
+
+    for (const continent of MAJOR_LOCATION_CONTINENTS) {
+        for (const region of continent.regions) {
+            if (region.map === map && region.stid === stid) {
+                matchedContinent = continent.id;
+                matchedRegion = majorLocKey(region.map, region.stid);
+                break;
+            }
+        }
+        if (matchedContinent) break;
+    }
+
+    _majorLocSyncing = true;
+    continentEl.value = matchedContinent;
+    populateMajorRegionSelect(matchedContinent, { preserveRegion: matchedRegion });
+    _majorLocSyncing = false;
+}
+
+function initMajorLocSelectors() {
+    const continentEl = document.getElementById('major-continent-select');
+    const regionEl = document.getElementById('major-region-select');
+    if (!continentEl || !regionEl) return;
+
+    for (const continent of MAJOR_LOCATION_CONTINENTS) {
+        continentEl.appendChild(new Option(continent.label, continent.id));
+    }
+
+    continentEl.addEventListener('change', () => {
+        if (_majorLocSyncing) return;
+        populateMajorRegionSelect(continentEl.value);
+        regionEl.value = '';
+    });
+
+    regionEl.addEventListener('change', () => {
+        if (_majorLocSyncing || !regionEl.value) return;
+        const sep = regionEl.value.indexOf(':');
+        navigateTo(regionEl.value.slice(0, sep), regionEl.value.slice(sep + 1));
+    });
+
+    populateMajorRegionSelect('');
+    syncMajorLocSelectors();
+}
+
 const MAP_AREA_OPEN_KEY = 'ddon-map-area-open';
 
 const loadAreaOpenState = () => {
@@ -1160,6 +1239,8 @@ _mapSearchClear.addEventListener('click', () => {
     buildSidebar('');
 });
 
+initMajorLocSelectors();
+
 // ── URL hash navigation ────────────────────────────────────────────────────────
 // Hash format: #mapname  or  #mapname:stid  or either suffixed with @zoom/y/x
 // e.g. #rm000_m02:st0301@2.50/1024.0/800.0
@@ -1247,6 +1328,7 @@ window.addEventListener('hashchange', () => {
         loadMap(newMap);
         buildSidebar(document.getElementById('map-search').value);
     }
+    syncMajorLocSelectors();
 });
 
 // Persist zoom+pan in the hash via replaceState (no extra history entries).
@@ -2971,12 +3053,11 @@ function _expandGroupCore(g, { skipFilter = false } = {}) {
         _sgMarkers[sgKey].push(...markers);
     }
     if (!skipFilter) applySubGroupFilter();  // after setIcon so opacity isn't reset by icon replacement
-    attachTerritoryRect(g);
 }
 
 function _collapseGroupCore(g) {
     if (g.detailsLayer) leafletMap.removeLayer(g.detailsLayer);
-    detachTerritoryRect(g);
+    removeGroupTerritoryRect(g);
     g.isExpanded = false;
     g.labelMarker.setLatLng(xy(g.centroid.px, g.centroid.py));
     g.labelMarker.setIcon(makeChipIcon(g.groupId, g.color, g.items.length, false, g.yOffset, g.isKeyBearerGroup, _groupHasBoss(g)));
@@ -8812,9 +8893,65 @@ function buildStageEnemyRoster() {
                 ...row,
                 displayName: enemyDisplayName(row.baseName, label),
                 searchName: row.baseName,
+                count: row.groupIds.size,
             };
         })
         .sort((a, b) => a.baseName.localeCompare(b.baseName, undefined, { sensitivity: 'base' }));
+}
+
+function findRosterGatherSpots(row) {
+    return _spotIndex.filter((e) => e.type === 'gather' && e.gatherType === row.gatherType);
+}
+
+function buildStageGatherRoster() {
+    const byKey = new Map();
+    for (const entry of _spotIndex) {
+        if (entry.type !== 'gather') continue;
+        const key = entry.gatherType ?? entry.name;
+        if (!byKey.has(key)) {
+            byKey.set(key, {
+                name: entry.name,
+                gatherType: entry.gatherType,
+                nodeKeys: new Set(),
+            });
+        }
+        const row = byKey.get(key);
+        if (entry.nodeKey) row.nodeKeys.add(entry.nodeKey);
+    }
+    return [...byKey.values()]
+        .map((row) => ({ ...row, displayName: row.name, count: row.nodeKeys.size }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+}
+
+function findRosterItemSpots(row) {
+    return _spotIndex.filter((e) =>
+        e.type === 'item' && e.source === row.source && e.name === row.name);
+}
+
+function rosterItemLocationKey(entry) {
+    if (entry.nodeKey) return `n:${entry.nodeKey}`;
+    if (entry.shopKey) return `s:${entry.shopKey}`;
+    return `e:${entry.groupId ?? ''}:${entry.spawnKey ?? ''}:${entry.emCode ?? ''}`;
+}
+
+function buildStageItemRoster() {
+    const byKey = new Map();
+    for (const entry of _spotIndex) {
+        if (entry.type !== 'item') continue;
+        const key = `item:${entry.source}\0${entry.name}`;
+        if (!byKey.has(key)) {
+            byKey.set(key, {
+                name: entry.name,
+                source: entry.source,
+                itemId: entry.itemId,
+                locations: new Set(),
+            });
+        }
+        byKey.get(key).locations.add(rosterItemLocationKey(entry));
+    }
+    return [...byKey.values()]
+        .map((row) => ({ ...row, displayName: row.name, count: row.locations.size }))
+        .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
 }
 
 const filterSpotEntries = (entries, criteria) =>
@@ -8841,6 +8978,119 @@ const formatSpotMultiEmptyMessage = (criteria, { global = false } = {}) => {
     const termsLabel = criteria.rawDisplay || criteria.terms.join(', ');
     return `<div class="spot-empty">No stages match <em>${termsLabel}</em>${levelNote}${scope}.</div>`;
 };
+
+const SPOT_LIST_ICON_STYLE = 'font-size:10px;line-height:1;flex-shrink:0';
+
+const spotListIconSpan = (glyph, color, extraClass = '') =>
+    `<span class="spot-list-icon ${extraClass}" style="${SPOT_LIST_ICON_STYLE};color:${color}">${glyph}</span>`;
+
+const SPOT_LIST_POI_ICON_SIZE = 20;
+
+function spotListPoiImgHtml(src, { size = SPOT_LIST_POI_ICON_SIZE, extraFilter = '', extraClass = '' } = {}) {
+    if (!src) return null;
+    const filter = extraFilter ? `${POI_IMG_FILTER} ${extraFilter}` : POI_IMG_FILTER;
+    return `<img class="spot-list-icon spot-list-poi-icon ${extraClass}" src="${src}" width="${size}" height="${size}" alt="" `
+        + `style="flex-shrink:0;display:block;image-rendering:pixelated;filter:${filter};">`;
+}
+
+function gatherTypeFromNodeKey(nodeKey) {
+    if (!nodeKey) return null;
+    const [stageNo, groupId, posId] = nodeKey.split(':');
+    if (!stageNo || groupId == null || posId == null) return null;
+    const node = (gatherPoints[stageNo] ?? []).find(
+        (n) => String(n.groupId) === groupId && String(n.posId) === posId,
+    );
+    return node?.type ?? null;
+}
+
+const SPOT_LIST_ITEM_ICON_SIZE = 20;
+
+/** Item sprite — same ii icon shown in gather/shop/enemy popups. */
+function spotItemSpriteIconHtml(itemId) {
+    const entry = itemNames[String(itemId)];
+    const iconNo = entry?.iconNo;
+    const iconFile = iconNo != null ? `ii${String(iconNo).padStart(6, '0')}.png` : null;
+    if (!iconFile || !_iconIdSet.has(iconNo)) {
+        return `<span class="spot-list-icon" style="display:inline-block;width:${SPOT_LIST_ITEM_ICON_SIZE}px;flex-shrink:0"></span>`;
+    }
+    return `<img class="spot-list-icon spot-list-item-icon" src="images/icons/small/${iconFile}" `
+        + `width="${SPOT_LIST_ITEM_ICON_SIZE}" height="${SPOT_LIST_ITEM_ICON_SIZE}" alt="" `
+        + `style="flex-shrink:0;display:block;image-rendering:pixelated;">`;
+}
+
+/** Gather rows — icon matches the gather-node POI marker on the map. */
+function spotGatherIconHtml(first) {
+    if (!first || first.type !== 'gather') return spotListIconSpan('🌿', '#8c8');
+    const gatherType = first.gatherType ?? gatherTypeFromNodeKey(first.nodeKey);
+    const iconSrc = gatherType ? gatherMapIconSrc(gatherType) : null;
+    if (iconSrc) return spotListPoiImgHtml(iconSrc);
+    return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GATHER_COLORS[gatherType] ?? '#aaa'};flex-shrink:0"></span>`;
+}
+
+/** Empty-search stage list — same type icons as search (boss ☠, orbs, etc.). */
+const spotStageListEnemyIconHtml = (items) => spotSearchEnemyIconHtml(items);
+
+/** Tags for one spot-index enemy row — scoped to that mob's emCode, not the whole group. */
+function spotItemMobTags(it) {
+    const tags = new Set();
+    if (it.type !== 'enemy') return tags;
+
+    const g = it.groupId ? _groupStore.get(it.groupId) : null;
+    let spawn = null;
+    if (g && it.spawnKey) {
+        for (const item of g.items) {
+            const sid = stageIds[item.stageNo];
+            if (sid == null) continue;
+            const key = `${sid},${g.groupId},${item.spawn.posIdx ?? item.idx}`;
+            if (key === it.spawnKey) {
+                spawn = item.spawn;
+                break;
+            }
+        }
+    }
+
+    let entries = it.spawnKey && _enemySpawnCache
+        ? filterEntriesBySpawnTime(_enemySpawnCache.get(it.spawnKey) ?? [])
+        : [];
+    if (it.emCode) entries = entries.filter((e) => e.emCode === it.emCode);
+
+    if (isDynamicSpawnSlot(_enemySpawnCache, it.spawnKey) && !entries.some((e) => e.lv)) {
+        tags.add('dynamic');
+        return tags;
+    }
+    for (const t of spawnMobTags(entries, spawn, _enemySpawnCache, it.spawnKey)) tags.add(t);
+    return tags;
+}
+
+/** Enemy rows — icon reflects mob type (boss, orb, dormant, etc.). */
+function spotSearchEnemyIconHtml(items) {
+    if (!items?.length) return spotListIconSpan('⚔', '#c88', 'spot-list-icon-search');
+    const tags = new Set();
+    for (const it of items) {
+        for (const t of spotItemMobTags(it)) tags.add(t);
+    }
+    if (tags.has('boss'))      return spotListIconSpan('☠', '#f44', 'spot-list-icon-search');
+    if (tags.has('keyBearer')) return spotListIconSpan('🗝', '#c8a000', 'spot-list-icon-search');
+    if (tags.has('bloodOrb'))  return spotListIconSpan('🩸', '#e88', 'spot-list-icon-search');
+    if (tags.has('highOrb'))   return spotListIconSpan('⭐', '#ec4', 'spot-list-icon-search');
+    if (tags.has('manual'))    return spotListIconSpan('😴', '#9ab', 'spot-list-icon-search');
+    if (tags.has('dynamic'))   return spotListIconSpan('⚡', '#bdf', 'spot-list-icon-search');
+    return spotListIconSpan('⚔', '#c88', 'spot-list-icon-search');
+}
+
+/** Item rows — show the item's own sprite (same as inside gather/shop containers). */
+function spotItemIconHtml(first, items) {
+    if (!first || first.type !== 'item') return spotListIconSpan('📦', '#aaa');
+    const itemId = first.itemId ?? items?.[0]?.itemId;
+    return spotItemSpriteIconHtml(itemId);
+}
+
+function spotResultIconHtml(first, items) {
+    if (first.type === 'gather') return spotGatherIconHtml(first);
+    if (first.type === 'item') return spotItemIconHtml(first, items);
+    if (first.type === 'enemy') return spotSearchEnemyIconHtml(items);
+    return spotListIconSpan('⚔', '#c88');
+}
 
 /** ◀ 1/N ▶ controls — shared by single, multi-mob, and roster spot rows. */
 function wireSpotRowNavigation(row, items, navigate) {
@@ -8884,44 +9134,106 @@ function wireSpotRowNavigation(row, items, navigate) {
     });
 }
 
-function _renderStageEnemyRoster(resultsEl) {
-    const roster = buildStageEnemyRoster();
+function _highlightSpotItems(items) {
+    const drawnGroups = new Set();
+    for (const item of items) {
+        if (_currentFloorObbs && item.worldPos) {
+            const f = getEnemyFloor(item.worldPos.x, item.worldPos.y, item.worldPos.z, _currentFloorObbs);
+            if (f !== null && f !== currentLayer) continue;
+        }
+        const grp = item.groupId ? _groupStore.get(item.groupId) : null;
+        if (item.type === 'enemy' && grp && !grp.isExpanded) {
+            if (!drawnGroups.has(item.groupId)) {
+                drawnGroups.add(item.groupId);
+                _addChipHighlight(grp);
+            }
+        } else {
+            _addSpotHighlight(_resolveSpotLatLng(item));
+        }
+    }
+}
+
+function wireSpotRowHoverHighlight(row, items) {
+    if (!items.length) return;
+    row.addEventListener('mouseenter', () => {
+        _clearSpotHighlights();
+        _highlightSpotItems(items);
+    });
+    row.addEventListener('mouseleave', _clearSpotHighlights);
+}
+
+function _renderStageRoster(resultsEl, {
+    roster,
+    emptyMessage,
+    summaryNoun,
+    findMatches,
+    iconForRow,
+    labelForRow,
+}) {
     if (!roster.length) {
-        resultsEl.innerHTML = '<div class="spot-empty">No enemy data for this stage yet.</div>';
+        resultsEl.innerHTML = `<div class="spot-empty">${emptyMessage}</div>`;
         return;
     }
 
+    const criteria = readSpotSearchCriteria();
     const frag = document.createDocumentFragment();
     const summary = document.createElement('div');
     summary.className = 'spot-summary';
-    summary.textContent = `${roster.length} enemy type${roster.length !== 1 ? 's' : ''} on this stage · click to go`;
+    summary.textContent = `${roster.length} ${summaryNoun}${roster.length !== 1 ? 's' : ''} on this stage · click to go`;
     frag.appendChild(summary);
 
-    const hdr = document.createElement('div');
-    hdr.className = 'spot-section-header';
-    hdr.textContent = 'Stage roster';
-    frag.appendChild(hdr);
+    const enableHoverHl = roster.length <= 50;
 
     for (const row of roster) {
         const el = document.createElement('div');
         el.className = 'spot-result-row spot-roster-row';
-        const matches = findRosterEnemySpots(row);
-        const items = orderSpotGroupItems(matches, 'local', readSpotSearchCriteria());
-        const multi = items.length > 1;
-        el.title = multi ? `${row.baseName} · ${items.length} locations` : `Go to ${row.baseName}`;
-        const groupLabel = multi
-            ? `${items.length} locations`
-            : `${row.groupIds.size} group${row.groupIds.size !== 1 ? 's' : ''}`;
+        const matches = findMatches(row);
+        const items = orderSpotGroupItems(matches, 'local', criteria);
+        const rowLabel = labelForRow(row);
+        el.title = `Go to ${rowLabel}`;
         el.innerHTML =
-            `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
-            + `<span class="spot-result-name">${row.displayName}</span>`
-            + `<span class="spot-result-count">${groupLabel}</span>`;
+            iconForRow(row, items)
+            + `<span class="spot-result-name">${row.displayName}</span>`;
         wireSpotRowNavigation(el, items, _navigateToSpot);
+        if (enableHoverHl) wireSpotRowHoverHighlight(el, items);
         frag.appendChild(el);
     }
 
     resultsEl.innerHTML = '';
     resultsEl.appendChild(frag);
+}
+
+function _renderStageEnemyRoster(resultsEl) {
+    _renderStageRoster(resultsEl, {
+        roster: buildStageEnemyRoster(),
+        emptyMessage: 'No enemy data for this stage yet.',
+        summaryNoun: 'enemy type',
+        findMatches: findRosterEnemySpots,
+        iconForRow: (_row, items) => spotStageListEnemyIconHtml(items),
+        labelForRow: (row) => row.baseName,
+    });
+}
+
+function _renderStageGatherRoster(resultsEl) {
+    _renderStageRoster(resultsEl, {
+        roster: buildStageGatherRoster(),
+        emptyMessage: 'No gathering nodes on this stage.',
+        summaryNoun: 'gather type',
+        findMatches: findRosterGatherSpots,
+        iconForRow: (_row, items) => spotGatherIconHtml(items[0]),
+        labelForRow: (row) => row.name,
+    });
+}
+
+function _renderStageItemRoster(resultsEl) {
+    _renderStageRoster(resultsEl, {
+        roster: buildStageItemRoster(),
+        emptyMessage: 'No item data for this stage yet.',
+        summaryNoun: 'item',
+        findMatches: findRosterItemSpots,
+        iconForRow: (_row, items) => spotItemIconHtml(items[0], items),
+        labelForRow: (row) => row.name,
+    });
 }
 
 function _renderMultiMobResults(matches, resultsEl, criteria, scope) {
@@ -8957,31 +9269,19 @@ function _renderMultiMobResults(matches, resultsEl, criteria, scope) {
 
             const locLabel = g.locationTag;
             const badge = `${g.matchCount}/${g.totalTerms}`;
-            const multi = items.length > 1;
 
             const row = document.createElement('div');
             row.className = 'spot-result-row';
             row.title = matchedNames.join(', ');
             row.innerHTML =
-                `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
+                spotSearchEnemyIconHtml(items)
                 + `<span class="spot-result-name">${locLabel}</span>`
                 + `<span class="spot-multi-badge">${badge}</span>`
                 + `<div class="spot-preview">${matchedNames.map((n) => `<b>${n}</b>`).join('<br>')}`
-                + (multi ? `<br><span style="color:#667">×${items.length} locations</span>` : '')
                 + `<br><span style="color:#667">${locLabel}</span></div>`;
 
             wireSpotRowNavigation(row, items, navigate);
-            row.addEventListener('mouseenter', () => {
-                if (scope === 'global') return;
-                _clearSpotHighlights();
-                _addSpotHighlight(_resolveSpotLatLng(items[0]));
-                const grp = items[0].groupId ? _groupStore.get(items[0].groupId) : null;
-                if (grp) _addChipHighlight(grp);
-            });
-            row.addEventListener('mouseleave', () => {
-                if (scope === 'global') return;
-                _clearSpotHighlights();
-            });
+            if (scope !== 'global') wireSpotRowHoverHighlight(row, items);
             frag.appendChild(row);
         }
     }
@@ -9024,9 +9324,17 @@ function _runSpotSearch() {
         return;
     }
 
-    if (!criteria.raw) {
+    if (!criteria.raw || !criteria.terms.length) {
         if (criteria.filter === 'enemy') {
             _renderStageEnemyRoster(resultsEl);
+            return;
+        }
+        if (criteria.filter === 'gather') {
+            _renderStageGatherRoster(resultsEl);
+            return;
+        }
+        if (criteria.filter === 'item') {
+            _renderStageItemRoster(resultsEl);
             return;
         }
         resultsEl.innerHTML = `<div class="spot-empty">Enter a search term to search this stage.</div>`;
@@ -9078,23 +9386,9 @@ function _runSpotSearch() {
         const first = items[0];
         const multi = items.length > 1;
 
-        const isBossResult = first.type === 'enemy' && _enemySpawnCache && items.some(it =>
-            it.spawnKey && (_enemySpawnCache.get(it.spawnKey) ?? []).some(e => e.isBossGauge || e.isAreaBoss || e.raidBossId > 0));
-        const dotHtml = first.type === 'gather'
-            ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GATHER_COLORS[first.gatherType] ?? '#aaa'};flex-shrink:0"></span>`
-            : first.type === 'item' && first.source === 'gather'
-            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#8c8">🌿</span>`
-            : first.type === 'item' && first.source === 'shop'
-            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#fc8">🏪</span>`
-            : first.type === 'item' && first.source === 'enemy'
-            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
-            : isBossResult
-            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#f44">☠</span>`
-            : `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`;
+        const dotHtml = spotResultIconHtml(first, items);
 
-        const previewHtml = multi
-            ? [...first.previewLines, `<span style="color:#667">×${items.length} locations</span>`].join('<br>')
-            : first.previewLines.join('<br>');
+        const previewHtml = first.previewLines.join('<br>');
 
         const row = document.createElement('div');
         row.className = 'spot-result-row';
@@ -9112,27 +9406,7 @@ function _runSpotSearch() {
         wireSpotRowNavigation(row, items, _navigateToSpot);
 
         if (enableHoverHl) {
-            row.addEventListener('mouseenter', () => {
-                _clearSpotHighlights();
-                const drawnGroups = new Set();
-                for (const item of items) {
-                    if (_currentFloorObbs && item.worldPos) {
-                        const f = getEnemyFloor(item.worldPos.x, item.worldPos.y, item.worldPos.z, _currentFloorObbs);
-                        if (f !== null && f !== currentLayer) continue;
-                    }
-                    const grp = item.groupId ? _groupStore.get(item.groupId) : null;
-                    if (item.groupId && !grp) continue;
-                    if (grp && !grp.isExpanded) {
-                        if (!drawnGroups.has(item.groupId)) {
-                            drawnGroups.add(item.groupId);
-                            _addChipHighlight(grp);
-                        }
-                    } else {
-                        _addSpotHighlight(_resolveSpotLatLng(item));
-                    }
-                }
-            });
-            row.addEventListener('mouseleave', _clearSpotHighlights);
+            wireSpotRowHoverHighlight(row, items);
         }
 
         frag.appendChild(row);
@@ -9172,15 +9446,7 @@ function _renderGlobalResults(matches, resultsEl, criteria = null) {
         const items = orderSpotGroupItems(rawItems, 'global', criteria);
         const first = items[0];
 
-        const dotHtml = first.type === 'gather'
-            ? `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${GATHER_COLORS[first.gatherType] ?? '#aaa'};flex-shrink:0"></span>`
-            : first.type === 'item' && first.source === 'gather'
-            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#8c8">🌿</span>`
-            : first.type === 'item' && first.source === 'shop'
-            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#fc8">🏪</span>`
-            : first.type === 'item' && first.source === 'enemy'
-            ? `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`
-            : `<span style="font-size:10px;line-height:1;flex-shrink:0;color:#c88">⚔</span>`;
+        const dotHtml = spotResultIconHtml(first, items);
 
         const row = document.createElement('div');
         row.className = 'spot-result-row';
@@ -10953,7 +11219,6 @@ function initDevPanel() {
 
     const devPrefs = loadDevPrefs();
     _devMobSpawnLabels = readMobSpawnLabelsPref(devPrefs);
-    if (parseHash().layers?.territory || loadLayerPrefs()?.territory) _devMobSpawnLabels = true;
 
     const mobLabelsEl = document.getElementById('dev-mob-spawn-labels');
     if (mobLabelsEl) mobLabelsEl.checked = _devMobSpawnLabels;

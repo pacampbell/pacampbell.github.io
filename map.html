@@ -113,6 +113,33 @@
         }
         #map-search-clear:hover { color: #bbb; }
 
+        #major-loc-bar {
+            padding: 0 8px 8px;
+            border-bottom: 1px solid #0f3460;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        #major-loc-bar select {
+            width: 100%;
+            padding: 5px 8px;
+            background: #0f3460;
+            border: 1px solid #1a4a7a;
+            border-radius: 4px;
+            color: #e0e0e0;
+            font-size: 0.8rem;
+            box-sizing: border-box;
+            cursor: pointer;
+        }
+        #major-loc-bar select:disabled {
+            opacity: 0.55;
+            cursor: default;
+        }
+        #major-loc-bar select option {
+            background: #16213e;
+            color: #e0e0e0;
+        }
+
         #map-list {
             flex: 1;
             min-height: 0;
@@ -1262,6 +1289,14 @@
             <input type="text" id="map-search" placeholder="Search maps or locations…" autocomplete="off" spellcheck="false" title="Maps by name, or named locations (portcrystals, caves, inns, doors)&#10;stageno=200  — match stage number&#10;stageid=2    — match internal stage ID&#10;area=cassardis — match quest area name">
             <button id="map-search-clear" title="Clear search">✕</button>
         </div>
+        <div id="major-loc-bar" title="Jump to major overworld continents and regions">
+            <select id="major-continent-select" aria-label="Continent">
+                <option value="">— Continent —</option>
+            </select>
+            <select id="major-region-select" aria-label="Region within continent" disabled>
+                <option value="">— Region —</option>
+            </select>
+        </div>
         <div id="map-list"></div>
         <div id="sidebar-bottom">
         <div id="layers-panel">
@@ -1316,7 +1351,7 @@
             </button>
             <div id="dev-panel-body">
                 <div class="dev-option-list">
-                    <label class="layer-toggle" title="Spawn IDs, group chips (G#), counts, expand/collapse hulls, and territory bounds on expanded groups">
+                    <label class="layer-toggle" title="Spawn IDs, group chips (G#), counts, and expand/collapse hull outlines on expanded groups">
                         <input type="checkbox" id="dev-mob-spawn-labels">
                         Technical spawn labels
                     </label>
@@ -1334,7 +1369,7 @@
                 </div>
                 <button type="button" id="btn-expand-collapse" class="dev-action-btn" style="width:100%;margin-top:6px">Expand all groups</button>
                 <div class="dev-help">
-                    Technical labels: click chip to expand · middle-click hull to collapse · territory on expanded groups<br>
+                    Technical labels: click chip to expand · middle-click hull to collapse<br>
                     Aggro / link radius: click a spawn on the map<br>
                     Alt+click map to log world coordinates
                 </div>
@@ -1397,7 +1432,7 @@
                 <button class="spot-scope active" data-scope="local">This Stage</button>
                 <button class="spot-scope" data-scope="global">All Stages</button>
             </div>
-            <div id="spot-results"><div class="spot-empty">Enemies on this stage appear below when the Enemies tab is active.</div></div>
+            <div id="spot-results"><div class="spot-empty">This stage roster appears below when a tab is active and the search box is empty.</div></div>
         </div>
     </div>
 </div>
