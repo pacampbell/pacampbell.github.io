@@ -86,6 +86,7 @@ const preloadAllEnemyPositionsStages = async (onProgress) => {
 };
 
 const _iconIdSet = new Set(iconIds);
+const itemWikiHref = (itemId) => `build/i${String(itemId).padStart(8, '0')}.html`;
 // Build lookup map: id → named param entry
 const namedParamsById = new Map(namedParamList.map(p => [p.id, p]));
 const hmPresetsByEmCode = new Map(hmPresetList.filter(p => p.emCode).map(p => [p.emCode, p]));
@@ -1829,7 +1830,7 @@ function buildGroupDetails(g) {
                     const icon     = iconFile && _iconIdSet.has(iconNo)
                         ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;margin-right:6px;image-rendering:pixelated">`
                         : `<span style="display:inline-block;width:28px;margin-right:6px"></span>`;
-                    const href     = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+                    const href     = itemWikiHref(itemId);
                     const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
                     const qty      = maxQty > minQty ? ` ×${minQty}–${maxQty}` : ` ×${minQty}`;
                     const pct      = dropRate > 0
@@ -5400,7 +5401,7 @@ function loadGatherPoints(info, stid = null) {
                                 const icon     = iconFile && _iconIdSet.has(iconNo)
                                     ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;image-rendering:pixelated;flex-shrink:0">`
                                     : `<span style="display:inline-block;width:28px;flex-shrink:0"></span>`;
-                                const href     = `https://reference.dd-on.com/build/i${String(it.itemId).padStart(8, '0')}.html`;
+                                const href     = itemWikiHref(it.itemId);
                                 const nameLink = `<a href="${href}" target="_blank" style="color:#222;text-decoration:none;font-size:12px;line-height:1.3;word-break:break-word" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
                                 const qty      = it.maxItemNum > it.itemNum ? `×${it.itemNum}–${it.maxItemNum}` : `×${it.itemNum}`;
                                 const pct      = it.dropChance > 0 ? ` · ${(it.dropChance * 100).toFixed(0)}%` : '';
@@ -5765,7 +5766,7 @@ function loadNpcShops(info, stid = null) {
                 const viewRows = shop.items.map(it => {
                     const entry    = itemNames[String(it.ItemId)];
                     const name     = entry?.name ?? `Item #${it.ItemId}`;
-                    const href     = `https://reference.dd-on.com/build/i${String(it.ItemId).padStart(8, '0')}.html`;
+                    const href     = itemWikiHref(it.ItemId);
                     const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
                     const stock    = it.Stock === 255 ? '' : ` <span style="color:#888">(×${it.Stock})</span>`;
                     return `<tr><td style="color:#222;padding-right:8px;white-space:nowrap">${itemIcon(it)}${nameLink}</td>` +
@@ -5930,14 +5931,14 @@ function loadSpecialShops(info, stid = null) {
             };
 
             const itemRef = (itemId, name) => {
-                const href = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+                const href = itemWikiHref(itemId);
                 return `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
             };
 
             // ── Crest badge rendering ─────────────────────────────────────────
             const crestRef = (crestId) => {
                 const name = itemNames[String(crestId)]?.name ?? `#${crestId}`;
-                const href = `https://reference.dd-on.com/build/i${String(crestId).padStart(8, '0')}.html`;
+                const href = itemWikiHref(crestId);
                 return `<a href="${href}" target="_blank" style="color:inherit;text-decoration:underline dotted">${name}</a>`;
             };
 
@@ -10814,7 +10815,7 @@ function _dtItemRow(row, idx) {
     const iconCell = iconFile && _iconIdSet.has(iconNo)
         ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;image-rendering:pixelated">`
         : `<span style="display:inline-block;width:28px"></span>`;
-    const href     = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+    const href     = itemWikiHref(itemId);
     const nameCell = nameHint
         ? `<a href="${href}" target="_blank" class="dt-item-name-hint" data-name-for="${idx}" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${nameHint}</a>`
         : `<span class="dt-item-name-hint" data-name-for="${idx}"></span>`;

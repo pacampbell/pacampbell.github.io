@@ -23,11 +23,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Assemble map site
+      - name: Assemble site
         run: |
           mkdir -p _site
           cp map.html map.js index.html README.md _site/
-          cp -r resources css webfonts images _site/
+          cp -r resources css webfonts images build _site/
+          # Item wiki pages use paths relative to /build/
+          mkdir -p _site/build/css _site/build/images
+          cp css/all.min.css css/fontawesome.min.css _site/build/css/
+          cp -r images/icons _site/build/images/
+          cp images/ddon-logo.png _site/build/images/
           touch _site/.nojekyll
 
       - name: Upload artifact
