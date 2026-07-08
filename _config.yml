@@ -1,0 +1,17 @@
+# GitHub Pages (Jekyll) — exclude wiki/dev paths from deploy.
+# Keeps the published site map-focused; files stay in the repo for upstream parity.
+exclude:
+  - build
+  - tools
+  - scripts
+  - templates
+  - test-results
+  - quest.html
+  - quest.js
+  - main.py
+  - QuestTool.py
+  - command.txt
+  - images/news
+  - images/main_quest
+  - images/substory
+  - images/wildhunt
