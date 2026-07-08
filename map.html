@@ -375,6 +375,15 @@
             font-size: 0.82rem;
         }
 
+        #layers-panel h3 {
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 6px;
+        }
+
         #layers-panel .layer-list {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -524,7 +533,35 @@
             color: #666;
             line-height: 1.6;
         }
-        #subgroup-bar { flex-wrap: wrap; gap: 3px; margin-top: 6px; align-items: center; }
+        #subgroup-bar {
+            display: none;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin: 2px 0 6px 20px;
+            align-items: center;
+        }
+        .sg-filter-label {
+            font-size: 9px;
+            color: #778;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-right: 4px;
+            align-self: center;
+        }
+        .sg-filter-btn {
+            font-size: 10px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 1px solid #555;
+            background: #1a1a2e;
+            color: #9ab;
+        }
+        .sg-filter-btn.active {
+            background: #555;
+            color: #fff;
+            border-color: #888;
+        }
         body.dev-coords-on #coord-display { display: block; }
 
         /* ── Map container ── */
@@ -1300,6 +1337,12 @@
         <div id="map-list"></div>
         <div id="sidebar-bottom">
         <div id="layers-panel">
+            <h3>Layers</h3>
+            <label class="layer-toggle">
+                <input type="checkbox" id="layer-enemies" checked>
+                Enemy Spawns
+            </label>
+            <div id="subgroup-bar"></div>
             <div id="poi-filter-section">
                 <div class="poi-section expanded" id="mob-types-section" data-poi-section="mobTypes">
                     <button type="button" class="poi-section-toggle" aria-expanded="true">
@@ -1311,7 +1354,6 @@
                             Show all
                         </label>
                         <div id="mob-type-filter-list" class="layer-list poi-filter-list"></div>
-                        <div id="subgroup-bar" style="display:none"></div>
                     </div>
                 </div>
                 <div class="poi-section expanded" id="locations-section" data-poi-section="locations">
@@ -1562,6 +1604,7 @@
             <option value="revival">Revival — live.ddon.org Normal</option>
             <option value="rising">Dogma Rising — Normal Channels</option>
             <option value="rising-endgame">Dogma Rising — Endgame (Channel 4)</option>
+            <option value="legacyddon">LegacyDDON</option>
             <option value="custom">Custom (manual URL or local file)</option>
         </select>
         <div id="settings-preset-note" class="src-preset-note"></div>
