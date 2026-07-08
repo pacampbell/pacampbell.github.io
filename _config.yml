@@ -1,7 +1,6 @@
-# GitHub Pages (Jekyll) — exclude wiki/dev paths from deploy.
-# Keeps the published site map-focused; files stay in the repo for upstream parity.
+# GitHub Pages (Jekyll) — exclude dev/tooling paths if branch-based deploy is used.
+# The Actions workflow copies map + build explicitly; this list is for Jekyll parity.
 exclude:
-  - build
   - tools
   - scripts
   - templates

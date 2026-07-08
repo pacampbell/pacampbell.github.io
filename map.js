@@ -86,6 +86,7 @@ const preloadAllEnemyPositionsStages = async (onProgress) => {
 };
 
 const _iconIdSet = new Set(iconIds);
+const itemWikiHref = (itemId) => `build/i${String(itemId).padStart(8, '0')}.html`;
 // Build lookup map: id → named param entry
 const namedParamsById = new Map(namedParamList.map(p => [p.id, p]));
 const hmPresetsByEmCode = new Map(hmPresetList.filter(p => p.emCode).map(p => [p.emCode, p]));
@@ -359,6 +360,8 @@ function initMobTypeFilters() {
             if (legacyOff) {
                 for (const k of Object.keys(MOB_TYPE_DEFAULTS)) _mobTypeFilters[k] = false;
                 saveMobTypeFilters();
+                const layerEnemies = document.getElementById('layer-enemies');
+                if (layerEnemies) layerEnemies.checked = false;
             }
             localStorage.setItem('ddon-mob-type-migrated-enemies', '1');
         }
@@ -494,7 +497,8 @@ let _rebuildOpenPopup  = null;        // set on enemy popupopen; rebuilds active
 let _dtEditorReadAndSave = null;      // set by openDropTableEditor; saves + closes the editor
 
 function updateEnemyVisibility() {
-    const show = anyMobTypeEnabled();
+    const layerOn = document.getElementById('layer-enemies')?.checked ?? true;
+    const show = layerOn && anyMobTypeEnabled();
     if (show) {
         leafletMap.addLayer(enemyLayer);
         leafletMap.addLayer(_spreadOverlay);
@@ -660,6 +664,7 @@ const applyMobDisplayMode = () => {
 // Format: !elcgt;0,3,80
 function getLayersHash() {
     let s = '';
+    if (document.getElementById('layer-enemies')?.checked)          s += 'e';
     if (document.getElementById('layer-grid').checked)          s += 'g';
     if (useMobSpawnDevLabels())                                 s += 't';
     if (document.getElementById('layer-radii').checked)         s += 'i';
@@ -689,6 +694,7 @@ function updateLayersInHash() {
 
 function saveLayerPrefs() {
     const prefs = {
+        enemies: document.getElementById('layer-enemies')?.checked ?? true,
         grid:  document.getElementById('layer-grid').checked,
         radii: document.getElementById('layer-radii').checked,
     };
@@ -712,18 +718,23 @@ function loadLayerPrefs() {
     const prefs = urlLayers ?? stored ?? {};
     const isOn = (key, defaultOn) => key in prefs ? prefs[key] : defaultOn;
 
+    document.getElementById('layer-enemies').checked       = isOn('enemies',      true);
     document.getElementById('layer-grid').checked          = isOn('grid',         false);
     document.getElementById('layer-radii').checked         = isOn('radii',         false);
 
     if (document.getElementById('layer-grid').checked)
         leafletMap.addLayer(gridLayer);
-    if (!anyMobTypeEnabled())
+    if (!document.getElementById('layer-enemies').checked || !anyMobTypeEnabled())
         updateEnemyVisibility();
     if (isOn('sidebarHidden', false))
         document.getElementById('sidebar').classList.add('collapsed');
 })();
 
 // ── Layer toggles ──────────────────────────────────────────────────────────────
+document.getElementById('layer-enemies')?.addEventListener('change', () => {
+    updateEnemyVisibility();
+    saveLayerPrefs();
+});
 document.getElementById('layer-grid').addEventListener('change', e => {
     e.target.checked ? leafletMap.addLayer(gridLayer) : leafletMap.removeLayer(gridLayer);
     saveLayerPrefs();
@@ -1829,7 +1840,7 @@ function buildGroupDetails(g) {
                     const icon     = iconFile && _iconIdSet.has(iconNo)
                         ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;margin-right:6px;image-rendering:pixelated">`
                         : `<span style="display:inline-block;width:28px;margin-right:6px"></span>`;
-                    const href     = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+                    const href     = itemWikiHref(itemId);
                     const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
                     const qty      = maxQty > minQty ? ` ×${minQty}–${maxQty}` : ` ×${minQty}`;
                     const pct      = dropRate > 0
@@ -3039,7 +3050,7 @@ function buildGroupDetails(g) {
 function _expandGroupCore(g, { skipFilter = false } = {}) {
     if (!g.detailsLayer) buildGroupDetails(g);
     else if (useLegacyGroupChips()) ensureGroupStructureLayers(g);
-    const enemiesOn = anyMobTypeEnabled();
+    const enemiesOn = (document.getElementById('layer-enemies')?.checked ?? true) && anyMobTypeEnabled();
     if (enemiesOn) g.detailsLayer.addTo(leafletMap);
     g.isExpanded = true;
     // Move chip to just above the topmost spawn so it doesn't cover any enemies.
@@ -3170,10 +3181,10 @@ function _renderSubGroupSelector() {
     bar.style.display = 'flex';
     const pill = (sg, label) => {
         const on = sg === _activeSubGroupId;
-        return `<button class="sg-filter-btn" data-sg="${sg === null ? '' : sg}" style="font-size:10px;padding:1px 8px;border-radius:10px;cursor:pointer;border:1px solid;${on ? 'background:#4a90d9;color:#fff;border-color:#357abd' : 'background:#2a3a5a;color:#9ab;border-color:#3a5a7a'}">${label}</button>`;
+        return `<button type="button" class="sg-filter-btn${on ? ' active' : ''}" data-sg="${sg === null ? '' : sg}">${label}</button>`;
     };
-    bar.innerHTML = `<span style="font-size:9px;color:#778;text-transform:uppercase;letter-spacing:0.4px;margin-right:4px;align-self:center">Spawn waves</span>` +
-        pill(null, 'All') + _availableSubGroups.map(sg => pill(sg, sg)).join('');
+    bar.innerHTML = `<span class="sg-filter-label">SubGroup</span>`
+        + pill(null, 'All') + _availableSubGroups.map(sg => pill(sg, sg)).join('');
     bar.querySelectorAll('.sg-filter-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             _activeSubGroupId = btn.dataset.sg === '' ? null : Number(btn.dataset.sg);
@@ -4873,6 +4884,8 @@ const _PRESET_LS_KEY = 'ddon-server-preset';
 const _SRC_KEYS = ['ddon-src-gathering', 'ddon-src-spawns', 'ddon-src-shop', 'ddon-src-special-shop'];
 const _EDELARROW_SPAWNS_BASE = 'https://raw.githubusercontent.com/edelarrow/map-spawns/refs/heads/main';
 
+const _LEGACYDDON_API = 'https://legacyddon.com/api';
+
 const _SERVER_PRESETS = {
     arrowgene: {
         label: 'Arrowgene (default)',
@@ -4914,6 +4927,16 @@ const _SERVER_PRESETS = {
             'ddon-src-special-shop': `${_EDELARROW_SPAWNS_BASE}/Channel%204/SpecialShops.json`,
         },
     },
+    legacyddon: {
+        label: 'LegacyDDON',
+        note: 'Live spawns, shops, appraisals, and gathering from legacyddon.com.',
+        urls: {
+            'ddon-src-gathering':    `${_LEGACYDDON_API}/gathering`,
+            'ddon-src-spawns':       `${_LEGACYDDON_API}/enemyspawn`,
+            'ddon-src-shop':         `${_LEGACYDDON_API}/shops`,
+            'ddon-src-special-shop': `${_LEGACYDDON_API}/specialshops`,
+        },
+    },
 };
 
 const presetMatchesStored = (presetId) => {
@@ -4943,6 +4966,7 @@ const _PRESET_SHORT_LABEL = {
     revival:          'Revival',
     rising:           'Rising',
     'rising-endgame': 'Rising Endgame',
+    legacyddon:       'LegacyDDON',
     custom:           'Custom',
 };
 
@@ -5007,47 +5031,146 @@ async function downloadAndAssignLocal(lsKey, overrideUrl = null) {
 // Cached promises — fetch starts once, result shared by all callers.
 // Map key: "stageId,groupId,posId" → [{itemId, itemNum, maxItemNum, quality, dropChance, isHidden}]
 let _gatherItemsCache = null;
-const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_URL)
-    .then(url => fetch(url, { cache: 'no-store' }).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.text(); }))
-    .then(text => {
-        const lines = text.trim().split(/\r?\n/);
-        // First column header is "#StageId" — strip the leading '#'
-        _rawGatheringHeaders = lines[0]; // keep original (with '#') for write-back
-        lines[0] = lines[0].replace(/^#/, '');
-        const result = new Map();
-        const headers = lines[0].split(',');
-        const idx = name => headers.indexOf(name);
-        const iStage = idx('StageId'), iLayer = idx('LayerNo'), iGroup = idx('GroupId'),
-              iPos = idx('PosId'), iItem = idx('ItemId'), iNum = idx('ItemNum'),
-              iMax = idx('MaxItemNum'), iQual = idx('Quality'),
-              iHidden = idx('IsHidden'), iChance = idx('DropChance');
-        _rawGatheringRows = [];
-        for (let i = 1; i < lines.length; i++) {
-            const cols = lines[i].split(',');
-            if (cols.length < 5) continue;
-            const row = {
-                stageId:    cols[iStage],
-                layerNo:    iLayer >= 0 ? cols[iLayer] : 0,
-                groupId:    cols[iGroup],
-                posId:      cols[iPos],
-                itemId:     parseInt(cols[iItem]),
-                itemNum:    parseInt(cols[iNum]),
-                maxItemNum: parseInt(cols[iMax]),
-                quality:    parseInt(cols[iQual]),
-                isHidden:   cols[iHidden] === 'true' || cols[iHidden] === '1',
-                dropChance: iChance >= 0 ? parseFloat(cols[iChance]) : 1,
-            };
-            _rawGatheringRows.push(row);
-            const key = `${row.stageId},${row.groupId},${row.posId}`;
-            if (!result.has(key)) result.set(key, []);
-            result.get(key).push({
-                itemId: row.itemId, itemNum: row.itemNum, maxItemNum: row.maxItemNum,
-                quality: row.quality, isHidden: row.isHidden, dropChance: row.dropChance,
-            });
+
+const _LEGACY_GATHER_CHEST_TYPES = [
+    'OM_GATHER_BOX', 'CHEST_IRON', 'CHEST_BROWN', 'CHEST_TREASURE', 'CHEST_BRONZE', 'CHEST_SILVER',
+    'CHEST_GOLD', 'CHEST_PURPLE', 'CHEST_PEARL', 'CHEST_ROUND', 'CHEST_SEALED_BROWN', 'CHEST_SEALED_ORANGE',
+    'CHEST_SEALED_PEARL', 'CHEST_SEALED_PURPLE', 'CHEST_SEALED_TEAL', 'OM_GATHER_TREA_IRON', 'OM_GATHER_TREA_OLD',
+    'OM_GATHER_TREA_TREE', 'OM_GATHER_TREA_SILVER', 'OM_GATHER_TREA_GOLD',
+];
+const CT = _LEGACY_GATHER_CHEST_TYPES;
+
+const isLegacyGatheringUrl = (url) => /legacyddon\.com\/api\/gathering/i.test(url);
+
+function parseGatheringCsv(text) {
+    const lines = text.trim().split(/\r?\n/);
+    _rawGatheringHeaders = lines[0];
+    lines[0] = lines[0].replace(/^#/, '');
+    const result = new Map();
+    const headers = lines[0].split(',');
+    const idx = name => headers.indexOf(name);
+    const iStage = idx('StageId'), iLayer = idx('LayerNo'), iGroup = idx('GroupId'),
+          iPos = idx('PosId'), iItem = idx('ItemId'), iNum = idx('ItemNum'),
+          iMax = idx('MaxItemNum'), iQual = idx('Quality'),
+          iHidden = idx('IsHidden'), iChance = idx('DropChance');
+    _rawGatheringRows = [];
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 5) continue;
+        const row = {
+            stageId:    cols[iStage],
+            layerNo:    iLayer >= 0 ? cols[iLayer] : 0,
+            groupId:    cols[iGroup],
+            posId:      cols[iPos],
+            itemId:     parseInt(cols[iItem]),
+            itemNum:    parseInt(cols[iNum]),
+            maxItemNum: parseInt(cols[iMax]),
+            quality:    parseInt(cols[iQual]),
+            isHidden:   cols[iHidden] === 'true' || cols[iHidden] === '1',
+            dropChance: iChance >= 0 ? parseFloat(cols[iChance]) : 1,
+        };
+        _rawGatheringRows.push(row);
+        const key = `${row.stageId},${row.groupId},${row.posId}`;
+        if (!result.has(key)) result.set(key, []);
+        result.get(key).push({
+            itemId: row.itemId, itemNum: row.itemNum, maxItemNum: row.maxItemNum,
+            quality: row.quality, isHidden: row.isHidden, dropChance: row.dropChance,
+        });
+    }
+    return result;
+}
+
+/** LegacyDDON /api/gathering JSON → same cache shape as GatheringItem.csv. */
+function parseLegacyGatheringJson(data) {
+    _rawGatheringRows = null;
+    const result = new Map();
+    const stageNoByServerId = {};
+    for (const [stageNo, serverId] of Object.entries(stageIds)) {
+        stageNoByServerId[serverId] = parseInt(stageNo, 10);
+    }
+    const GATHER_TYPE_MAP = {
+        lumber:      ['OM_GATHER_TREE_LV1', 'OM_GATHER_TREE_LV2', 'OM_GATHER_TREE_LV3', 'OM_GATHER_TREE_LV4'],
+        ore:         ['OM_GATHER_CRST_LV1', 'OM_GATHER_CRST_LV2', 'OM_GATHER_CRST_LV3', 'OM_GATHER_CRST_LV4'],
+        gemstones:   ['OM_GATHER_JWL_LV1', 'OM_GATHER_JWL_LV2', 'OM_GATHER_JWL_LV3', 'OM_GATHER_TWINKLE'],
+        sand:        ['OM_GATHER_SAND'],
+        shell:       ['OM_GATHER_SHELL'],
+        liquids:     ['OM_GATHER_WATER'],
+        fabric:      ['OM_GATHER_CLOTH', ...CT],
+        thread:      ['OM_GATHER_CLOTH', ...CT],
+        plants:      ['OM_GATHER_GRASS', 'OM_GATHER_FLOWER'],
+        mushrooms:   ['OM_GATHER_MUSHROOM'],
+        consumable:  CT,
+        furs:        ['OM_GATHER_CORPSE', ...CT],
+        claws:       ['OM_GATHER_CORPSE', ...CT],
+        bones:       ['OM_GATHER_CORPSE', ...CT],
+        feathers:    ['OM_GATHER_CORPSE', ...CT],
+        hides:       ['OM_GATHER_CORPSE', ...CT],
+        horns:       ['OM_GATHER_CORPSE', ...CT],
+        leather:     ['OM_GATHER_CORPSE', ...CT],
+        meat:        ['OM_GATHER_CORPSE', ...CT],
+        scrolls:     ['OM_GATHER_ANTIQUE', 'OM_GATHER_BOOK', 'OM_GATHER_ALCHEMY', ...CT],
+        ingots:      ['OM_GATHER_BOX', 'OM_GATHER_ALCHEMY', ...CT],
+        regional:    CT,
+        unappraised: CT,
+        other:       ['OM_GATHER_BOX', 'OM_GATHER_ONE_OFF', 'OM_GATHER_SHIP', 'OM_GATHER_DRAGON', ...CT],
+    };
+    const addEntry = (stageId, groupId, posId, item) => {
+        const key = `${stageId},${groupId},${posId}`;
+        if (!result.has(key)) result.set(key, []);
+        result.get(key).push({
+            itemId: item.item_id,
+            itemNum: item.min_amount,
+            maxItemNum: item.max_amount || item.min_amount,
+            quality: item.quality ?? 0,
+            isHidden: false,
+            dropChance: 1,
+        });
+    };
+    for (const [stageIdStr, items] of Object.entries(data.byStage ?? {})) {
+        const stageId = parseInt(stageIdStr, 10);
+        if (Number.isNaN(stageId) || !Array.isArray(items)) continue;
+        for (const item of items) {
+            if (item.is_spot && item.spot_stage_layout_id) {
+                addEntry(stageId, item.spot_stage_layout_id.group_id, item.spot_pos_id, item);
+                continue;
+            }
+            const allowed = GATHER_TYPE_MAP[item.type];
+            if (!allowed) continue;
+            const stageNo = stageNoByServerId[stageId];
+            if (stageNo == null || !gatherPoints[stageNo]) continue;
+            const gatherAreaMap = stageId === 1 ? (data.lestaniaGatheringGroupToArea ?? {}) : {};
+            const itemArea = item.area;
+            for (const node of gatherPoints[stageNo]) {
+                if (!allowed.includes(node.type)) continue;
+                if (stageId === 1) {
+                    const groupArea = gatherAreaMap[node.groupId];
+                    if (itemArea != null && groupArea != null && groupArea !== itemArea) continue;
+                }
+                addEntry(stageId, node.groupId, node.posId, item);
+            }
         }
-        _gatherItemsCache = result;
-        return result;
-    })
+    }
+    return result;
+}
+
+async function loadGatheringFromUrl(url) {
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const ct = res.headers.get('content-type') ?? '';
+    if (isLegacyGatheringUrl(url) || ct.includes('application/json')) {
+        return parseLegacyGatheringJson(await res.json());
+    }
+    const text = await res.text();
+    const trimmed = text.trimStart();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        return parseLegacyGatheringJson(JSON.parse(text));
+    }
+    return parseGatheringCsv(text);
+}
+
+const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_URL)
+    .then(loadGatheringFromUrl)
+    .then(result => { _gatherItemsCache = result; return result; })
     .catch(() => { showSrcError('Gathering Items'); _gatherItemsCache = new Map(); return _gatherItemsCache; });
 
 // Map key for enemy spawns: "stageId,groupId,posIdx" → [{emCode, lv, bloodOrbs, highOrbs, spawnTime, drops}]
@@ -5400,7 +5523,7 @@ function loadGatherPoints(info, stid = null) {
                                 const icon     = iconFile && _iconIdSet.has(iconNo)
                                     ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;image-rendering:pixelated;flex-shrink:0">`
                                     : `<span style="display:inline-block;width:28px;flex-shrink:0"></span>`;
-                                const href     = `https://reference.dd-on.com/build/i${String(it.itemId).padStart(8, '0')}.html`;
+                                const href     = itemWikiHref(it.itemId);
                                 const nameLink = `<a href="${href}" target="_blank" style="color:#222;text-decoration:none;font-size:12px;line-height:1.3;word-break:break-word" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
                                 const qty      = it.maxItemNum > it.itemNum ? `×${it.itemNum}–${it.maxItemNum}` : `×${it.itemNum}`;
                                 const pct      = it.dropChance > 0 ? ` · ${(it.dropChance * 100).toFixed(0)}%` : '';
@@ -5765,7 +5888,7 @@ function loadNpcShops(info, stid = null) {
                 const viewRows = shop.items.map(it => {
                     const entry    = itemNames[String(it.ItemId)];
                     const name     = entry?.name ?? `Item #${it.ItemId}`;
-                    const href     = `https://reference.dd-on.com/build/i${String(it.ItemId).padStart(8, '0')}.html`;
+                    const href     = itemWikiHref(it.ItemId);
                     const nameLink = `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
                     const stock    = it.Stock === 255 ? '' : ` <span style="color:#888">(×${it.Stock})</span>`;
                     return `<tr><td style="color:#222;padding-right:8px;white-space:nowrap">${itemIcon(it)}${nameLink}</td>` +
@@ -5930,14 +6053,14 @@ function loadSpecialShops(info, stid = null) {
             };
 
             const itemRef = (itemId, name) => {
-                const href = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+                const href = itemWikiHref(itemId);
                 return `<a href="${href}" target="_blank" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${name}</a>`;
             };
 
             // ── Crest badge rendering ─────────────────────────────────────────
             const crestRef = (crestId) => {
                 const name = itemNames[String(crestId)]?.name ?? `#${crestId}`;
-                const href = `https://reference.dd-on.com/build/i${String(crestId).padStart(8, '0')}.html`;
+                const href = itemWikiHref(crestId);
                 return `<a href="${href}" target="_blank" style="color:inherit;text-decoration:underline dotted">${name}</a>`;
             };
 
@@ -10814,7 +10937,7 @@ function _dtItemRow(row, idx) {
     const iconCell = iconFile && _iconIdSet.has(iconNo)
         ? `<img src="images/icons/small/${iconFile}" width="28" height="28" style="vertical-align:middle;image-rendering:pixelated">`
         : `<span style="display:inline-block;width:28px"></span>`;
-    const href     = `https://reference.dd-on.com/build/i${String(itemId).padStart(8, '0')}.html`;
+    const href     = itemWikiHref(itemId);
     const nameCell = nameHint
         ? `<a href="${href}" target="_blank" class="dt-item-name-hint" data-name-for="${idx}" style="color:inherit;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${nameHint}</a>`
         : `<span class="dt-item-name-hint" data-name-for="${idx}"></span>`;
