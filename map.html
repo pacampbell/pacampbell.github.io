@@ -1354,6 +1354,10 @@
                             Show all
                         </label>
                         <div id="mob-type-filter-list" class="layer-list poi-filter-list"></div>
+                        <label class="layer-toggle" title="When enabled, Spawns type checkboxes also filter the spot search list (enemies tab / roster)">
+                            <input type="checkbox" id="mob-types-apply-spot-search">
+                            Apply to spot search
+                        </label>
                     </div>
                 </div>
                 <div class="poi-section expanded" id="locations-section" data-poi-section="locations">
@@ -1604,7 +1608,6 @@
             <option value="revival">Revival — live.ddon.org Normal</option>
             <option value="rising">Dogma Rising — Normal Channels</option>
             <option value="rising-endgame">Dogma Rising — Endgame (Channel 4)</option>
-            <option value="legacyddon">LegacyDDON</option>
             <option value="custom">Custom (manual URL or local file)</option>
         </select>
         <div id="settings-preset-note" class="src-preset-note"></div>
@@ -1618,7 +1621,7 @@
             <input type="text" class="src-url-input">
             <button class="src-btn src-file-btn">Browse…</button>
             <button class="src-btn src-reset-btn" title="Reset to default">↩</button>
-            <input type="file" class="src-file-input" accept=".csv,.json" style="display:none">
+            <input type="file" class="src-file-input" accept=".csv" style="display:none">
         </div>
     </div>
 

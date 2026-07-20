@@ -295,6 +295,7 @@ new L.Control.SpawnTimeFilter().addTo(leafletMap);
 
 // ── Mob type filter (blood orb, high orb, manual, boss, key bearer, regular) ───
 const MOB_TYPE_FILTER_KEY = 'ddon-mob-type-filters';
+const MOB_TYPES_SPOT_KEY  = 'ddon-mob-types-apply-spot-search';
 const MOB_TYPE_DEFAULTS   = {
     bloodOrb: true, highOrb: true, manual: true, boss: true, keyBearer: true, regular: true, dynamic: true,
 };
@@ -320,9 +321,23 @@ const saveMobTypeFilters = () => {
 };
 
 let _mobTypeFilters = loadMobTypeFilters();
+let _applyMobTypesToSpotSearch = (() => {
+    try { return localStorage.getItem(MOB_TYPES_SPOT_KEY) === '1'; }
+    catch { return false; }
+})();
+
+const saveApplyMobTypesToSpotSearch = () => {
+    try { localStorage.setItem(MOB_TYPES_SPOT_KEY, _applyMobTypesToSpotSearch ? '1' : '0'); }
+    catch { /* ignore */ }
+};
 
 function anyMobTypeEnabled() {
     return MOB_TYPE_MODES.some(m => _mobTypeFilters[m.id]);
+}
+
+/** Refresh open spot panel when Spawns filters (or the apply-to-search option) change. */
+function refreshSpotSearchFromMobTypes() {
+    if (document.getElementById('spot-panel')?.classList.contains('open')) _runSpotSearch();
 }
 
 function syncMobTypesShowAllCheckbox() {
@@ -344,6 +359,7 @@ function setAllMobTypeFilters(on) {
     syncMobTypesShowAllCheckbox();
     updateEnemyVisibility();
     applySubGroupFilter();
+    if (_applyMobTypesToSpotSearch) refreshSpotSearchFromMobTypes();
 }
 
 function initMobTypeFilters() {
@@ -384,6 +400,7 @@ function initMobTypeFilters() {
             syncMobTypesShowAllCheckbox();
             updateEnemyVisibility();
             applySubGroupFilter();
+            if (_applyMobTypesToSpotSearch) refreshSpotSearchFromMobTypes();
         });
         const icon = document.createElement('span');
         icon.className = 'mob-type-icon';
@@ -397,6 +414,17 @@ function initMobTypeFilters() {
     }
     const showAll = document.getElementById('mob-types-show-all');
     showAll?.addEventListener('change', () => setAllMobTypeFilters(showAll.checked));
+
+    const applySpot = document.getElementById('mob-types-apply-spot-search');
+    if (applySpot) {
+        applySpot.checked = _applyMobTypesToSpotSearch;
+        applySpot.addEventListener('change', () => {
+            _applyMobTypesToSpotSearch = applySpot.checked;
+            saveApplyMobTypesToSpotSearch();
+            refreshSpotSearchFromMobTypes();
+        });
+    }
+
     syncMobTypesShowAllCheckbox();
     updateEnemyVisibility();
 }
@@ -450,10 +478,10 @@ let gridLayer        = L.layerGroup();   // off by default
 let territoryLayer   = L.layerGroup();   // off by default; territory rects when groups expand
 let stageLabelsLayer = L.layerGroup().addTo(leafletMap);  // area name text labels
 let gatherLayer       = L.layerGroup().addTo(leafletMap);
-const _gatherMarkerByKey   = new Map();    // "${stageNo}:${groupId}:${posId}" → L.marker
-const _gatherGroupMarkers  = new Map();    // "${stageNo}:${groupId}" → L.marker[]
-const _shopMarkerByNpcId = new Map();    // "${stageNo}:${npcId}" → L.marker
-const _specialShopMarkerByNpcId = new Map();
+let _gatherMarkerByKey   = new Map();    // "${stageNo}:${groupId}:${posId}" → L.marker
+let _gatherGroupMarkers  = new Map();    // "${stageNo}:${groupId}" → L.marker[]
+let _shopMarkerByNpcId = new Map();    // "${stageNo}:${npcId}" → L.marker
+let _specialShopMarkerByNpcId = new Map();
 let npcShopLayer        = L.layerGroup().addTo(leafletMap);
 let specialShopLayer    = L.layerGroup().addTo(leafletMap);
 let pdBoundaryLayer = L.layerGroup().addTo(leafletMap);
@@ -465,7 +493,8 @@ const spawnRenderer = L.canvas({ padding: 0.5 });
 
 // ── Group expand/collapse state ───────────────────────────────────────────────
 // One entry per group; detailsLayer is lazily created on first expand.
-const _groupStore = new Map(); // groupId string → { groupId, color, territory, items, pts,
+// Must be `let` — map scene cache swaps the Map reference on restore.
+let _groupStore = new Map(); // groupId string → { groupId, color, territory, items, pts,
                                //   centroid, labelMarker, detailsLayer, isExpanded }
 let _currentMapInfo  = null;   // stored at loadEnemySpawns time; used by lazy expand
 
@@ -3048,6 +3077,8 @@ function buildGroupDetails(g) {
 // _expandGroupCore / _collapseGroupCore do the state change without triggering
 // reapplySpread or updateLayersInHash — used by bulk operations.
 function _expandGroupCore(g, { skipFilter = false } = {}) {
+    // Ignore stale expand jobs from a previous map (chunked applyMobDisplayMode).
+    if (!_groupStore.has(g.groupId) || _groupStore.get(g.groupId) !== g) return;
     if (!g.detailsLayer) buildGroupDetails(g);
     else if (useLegacyGroupChips()) ensureGroupStructureLayers(g);
     const enemiesOn = (document.getElementById('layer-enemies')?.checked ?? true) && anyMobTypeEnabled();
@@ -4884,8 +4915,6 @@ const _PRESET_LS_KEY = 'ddon-server-preset';
 const _SRC_KEYS = ['ddon-src-gathering', 'ddon-src-spawns', 'ddon-src-shop', 'ddon-src-special-shop'];
 const _EDELARROW_SPAWNS_BASE = 'https://raw.githubusercontent.com/edelarrow/map-spawns/refs/heads/main';
 
-const _LEGACYDDON_API = 'https://legacyddon.com/api';
-
 const _SERVER_PRESETS = {
     arrowgene: {
         label: 'Arrowgene (default)',
@@ -4927,17 +4956,20 @@ const _SERVER_PRESETS = {
             'ddon-src-special-shop': `${_EDELARROW_SPAWNS_BASE}/Channel%204/SpecialShops.json`,
         },
     },
-    legacyddon: {
-        label: 'LegacyDDON',
-        note: 'Live spawns, shops, appraisals, and gathering from legacyddon.com.',
-        urls: {
-            'ddon-src-gathering':    `${_LEGACYDDON_API}/gathering`,
-            'ddon-src-spawns':       `${_LEGACYDDON_API}/enemyspawn`,
-            'ddon-src-shop':         `${_LEGACYDDON_API}/shops`,
-            'ddon-src-special-shop': `${_LEGACYDDON_API}/specialshops`,
-        },
-    },
 };
+
+// Drop removed LegacyDDON preset / URLs left in older browser storage.
+(() => {
+    try {
+        if (localStorage.getItem(_PRESET_LS_KEY) === 'legacyddon') {
+            localStorage.removeItem(_PRESET_LS_KEY);
+        }
+        for (const key of _SRC_KEYS) {
+            const val = localStorage.getItem(key);
+            if (val && /legacyddon\.com/i.test(val)) localStorage.removeItem(key);
+        }
+    } catch { /* ignore */ }
+})();
 
 const presetMatchesStored = (presetId) => {
     const preset = _SERVER_PRESETS[presetId];
@@ -4966,7 +4998,6 @@ const _PRESET_SHORT_LABEL = {
     revival:          'Revival',
     rising:           'Rising',
     'rising-endgame': 'Rising Endgame',
-    legacyddon:       'LegacyDDON',
     custom:           'Custom',
 };
 
@@ -5032,16 +5063,6 @@ async function downloadAndAssignLocal(lsKey, overrideUrl = null) {
 // Map key: "stageId,groupId,posId" → [{itemId, itemNum, maxItemNum, quality, dropChance, isHidden}]
 let _gatherItemsCache = null;
 
-const _LEGACY_GATHER_CHEST_TYPES = [
-    'OM_GATHER_BOX', 'CHEST_IRON', 'CHEST_BROWN', 'CHEST_TREASURE', 'CHEST_BRONZE', 'CHEST_SILVER',
-    'CHEST_GOLD', 'CHEST_PURPLE', 'CHEST_PEARL', 'CHEST_ROUND', 'CHEST_SEALED_BROWN', 'CHEST_SEALED_ORANGE',
-    'CHEST_SEALED_PEARL', 'CHEST_SEALED_PURPLE', 'CHEST_SEALED_TEAL', 'OM_GATHER_TREA_IRON', 'OM_GATHER_TREA_OLD',
-    'OM_GATHER_TREA_TREE', 'OM_GATHER_TREA_SILVER', 'OM_GATHER_TREA_GOLD',
-];
-const CT = _LEGACY_GATHER_CHEST_TYPES;
-
-const isLegacyGatheringUrl = (url) => /legacyddon\.com\/api\/gathering/i.test(url);
-
 function parseGatheringCsv(text) {
     const lines = text.trim().split(/\r?\n/);
     _rawGatheringHeaders = lines[0];
@@ -5080,92 +5101,10 @@ function parseGatheringCsv(text) {
     return result;
 }
 
-/** LegacyDDON /api/gathering JSON → same cache shape as GatheringItem.csv. */
-function parseLegacyGatheringJson(data) {
-    _rawGatheringRows = null;
-    const result = new Map();
-    const stageNoByServerId = {};
-    for (const [stageNo, serverId] of Object.entries(stageIds)) {
-        stageNoByServerId[serverId] = parseInt(stageNo, 10);
-    }
-    const GATHER_TYPE_MAP = {
-        lumber:      ['OM_GATHER_TREE_LV1', 'OM_GATHER_TREE_LV2', 'OM_GATHER_TREE_LV3', 'OM_GATHER_TREE_LV4'],
-        ore:         ['OM_GATHER_CRST_LV1', 'OM_GATHER_CRST_LV2', 'OM_GATHER_CRST_LV3', 'OM_GATHER_CRST_LV4'],
-        gemstones:   ['OM_GATHER_JWL_LV1', 'OM_GATHER_JWL_LV2', 'OM_GATHER_JWL_LV3', 'OM_GATHER_TWINKLE'],
-        sand:        ['OM_GATHER_SAND'],
-        shell:       ['OM_GATHER_SHELL'],
-        liquids:     ['OM_GATHER_WATER'],
-        fabric:      ['OM_GATHER_CLOTH', ...CT],
-        thread:      ['OM_GATHER_CLOTH', ...CT],
-        plants:      ['OM_GATHER_GRASS', 'OM_GATHER_FLOWER'],
-        mushrooms:   ['OM_GATHER_MUSHROOM'],
-        consumable:  CT,
-        furs:        ['OM_GATHER_CORPSE', ...CT],
-        claws:       ['OM_GATHER_CORPSE', ...CT],
-        bones:       ['OM_GATHER_CORPSE', ...CT],
-        feathers:    ['OM_GATHER_CORPSE', ...CT],
-        hides:       ['OM_GATHER_CORPSE', ...CT],
-        horns:       ['OM_GATHER_CORPSE', ...CT],
-        leather:     ['OM_GATHER_CORPSE', ...CT],
-        meat:        ['OM_GATHER_CORPSE', ...CT],
-        scrolls:     ['OM_GATHER_ANTIQUE', 'OM_GATHER_BOOK', 'OM_GATHER_ALCHEMY', ...CT],
-        ingots:      ['OM_GATHER_BOX', 'OM_GATHER_ALCHEMY', ...CT],
-        regional:    CT,
-        unappraised: CT,
-        other:       ['OM_GATHER_BOX', 'OM_GATHER_ONE_OFF', 'OM_GATHER_SHIP', 'OM_GATHER_DRAGON', ...CT],
-    };
-    const addEntry = (stageId, groupId, posId, item) => {
-        const key = `${stageId},${groupId},${posId}`;
-        if (!result.has(key)) result.set(key, []);
-        result.get(key).push({
-            itemId: item.item_id,
-            itemNum: item.min_amount,
-            maxItemNum: item.max_amount || item.min_amount,
-            quality: item.quality ?? 0,
-            isHidden: false,
-            dropChance: 1,
-        });
-    };
-    for (const [stageIdStr, items] of Object.entries(data.byStage ?? {})) {
-        const stageId = parseInt(stageIdStr, 10);
-        if (Number.isNaN(stageId) || !Array.isArray(items)) continue;
-        for (const item of items) {
-            if (item.is_spot && item.spot_stage_layout_id) {
-                addEntry(stageId, item.spot_stage_layout_id.group_id, item.spot_pos_id, item);
-                continue;
-            }
-            const allowed = GATHER_TYPE_MAP[item.type];
-            if (!allowed) continue;
-            const stageNo = stageNoByServerId[stageId];
-            if (stageNo == null || !gatherPoints[stageNo]) continue;
-            const gatherAreaMap = stageId === 1 ? (data.lestaniaGatheringGroupToArea ?? {}) : {};
-            const itemArea = item.area;
-            for (const node of gatherPoints[stageNo]) {
-                if (!allowed.includes(node.type)) continue;
-                if (stageId === 1) {
-                    const groupArea = gatherAreaMap[node.groupId];
-                    if (itemArea != null && groupArea != null && groupArea !== itemArea) continue;
-                }
-                addEntry(stageId, node.groupId, node.posId, item);
-            }
-        }
-    }
-    return result;
-}
-
 async function loadGatheringFromUrl(url) {
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const ct = res.headers.get('content-type') ?? '';
-    if (isLegacyGatheringUrl(url) || ct.includes('application/json')) {
-        return parseLegacyGatheringJson(await res.json());
-    }
-    const text = await res.text();
-    const trimmed = text.trimStart();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-        return parseLegacyGatheringJson(JSON.parse(text));
-    }
-    return parseGatheringCsv(text);
+    return parseGatheringCsv(await res.text());
 }
 
 const _gatherItemsPromise = getSrcUrl('ddon-src-gathering', _DEFAULT_GATHERING_URL)
@@ -7546,6 +7485,11 @@ function attachSceneToMap(scene) {
 }
 
 function createFreshSceneLayers() {
+    // Cancel any in-flight chunked group expansion from the previous map before
+    // awaiting image loads — otherwise stale _expandGroupCore calls re-add
+    // orphaned spawn dots that are outside _groupStore (mob toggles won't hide them).
+    ++_mobDisplayModeJob;
+
     const oldLayers = [
         enemyLayer, landmarkLayer, connectionLayer, gridLayer, territoryLayer,
         stageLabelsLayer, gatherLayer, npcShopLayer, specialShopLayer,
@@ -7573,11 +7517,12 @@ function createFreshSceneLayers() {
     spawnRadiiLayer = L.layerGroup().addTo(leafletMap);
     _spreadOverlay = L.layerGroup().addTo(leafletMap);
 
-    _groupStore.clear();
-    _gatherMarkerByKey.clear();
-    _gatherGroupMarkers.clear();
-    _shopMarkerByNpcId.clear();
-    _specialShopMarkerByNpcId.clear();
+    // New Maps — do not clear() the previous ones; scene cache still holds them.
+    _groupStore = new Map();
+    _gatherMarkerByKey = new Map();
+    _gatherGroupMarkers = new Map();
+    _shopMarkerByNpcId = new Map();
+    _specialShopMarkerByNpcId = new Map();
     _connectionPoiCacheMap = null;
     _connectionPoiCache = null;
     _spotIndex = [];
@@ -7686,6 +7631,7 @@ function putSceneInCache(scene) {
 
 function stashCurrentSceneInCache() {
     if (!_loadedMapName || !_currentMapInfo || !mapSceneCacheEnabled()) return;
+    ++_mobDisplayModeJob; // stop chunked expand before detach/await gaps
     const scene = captureCurrentScene();
     detachSceneFromMap(scene);
     putSceneInCache(scene);
@@ -7732,6 +7678,10 @@ let _loadMapGen = 0;
 async function loadMap(mapName) {
     const info = mapParams[mapName];
     if (!info) return;
+
+    // Cancel pending mob expansion immediately — loadMap awaits image I/O and a
+    // stale expandChunk can paint previous-map spawns onto the new view.
+    ++_mobDisplayModeJob;
 
     const loadGen = ++_loadMapGen;
     const isCurrent = () => loadGen === _loadMapGen;
@@ -8836,9 +8786,19 @@ const meetsSpotType = (entry, filter) => entry.type === filter;
 const meetsSpotLevelFilter = (entry, filter, bounds) =>
     filter !== 'enemy' || spawnOverlapsLevelFilter(entry, bounds);
 
+/** When "Apply to spot search" is on, enemy rows must match Spawns type checkboxes. */
+const meetsSpotMobTypeFilter = (entry) => {
+    if (!_applyMobTypesToSpotSearch || entry.type !== 'enemy') return true;
+    if (!anyMobTypeEnabled()) return false;
+    const tags = spotItemMobTags(entry);
+    if (!tags.size) return false;
+    return [...tags].some(t => _mobTypeFilters[t]);
+};
+
 const matchesSpotCriteria = (entry, criteria) =>
     meetsSpotType(entry, criteria.filter)
     && meetsSpotLevelFilter(entry, criteria.filter, criteria)
+    && meetsSpotMobTypeFilter(entry)
     && (criteria.multiTerm || _spotEntryMatches(entry, criteria.term, criteria.exact));
 
 const spotEnemyBaseName = (entry) => {
@@ -8930,6 +8890,7 @@ function collectMultiMobStageMatches(criteria, scope) {
                         });
 
                     if (!meetsSpotLevelFilter(entry, 'enemy', criteria)) continue;
+                    if (!meetsSpotMobTypeFilter(entry)) continue;
 
                     let termHit = false;
                     for (const term of terms) {
@@ -8982,44 +8943,61 @@ function collectMultiMobStageMatches(criteria, scope) {
 }
 
 function findRosterEnemySpots(row) {
-    const term = row.baseName.toLowerCase();
+    // Same name + same level range (not emCode) — Undead Lv70 from different IDs merge;
+    // Lv71 stays separate. Exact base name so "Death" ≠ "Death Knight".
+    const want = row.baseName.toLowerCase();
     return _spotIndex.filter((e) => {
         if (e.type !== 'enemy') return false;
-        if (row.emCode && e.emCode === row.emCode) return true;
-        return _spotEntryMatches(e, term, false);
+        if (spotEnemyBaseName(e).toLowerCase() !== want) return false;
+        if (spotEnemyLevelKey(e) !== row.levelKey) return false;
+        return meetsSpotMobTypeFilter(e);
     });
 }
 
 function buildStageEnemyRoster() {
+    // Group by name + level (Rising-accurate): same label & level merge across emCodes.
     const byKey = new Map();
     for (const entry of _spotIndex) {
         if (entry.type !== 'enemy') continue;
         const baseName = spotEnemyBaseName(entry);
-        const key = entry.emCode ?? baseName.toLowerCase();
+        const levelKey = spotEnemyLevelKey(entry);
+        const key = `${baseName.toLowerCase()}\0${levelKey}`;
         if (!byKey.has(key)) {
             byKey.set(key, {
                 baseName,
-                emCode: entry.emCode,
+                levelKey,
+                emCodes: new Set(),
                 levels: new Set(),
                 groupIds: new Set(),
             });
         }
         const row = byKey.get(key);
+        if (entry.emCode) row.emCodes.add(entry.emCode);
         if (entry.minLv != null) row.levels.add(entry.minLv);
         if (entry.maxLv != null) row.levels.add(entry.maxLv);
         if (entry.groupId != null) row.groupIds.add(entry.groupId);
     }
     return [...byKey.values()]
         .map((row) => {
-            const { label } = enemyLevelRange(row.levels);
+            const { label, minLv } = enemyLevelRange(row.levels);
+            const emCode = row.emCodes.size === 1 ? [...row.emCodes][0] : null;
             return {
-                ...row,
+                baseName: row.baseName,
+                levelKey: row.levelKey,
+                emCode,
+                levels: row.levels,
+                groupIds: row.groupIds,
+                minLv: minLv ?? 0,
                 displayName: enemyDisplayName(row.baseName, label),
                 searchName: row.baseName,
                 count: row.groupIds.size,
             };
         })
-        .sort((a, b) => a.baseName.localeCompare(b.baseName, undefined, { sensitivity: 'base' }));
+        .sort((a, b) => {
+            const byName = a.baseName.localeCompare(b.baseName, undefined, { sensitivity: 'base' });
+            if (byName) return byName;
+            return (a.minLv ?? 0) - (b.minLv ?? 0);
+        });
 }
 
 function findRosterGatherSpots(row) {
@@ -9080,19 +9058,65 @@ function buildStageItemRoster() {
 const filterSpotEntries = (entries, criteria) =>
     entries.filter(entry => matchesSpotCriteria(entry, criteria));
 
+/** Level identity for a spot entry — same name+level merge; different levels stay apart. */
+const spotEnemyLevelKey = (entry) => {
+    const lo = entry.minLv ?? entry.maxLv ?? '';
+    const hi = entry.maxLv ?? entry.minLv ?? '';
+    if (lo === '' && hi === '') return '';
+    return lo === hi ? `Lv${lo}` : `Lv${lo}-${hi}`;
+};
+
+/** Same name + same level (emCode may differ). "Death" ≠ "Death Knight". */
+const spotEnemyGroupKey = (entry) =>
+    `${spotEnemyBaseName(entry).toLowerCase()}\0${spotEnemyLevelKey(entry)}`;
+
+const spotGroupKey = (entry, { global = false } = {}) => {
+    if (entry.type === 'item') {
+        const base = `item:${entry.source}\0${entry.name}`;
+        return global ? `${base}\0${entry.mapName}\0${entry.stageId}` : base;
+    }
+    if (entry.type === 'enemy') {
+        const base = `enemy\0${spotEnemyGroupKey(entry)}`;
+        return global ? `${base}\0${entry.mapName}\0${entry.stageId}` : base;
+    }
+    const base = `${entry.type}\0${entry.name}`;
+    return global ? `${base}\0${entry.mapName}\0${entry.stageId}` : base;
+};
+
+/** Label for a grouped enemy row (items already share name+level). */
+const spotEnemyGroupDisplayName = (items) => {
+    const baseName = spotEnemyBaseName(items[0]);
+    const levels = new Set();
+    for (const it of items) {
+        if (it.minLv != null) levels.add(it.minLv);
+        if (it.maxLv != null) levels.add(it.maxLv);
+    }
+    const { label } = enemyLevelRange(levels);
+    return enemyDisplayName(baseName, label);
+};
+
+const spotGroupDisplayName = (items) => {
+    const first = items[0];
+    if (first.type === 'enemy') return spotEnemyGroupDisplayName(items);
+    return first.name;
+};
+
 const formatSpotEmptyMessage = (criteria, { global = false } = {}) => {
     const levelNote = formatSpotLevelFilterNote(criteria);
+    const mobNote = (_applyMobTypesToSpotSearch && criteria.filter === 'enemy')
+        ? ' (Spawns filters applied)'
+        : '';
     const label = criteria.rawDisplay || criteria.raw;
     if (global) {
-        return `<div class="spot-empty">No matches for <em>${label}</em>${levelNote} across all stages.</div>`;
+        return `<div class="spot-empty">No matches for <em>${label}</em>${levelNote}${mobNote} across all stages.</div>`;
     }
     if (criteria.raw) {
-        return `<div class="spot-empty">No matches for <em>${label}</em>${levelNote}.</div>`;
+        return `<div class="spot-empty">No matches for <em>${label}</em>${levelNote}${mobNote}.</div>`;
     }
     if (criteria.filter === 'enemy' && hasActiveSpotLevelFilter(criteria)) {
         return `<div class="spot-empty">${formatSpotLevelEmptyMessage(criteria)}</div>`;
     }
-    return `<div class="spot-empty">No matches${levelNote}.</div>`;
+    return `<div class="spot-empty">No matches${levelNote}${mobNote}.</div>`;
 };
 
 const formatSpotMultiEmptyMessage = (criteria, { global = false } = {}) => {
@@ -9158,8 +9182,8 @@ function spotItemMobTags(it) {
     const tags = new Set();
     if (it.type !== 'enemy') return tags;
 
-    const g = it.groupId ? _groupStore.get(it.groupId) : null;
     let spawn = null;
+    const g = it.groupId ? _groupStore.get(String(it.groupId)) : null;
     if (g && it.spawnKey) {
         for (const item of g.items) {
             const sid = stageIds[item.stageNo];
@@ -9169,6 +9193,20 @@ function spotItemMobTags(it) {
                 spawn = item.spawn;
                 break;
             }
+        }
+    }
+    // Global / roster before groups expand: resolve KeyBearer etc. from layout positions.
+    if (!spawn && it.spawnKey) {
+        const parts = String(it.spawnKey).split(',');
+        const groupId = parts[1];
+        const posIdx = parts[2];
+        const stageNo = it.stageNo != null
+            ? String(it.stageNo)
+            : (it.stageId ? String(parseInt(it.stageId.slice(2), 10)) : null);
+        if (stageNo != null && groupId != null && posIdx != null) {
+            const gd = enemyPositionsForStage(stageNo)?.[groupId];
+            const spawns = gd?.spawns ?? (Array.isArray(gd) ? gd : null);
+            spawn = spawns?.find(s => String(s.posIdx ?? '') === String(posIdx)) ?? null;
         }
     }
 
@@ -9299,19 +9337,27 @@ function _renderStageRoster(resultsEl, {
     }
 
     const criteria = readSpotSearchCriteria();
+    const rows = roster.map((row) => {
+        const matches = findMatches(row);
+        const items = orderSpotGroupItems(matches, 'local', criteria);
+        return { row, items };
+    });
+    const totalResults = rows.reduce((n, r) => n + r.items.length, 0);
+    const uniqueCount = rows.length;
+
     const frag = document.createDocumentFragment();
     const summary = document.createElement('div');
     summary.className = 'spot-summary';
-    summary.textContent = `${roster.length} ${summaryNoun}${roster.length !== 1 ? 's' : ''} on this stage · click to go`;
+    summary.textContent =
+        `${totalResults} result${totalResults !== 1 ? 's' : ''} · ${uniqueCount} unique `
+        + `${summaryNoun}${uniqueCount !== 1 ? 's' : ''} on this stage · click to go`;
     frag.appendChild(summary);
 
-    const enableHoverHl = roster.length <= 50;
+    const enableHoverHl = uniqueCount <= 50;
 
-    for (const row of roster) {
+    for (const { row, items } of rows) {
         const el = document.createElement('div');
         el.className = 'spot-result-row spot-roster-row';
-        const matches = findMatches(row);
-        const items = orderSpotGroupItems(matches, 'local', criteria);
         const rowLabel = labelForRow(row);
         el.title = `Go to ${rowLabel}`;
         el.innerHTML =
@@ -9327,9 +9373,13 @@ function _renderStageRoster(resultsEl, {
 }
 
 function _renderStageEnemyRoster(resultsEl) {
+    const fullRoster = buildStageEnemyRoster();
+    const roster = fullRoster.filter((row) => findRosterEnemySpots(row).length > 0);
     _renderStageRoster(resultsEl, {
-        roster: buildStageEnemyRoster(),
-        emptyMessage: 'No enemy data for this stage yet.',
+        roster,
+        emptyMessage: _applyMobTypesToSpotSearch && fullRoster.length
+            ? 'No enemies match the current Spawns filters.'
+            : 'No enemy data for this stage yet.',
         summaryNoun: 'enemy type',
         findMatches: findRosterEnemySpots,
         iconForRow: (_row, items) => spotStageListEnemyIconHtml(items),
@@ -9480,10 +9530,10 @@ function _runSpotSearch() {
         return;
     }
 
-    // Group by name+type (items also group by source so enemy/gather/shop stay separate)
+    // Group by name+type (enemies: base name so emCode variants merge like Rising)
     const grouped = new Map();
     for (const m of matches) {
-        const key = m.type === 'item' ? `item:${m.source}\0${m.name}` : `${m.type}\0${m.name}`;
+        const key = spotGroupKey(m);
         if (!grouped.has(key)) grouped.set(key, []);
         grouped.get(key).push(m);
     }
@@ -9508,6 +9558,7 @@ function _runSpotSearch() {
         const items = orderSpotGroupItems(rawItems, 'local', criteria);
         const first = items[0];
         const multi = items.length > 1;
+        const rowName = spotGroupDisplayName(items);
 
         const dotHtml = spotResultIconHtml(first, items);
 
@@ -9515,10 +9566,10 @@ function _runSpotSearch() {
 
         const row = document.createElement('div');
         row.className = 'spot-result-row';
-        row.title = first.name;
+        row.title = rowName;
 
         row.innerHTML =
-            `${dotHtml}<span class="spot-result-name">${first.name}</span>`
+            `${dotHtml}<span class="spot-result-name">${rowName}</span>`
             + (multi ? '' : `<div class="spot-preview">${previewHtml}</div>`);
         if (multi) {
             const preview = document.createElement('div');
@@ -9540,12 +9591,10 @@ function _runSpotSearch() {
 }
 
 function _renderGlobalResults(matches, resultsEl, criteria = null) {
-    // Group by name + type + source + stage — each row is one name on one stage
+    // Group by name + type + source + stage — enemies merge by base name (Rising-style)
     const grouped = new Map();
     for (const m of matches) {
-        const key = m.type === 'item'
-            ? `item:${m.source}\0${m.name}\0${m.mapName}\0${m.stageId}`
-            : `${m.type}\0${m.name}\0${m.mapName}\0${m.stageId}`;
+        const key = spotGroupKey(m, { global: true });
         if (!grouped.has(key)) grouped.set(key, []);
         grouped.get(key).push(m);
     }
@@ -9554,7 +9603,9 @@ function _renderGlobalResults(matches, resultsEl, criteria = null) {
     const totalGroups = sortedGroups.length;
     const cappedGroups = sortedGroups.slice(0, SPOT_RESULT_CAP);
 
-    const uniqueNames = new Set(matches.map(m => m.name)).size;
+    const uniqueNames = new Set(
+        matches.map(m => m.type === 'enemy' ? spotEnemyGroupKey(m) : m.name),
+    ).size;
     const frag = document.createDocumentFragment();
     const summary = document.createElement('div');
     summary.className = 'spot-summary';
@@ -9568,16 +9619,17 @@ function _renderGlobalResults(matches, resultsEl, criteria = null) {
     for (const rawItems of cappedGroups) {
         const items = orderSpotGroupItems(rawItems, 'global', criteria);
         const first = items[0];
+        const rowName = spotGroupDisplayName(items);
 
         const dotHtml = spotResultIconHtml(first, items);
 
         const row = document.createElement('div');
         row.className = 'spot-result-row';
-        row.title = `${first.name} — ${first.locationTag}`;
+        row.title = `${rowName} — ${first.locationTag}`;
 
         row.innerHTML =
             `${dotHtml}<div style="flex:1;min-width:0">`
-            + `<div class="spot-result-name">${first.name}</div>`
+            + `<div class="spot-result-name">${rowName}</div>`
             + `<div class="spot-stage-sub">${first.locationTag}</div>`
             + `</div>`;
         wireSpotRowNavigation(row, items, _navigateToSpotGlobal);
