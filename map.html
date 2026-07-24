@@ -2199,21 +2199,73 @@
     .popup-edit-btn:not(.danger):not(.accent):hover { background: #e0e0e0; }
 
     /* Connection choice popup (same coords, multiple destinations) */
+    .leaflet-popup:has(.conn-choice-popup) .leaflet-popup-content-wrapper {
+        background: #16213e;
+        color: #e0e0e0;
+        border: 1px solid #0f3460;
+        border-radius: 4px;
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+    }
+    .leaflet-popup:has(.conn-choice-popup) .leaflet-popup-tip {
+        background: #16213e;
+        border: 1px solid #0f3460;
+        box-shadow: none;
+    }
+    .leaflet-popup:has(.conn-choice-popup) .leaflet-popup-content {
+        margin: 10px 12px;
+        min-width: 200px;
+    }
+    .leaflet-popup:has(.conn-choice-popup) .leaflet-popup-close-button {
+        color: #8899aa;
+        padding: 6px 8px 0 0;
+        font-size: 16px;
+    }
+    .leaflet-popup:has(.conn-choice-popup) .leaflet-popup-close-button:hover {
+        color: #ff6b35;
+    }
     .conn-choice-popup { min-width: 200px; }
     .conn-choice-title {
-        font-size: 12px; font-weight: 600; color: #333;
-        margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #ddd;
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #8899aa;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid #0f3460;
     }
     .conn-choice-btn {
-        display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
-        width: 100%; margin: 0 0 4px; padding: 6px 8px;
-        border: 1px solid #ccc; border-radius: 4px; background: #f8f8f8;
-        cursor: pointer; text-align: left;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        width: 100%;
+        margin: 0 0 4px;
+        padding: 7px 9px;
+        border: 1px solid #0f3460;
+        border-radius: 3px;
+        background: #1a1a2e;
+        cursor: pointer;
+        text-align: left;
+        transition: background 0.12s, border-color 0.12s;
     }
     .conn-choice-btn:last-child { margin-bottom: 0; }
-    .conn-choice-btn:hover { background: #fff3ec; border-color: #ff6b35; }
-    .conn-choice-label { font-size: 12px; font-weight: 600; color: #222; }
-    .conn-choice-sub { font-size: 10px; color: #666; }
+    .conn-choice-btn:hover {
+        background: #1a3060;
+        border-color: #ff6b35;
+    }
+    .conn-choice-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #e0e0e0;
+    }
+    .conn-choice-btn:hover .conn-choice-label { color: #fff; }
+    .conn-choice-sub {
+        font-size: 10px;
+        color: #778899;
+        font-variant-numeric: tabular-nums;
+    }
+    .conn-choice-btn:hover .conn-choice-sub { color: #ff6b35; }
 
     .orb-map-toggle {
         display: inline-flex; align-items: center; justify-content: center;
