@@ -5083,48 +5083,6 @@ function updateSidebarPresetLabel() {
     el.textContent = short ? ` (${short})` : '';
 }
 
-/** Persist a named server preset's URLs and reload (same effect as Settings → Apply). */
-function applyServerPresetAndReload(presetId) {
-    const preset = _SERVER_PRESETS[presetId];
-    if (!preset) return;
-    for (const key of _SRC_KEYS) {
-        const url = preset.urls[key];
-        const arrowDefault = _SERVER_PRESETS.arrowgene.urls[key];
-        if (url === arrowDefault) localStorage.removeItem(key);
-        else localStorage.setItem(key, url);
-        localStorage.removeItem(key + '-name');
-        localStorage.removeItem(key + '-data');
-    }
-    localStorage.setItem(_PRESET_LS_KEY, presetId);
-    location.reload();
-}
-
-function updateRisingChannelToggle() {
-    const bar = document.getElementById('rising-channel-bar');
-    if (!bar) return;
-    const presetId = detectActivePreset();
-    const isRising = presetId === 'rising' || presetId === 'rising-endgame';
-    bar.classList.toggle('visible', isRising);
-    if (!isRising) return;
-    for (const btn of bar.querySelectorAll('button[data-preset]')) {
-        btn.classList.toggle('active', btn.dataset.preset === presetId);
-    }
-}
-
-function initRisingChannelToggle() {
-    const bar = document.getElementById('rising-channel-bar');
-    if (!bar || bar.dataset.wired) return;
-    bar.dataset.wired = '1';
-    bar.addEventListener('click', e => {
-        const btn = e.target.closest('button[data-preset]');
-        if (!btn || btn.classList.contains('active')) return;
-        const presetId = btn.dataset.preset;
-        if (!_SERVER_PRESETS[presetId]) return;
-        applyServerPresetAndReload(presetId);
-    });
-    updateRisingChannelToggle();
-}
-
 const presetUrlFor = (presetId, lsKey) =>
     _SERVER_PRESETS[presetId]?.urls[lsKey] ?? _SERVER_PRESETS.arrowgene.urls[lsKey];
 
@@ -11480,7 +11438,6 @@ async function bootstrapMapApp() {
     initPoiFilters();
     initDevPanel();
     updateSidebarPresetLabel();
-    initRisingChannelToggle();
     try {
         buildSidebar();
     } catch (err) {

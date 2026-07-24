@@ -89,59 +89,6 @@
             letter-spacing: 0.02em;
         }
 
-        /* Rising Normal / Endgame quick switch (shown only when a Rising preset is active) */
-        #rising-channel-bar {
-            display: none;
-            padding: 6px 8px 8px;
-            border-bottom: 1px solid #0f3460;
-            gap: 6px;
-            align-items: center;
-        }
-        #rising-channel-bar.visible {
-            display: flex;
-        }
-        #rising-channel-bar .rising-channel-label {
-            font-size: 0.65rem;
-            font-weight: 700;
-            letter-spacing: 0.06em;
-            text-transform: uppercase;
-            color: #888;
-            flex-shrink: 0;
-        }
-        #rising-channel-toggle {
-            display: flex;
-            flex: 1;
-            min-width: 0;
-            border: 1px solid #2a5080;
-            border-radius: 4px;
-            overflow: hidden;
-            background: #0f3460;
-        }
-        #rising-channel-toggle button {
-            flex: 1;
-            border: none;
-            background: transparent;
-            color: #9ab;
-            font-size: 0.72rem;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-            padding: 5px 6px;
-            cursor: pointer;
-            line-height: 1.2;
-            white-space: nowrap;
-        }
-        #rising-channel-toggle button + button {
-            border-left: 1px solid #2a5080;
-        }
-        #rising-channel-toggle button:hover:not(.active) {
-            background: #1a4a7a;
-            color: #e0e0e0;
-        }
-        #rising-channel-toggle button.active {
-            background: #4a90d9;
-            color: #fff;
-        }
-
         #search-box {
             padding: 8px;
             border-bottom: 1px solid #0f3460;
@@ -1375,13 +1322,6 @@
                 <button type="button" id="sidebar-collapse" title="Collapse sidebar">◀</button>
             </span>
         </h1>
-        <div id="rising-channel-bar" aria-label="Dogma Rising channel">
-            <span class="rising-channel-label">Channel</span>
-            <div id="rising-channel-toggle" role="group" aria-label="Rising channel">
-                <button type="button" data-preset="rising" title="Dogma Rising — Normal Channels">Normal</button>
-                <button type="button" data-preset="rising-endgame" title="Dogma Rising — Endgame (Channel 4)">Endgame</button>
-            </div>
-        </div>
         <div id="search-box">
             <input type="text" id="map-search" placeholder="Search maps or locations…" autocomplete="off" spellcheck="false" title="Maps by name, or named locations (portcrystals, caves, inns, doors)&#10;stageno=200  — match stage number&#10;stageid=2    — match internal stage ID&#10;area=cassardis — match quest area name">
             <button id="map-search-clear" title="Clear search">✕</button>
