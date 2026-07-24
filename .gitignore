@@ -1,0 +1,7 @@
+# Local-only data pipeline / enrichment tooling (not needed at map runtime)
+scripts/enrich_landmarks.py
+scripts/import_dungeon_warps.py
+scripts/fetch_poi_icons.py
+tools/enrich-landmarks.mjs
+tools/import-dungeon-warps.mjs
+resources/poi-icons.json
